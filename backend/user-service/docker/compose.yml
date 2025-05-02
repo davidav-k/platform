@@ -1,0 +1,44 @@
+services:
+  postgresusersdb:
+    container_name: ${POSTGRES_CONTAINER}
+    image: postgres:16.1
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8"
+    expose:
+      - "5432"
+    ports:
+      - "5432:5432"
+    volumes:
+      - ../docker/pgdata:/var/lib/postgresql/data
+      - ../docker/db-init:/docker-entrypoint-initdb.d
+
+  pgadmin:
+    container_name: pgadmincontainer
+    image: dpage/pgadmin4:latest
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
+      PGADMIN_DEFAULT_ADDRESS: 6000
+      PGADMIN_LISTEN_PORT: 6000
+    expose:
+      - "6000"
+    ports:
+      - "7001:6000"
+    volumes:
+      - ../docker/pgadmindata:/var/lib/pgadmin
+
+  mailhog:
+    image: mailhog/mailhog
+    container_name: 'mailhog'
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+volumes:
+    pgadmindata:
+    pgdata:

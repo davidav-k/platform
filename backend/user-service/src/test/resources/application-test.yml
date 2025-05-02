@@ -1,0 +1,39 @@
+spring:
+  datasource:
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    show-sql: false
+  mail:
+    host: localhost
+    port: 3025
+    username: test
+    password: test
+    default-encoding: UTF-8
+    properties:
+      mail:
+        smtp:
+          auth: false
+          starttls:
+            enable: false
+    verify:
+      host: http://localhost:8080
+  main:
+    allow-bean-definition-overriding: true
+jwt:
+  expiration: 86400000
+  secret: test-secret-key-test-secret-key-test-secret-key-test-secret-key-test-secret-key-test
+api:
+  endpoint:
+    base-url: /api/v1
+admin:
+  password: admin
+logging:
+  level:
+    root: INFO
+    org.springframework: INFO
+    org.testcontainers: INFO

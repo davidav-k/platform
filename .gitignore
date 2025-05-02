@@ -1,0 +1,25 @@
+# Java
+target/
+*.jar
+*.war
+*.class
+backend/user-service/docker/pgdata/
+backend/user-service/docker/pgadmindata/
+# Maven
+.mvn/
+mvnw
+mvnw.cmd
+
+# Node.js
+node_modules/
+dist/
+
+# Logs
+*.log
+
+# IDEs
+.idea/
+*.iml
+.vscode/
+
+.env
