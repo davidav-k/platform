@@ -1,0 +1,7 @@
+Summary, Issue Type, Description, Priority
+Инициализация Spring Boot проекта, Task, Настроить базовый Spring Boot проект для User-service, High
+Подготовка Dockerfile для User-service, Task, Создать Dockerfile для User-service, Medium
+Настройка docker-compose.yml для User-service, PostgreSQL и Redis, Task, Настроить docker-compose.yml с контейнерами для User-service, PostgreSQL и Redis, Medium
+Настройка PostgreSQL и подключение к User-service, Task, Подключить базу данных PostgreSQL к User-service, High
+Развертывание Redis и интеграция с User-service для кеширования, Task, Настроить Redis для кеширования пользователей, Medium
+Настройка CRUD операций для пользователей, Task, Реализовать CRUD-операции для сущности User, High

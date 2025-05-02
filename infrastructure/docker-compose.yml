@@ -1,0 +1,143 @@
+services:
+
+  postgresusersdb:
+    container_name: tsp_postgres
+    image: postgres:16.1
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8"
+    expose:
+      - "5432"
+    ports:
+      - "5432:5432"
+    volumes:
+      - ../docker/pgdata:/var/lib/postgresql/data
+      - ../docker/db-init:/docker-entrypoint-initdb.d
+
+  redis:
+    image: redis:7
+    container_name: tsp_redis
+    ports:
+      - "6379:6379"
+    command: redis-server --save 60 1 --loglevel warning
+
+  eureka-server:
+    image: openjdk:17
+    container_name: tsp_eureka
+    build:
+      context: ./eureka-server
+      dockerfile: Dockerfile
+    ports:
+      - "8761:8761"
+    environment:
+      - SPRING_PROFILES_ACTIVE=default
+    depends_on:
+      - postgres
+
+  config-server:
+    image: openjdk:17
+    container_name: tsp_config
+    build:
+      context: ./config-server
+      dockerfile: Dockerfile
+    ports:
+      - "8888:8888"
+    environment:
+      - SPRING_PROFILES_ACTIVE=default
+    depends_on:
+      - postgres
+
+  gateway:
+    image: openjdk:17
+    container_name: tsp_gateway
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=default
+    depends_on:
+      - eureka-server
+      - config-server
+
+  zipkin:
+    image: openzipkin/zipkin
+    container_name: tsp_zipkin
+    ports:
+      - "9411:9411"
+
+  user-service:
+    image: openjdk:17
+    container_name: tsp_user_service
+    build:
+      context: ./user-service
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8081"
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+    depends_on:
+      - eureka-server
+      - config-server
+      - postgres
+
+  task-service:
+    image: openjdk:17
+    container_name: tsp_task_service
+    build:
+      context: ./task-service
+      dockerfile: Dockerfile
+    ports:
+      - "8082:8082"
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+    depends_on:
+      - eureka-server
+      - config-server
+      - postgres
+
+  notification-service:
+    image: openjdk:17
+    container_name: tsp_notification_service
+    build:
+      context: ./notification-service
+      dockerfile: Dockerfile
+    ports:
+      - "8083:8083"
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+    depends_on:
+      - eureka-server
+      - config-server
+      - postgres
+      
+  pgadmin:
+    container_name: pgadmincontainer
+    image: dpage/pgadmin4:latest
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
+      PGADMIN_DEFAULT_ADDRESS: 6000
+      PGADMIN_LISTEN_PORT: 6000
+    expose:
+      - "6000"
+    ports:
+      - "7001:6000"
+    volumes:
+      - ../docker/pgadmindata:/var/lib/pgadmin
+
+  mailhog:
+    image: mailhog/mailhog
+    container_name: 'mailhog'
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+volumes:
+    pgadmindata:
+    pgdata:
