@@ -20,3 +20,23 @@ The project utilizes the following technologies:
 - **Frontend**: Vue.js
 - **Database**: PostgreSQL
 - **Infrastructure**: Docker, Kubernetes, GitHub Actions, Kafka, Redis
+
+
+### For local launch
+1. .env file
+   - Copy .env.example to .env
+   - Change the values of the variables in the .env file to your local environment
+     - Make sure to set your ip address:
+       - POSTGRES_HOST
+       - EMAIL_HOST
+
+2. Delete all containers and volumes (docker)
+3. Run in the terminal from the root project folder
+```bash
+docker compose --env-file .env -f infrastructure/compose.yml up -d
+```
+Containers with the database, mail service and admin panel are built and launched
+4. Launch the application.
+
+#### localhost:7001 - admin panel (pgAdmin) postgresql
+#### localhost:8025 - mailhog (email testing tool)
