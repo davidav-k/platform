@@ -14,8 +14,8 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - ../infrastructure/docker/pgdata:/var/lib/postgresql/data
-      - ../infrastructure/docker/db-init:/docker-entrypoint-initdb.d
+      - ./infrastructure/docker/pgdata:/var/lib/postgresql/data
+      - ./infrastructure/docker/db-init:/docker-entrypoint-initdb.d
 
   redis:
     image: redis:7
@@ -28,7 +28,7 @@ services:
     image: openjdk:17
     container_name: tsp_eureka
     build:
-      context: ../infrastructure/eureka-server
+      context: ./infrastructure/eureka-server
       dockerfile: Dockerfile
     ports:
       - "8761:8761"
@@ -41,7 +41,7 @@ services:
     image: openjdk:17
     container_name: tsp_config
     build:
-      context: ../infrastructure/config-server
+      context: ./infrastructure/config-server
       dockerfile: Dockerfile
     ports:
       - "8888:8888"
@@ -54,7 +54,7 @@ services:
     image: openjdk:17
     container_name: tsp_gateway
     build:
-      context: ../infrastructure/api-gateway
+      context: ./infrastructure/api-gateway
       dockerfile: Dockerfile
     ports:
       - "8080:8080"
@@ -74,7 +74,7 @@ services:
     image: openjdk:17
     container_name: tsp_user_service
     build:
-      context: ../backend/user-service
+      context: ./backend/user-service
       dockerfile: Dockerfile
     ports:
       - "8081:8081"
