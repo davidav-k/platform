@@ -9,7 +9,7 @@ spring:
     config:
       server:
         git:
-          uri: https://github.com/YOUR_USERNAME/tsp-config.git
+          uri: https://github.com/davidav/tsp-config.git
           clone-on-start: true
           default-label: main
 

@@ -33,7 +33,7 @@ The project utilizes the following technologies:
 2. Delete all containers and volumes (docker)
 3. Run in the terminal from the root project folder
 ```bash
-docker compose --env-file .env -f infrastructure/compose.yml up -d
+docker compose --env-file .env -f compose.yml up -d
 ```
 Containers with the database, mail service and admin panel are built and launched
 4. Launch the application.
