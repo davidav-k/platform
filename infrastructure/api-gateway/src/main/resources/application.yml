@@ -19,7 +19,6 @@ spring:
             - Path=/api/users/**
           filters:
             - RewritePath=/api/users/(?<segment>.*), /api/v1/user/${segment}
-            - AuthenticationFilter
             - name: CircuitBreaker
               args:
                 name: userService
@@ -31,7 +30,6 @@ spring:
             - Path=/api/tasks/**
           filters:
             - RewritePath=/api/tasks/(?<segment>.*), /api/v1/task/${segment}
-            - AuthenticationFilter
             - name: CircuitBreaker
               args:
                 name: taskService
@@ -63,6 +61,25 @@ management:
     web:
       exposure:
         include: '*'
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 5s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
+    instances:
+      userService:
+        baseConfig: default
+      taskService:
+        baseConfig: default
+
 
 logging:
   level:

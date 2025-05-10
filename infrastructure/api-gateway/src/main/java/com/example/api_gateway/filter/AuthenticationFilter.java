@@ -1,6 +1,6 @@
 package com.example.api_gateway.filter;
 
-import com.example.apigateway.util.JwtUtil;
+import com.example.api_gateway.util.JwtUtil;
 import io.jsonwebtoken.JwtException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
@@ -20,6 +20,13 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+        String path = exchange.getRequest().getURI().getPath();
+
+        if (path.equals("/api/users/login") || path.equals("/api/users/register")) {
+            return chain.filter(exchange);
+        }
+
+
         String authHeader = exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
@@ -34,7 +41,6 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
             return unauthorized(exchange, "Invalid JWT token: " + e.getMessage());
         }
 
-        // Можно прокинуть userId / roles в downstream через заголовки
         String username = jwtUtil.extractUsername(token);
         exchange.getRequest().mutate()
                 .header("X-Authenticated-User", username)
@@ -50,6 +56,6 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
 
     @Override
     public int getOrder() {
-        return -1; // максимально раннее выполнение
+        return -1;
     }
 }
