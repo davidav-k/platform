@@ -1,22 +1,75 @@
-# Platform
-This project was created to be used in future projects as a basis. You can add a service with the required logic and get a ready application
+# Task Management Platform
 
-## Project Overview
-Platform is a microservice-based system, with features for users authentication, creation, editing, and notifications. The platform implements modern security measures with **access** and **refresh tokens** to ensure secure user authentication and authorization. **Access tokens** are stored in **Guava** for fast, scalable, and secure token management.
+A microservice-based platform for managing users, tasks, notifications, and analytics. Built with Spring Boot 3.3.3 and modern DevOps principles, event-driven architecture, and scalable infrastructure.
 
-The project utilizes the following technologies:
-- **Backend**: Spring Boot microservices (User Service,Notification Service ..)
-- **Frontend**: Vue.js for a dynamic user interface
-- **Infrastructure**: Docker for containerization, Kubernetes for orchestration, GitHub Actions for CI/CD, Kafka for messaging between services
+## Architecture Overview
 
-## Key Features:
-- **Authentication and Authorization**: User authentication using JWT-based **access** and **refresh tokens**. Access tokens have a short lifespan and are stored in **Redis** for efficient retrieval. Refresh tokens are used to renew access tokens without requiring re-login.
-- **Task Management**: Full CRUD operations for tasks (create, update, delete) with role-based access.(any other service )
-- **Notifications**: Real-time notifications about task updates or comments.
-- **Caching and Monitoring**: Redis is used for caching access tokens, ensuring efficient data access and high performance, and monitoring is implemented for microservices.
+- `user-service` — handles user registration, authentication, and role management (JWT, Spring Security)
+- `task-service` — manages tasks, statuses, and comments
+- `notification-service` — email/push notifications (Kafka-based)
+- `audit-service` — user activity logging
+- `config-server` — centralized configuration using Spring Cloud Config
+- `eureka-server` — service discovery via Spring Cloud Eureka
+- `gateway` — API Gateway (Spring Cloud Gateway)
+- Supporting services: `zipkin`, `mailhog`, `redis`, `postgres`
 
-## Technology Stack:
-- **Backend**: Java, Spring Boot
-- **Frontend**: Vue.js
-- **Database**: PostgreSQL
-- **Infrastructure**: Docker, Kubernetes, GitHub Actions, Kafka, Redis
+## Getting Started (Local)
+
+### 1. Requirements
+
+- Docker + Docker Compose
+- Java 17+ and Maven (optional for manual builds)
+
+### 2. Clone the Repository
+
+```bash
+git clone https://github.com/davidav-k/platform.git
+```
+
+### 3. Configure Environment Variables
+
+Create a `.env` file at the project root (based on `.env.example`):
+
+
+### 4. Launch the Application
+
+```bash
+docker compose --env-file .env -f compose.yml up -d
+```
+
+Services available at:
+
+- `localhost:8085` — user-service
+- `localhost:8080` — API Gateway
+- `localhost:8025` — MailHog
+- `localhost:9411` — Zipkin
+- `localhost:8761` — Eureka dashboard
+
+## Healthcheck and Startup Order
+
+- PostgreSQL is monitored with `pg_isready` via Docker `healthcheck`
+- Services wait for PostgreSQL to be fully initialized
+- `depends_on.condition: service_healthy` is used for controlled startup
+
+
+## Security
+
+- JWT authentication with HS256
+- Spring Security filters via API Gateway
+- Role-based access: `ADMIN`, `USER`, `MODERATOR`
+
+## Observability
+
+- Zipkin for distributed tracing
+- Spring Cloud Sleuth integration
+- Prometheus + Grafana monitoring
+
+## CI/CD & Production Readiness
+
+- Compatible with GitHub Actions
+- Ready for Kubernetes deployment
+- Multi-profile support for environments
+
+---
+
+© 2025 [davidav-k](https://github.com/davidav-k)

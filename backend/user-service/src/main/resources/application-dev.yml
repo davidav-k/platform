@@ -1,0 +1,4 @@
+JWT_EXPIRATION: 432000000 # 5 days in milliseconds time limit for JWT
+
+
+

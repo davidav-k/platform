@@ -1,0 +1,123 @@
+version: '3.8'
+
+services:
+  postgres:
+    container_name: tsp_postgres
+    image: postgres:16.1
+    restart: always
+    env_file:
+      - .env
+    expose:
+      - "5432"
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./infrastructure/docker/pgdata:/var/lib/postgresql/data
+      - ./infrastructure/docker/db-init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - tsp-network
+
+  redis:
+    image: redis:7
+    container_name: tsp_redis
+    ports:
+      - "6379:6379"
+    command: redis-server --save 60 1 --loglevel warning
+    networks:
+      - tsp-network
+
+  eureka-server:
+    image: openjdk:17
+    container_name: tsp_eureka
+    build:
+      context: ./infrastructure/eureka-server
+      dockerfile: Dockerfile
+    ports:
+      - "8761:8761"
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - tsp-network
+
+  config-server:
+    image: openjdk:17
+    container_name: tsp_config
+    build:
+      context: ./infrastructure/config-server
+      dockerfile: Dockerfile
+    ports:
+      - "8888:8888"
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - tsp-network
+
+  gateway:
+    image: openjdk:17
+    container_name: tsp_gateway
+    build:
+      context: ./infrastructure/api-gateway
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    depends_on:
+      config-server:
+        condition: service_started
+      eureka-server:
+        condition: service_started
+    networks:
+      - tsp-network
+
+  zipkin:
+    image: openzipkin/zipkin
+    container_name: tsp_zipkin
+    ports:
+      - "9411:9411"
+    networks:
+      - tsp-network
+
+  user-service:
+    image: openjdk:17
+    container_name: tsp_user_service
+    build:
+      context: ./backend/user-service
+      dockerfile: Dockerfile
+    ports:
+      - "8085:8085"
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      config-server:
+        condition: service_started
+      eureka-server:
+        condition: service_started
+    networks:
+      - tsp-network
+
+  mailhog:
+    image: mailhog/mailhog
+    container_name: mailhog
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    networks:
+      - tsp-network
+
+networks:
+  tsp-network:
+    driver: bridge

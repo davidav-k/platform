@@ -1,0 +1,76 @@
+======================================================================================
+Первый запуск приложения
+1. Указать  в application-dev.yml - POSTGRESQL_HOST, EMAIL_HOST local ip address
+2. Удалить все контейнеры и volumes (Docker)
+3. Из папки docker запустить в терминале 'docker compose up -d'
+происходит сборка и запуск контейнеров с базой данных, админ панели базы данных и локальным почтовым сервером
+4. Включить инициализацию БД:
+application.yml: sql: init: mode: always
+5. В настройках запуска приложения указать файл .env в котором должны быть указаны переменные окружения SECRET, ADMIN_PASSWORD
+6. Запустить приложение
+происходит инициализация базы данных с помощью файла db_init.sql
+    - создаются таблицы users, roles, user_roles, credentials, confirmations
+    - в таблицу users добавлен пользователь SYSTEM c id = 0
+    - в таблицу roles добавлены роли ADMIN и USER c id = 1 и 2 соответственно
+    - создается пользователь admin с ролью ADMIN
+7. Перед повторными запусками приложения выключить инициализацию БД
+application.yml: sql: init: mode: never
+
+
+======================================================================================
+Формирование HTTP ответа
+Класс RequestUtils
+    - методы статические, т.е. доступны всем экземплярам класса и не могут быть переопределены
+Два основных публичных метода:
+* getResponse
+    - используется для формирования HTTP-ответа в нормальном режиме
+    - обычно вызывается из контроллера при формировании ResponseEntity
+    - принимает HttpServletRequest, Map с различными данными, текстовое сообщение и HttpStatus
+    - возвращает объект Response с заполненными полями
+
+* handlerErrorResponse
+    - используется для формирования HTTP-ответа в случае ошибки
+    - вызывается из фильтра AuthenticationFilter в случае возникновения исключений при попытке аутентификации
+    - принимает HttpServletRequest, HttpServletResponse и Exception
+    - ничего не возвращает
+    - использует приватный метод getErrorResponse для формирования ответа - объекта Response
+    - записывает ответ Response в HttpServletResponse используя приватную функцию writeResponse этого же класса
+
+Приватные методы:
+* метод getErrorResponse
+    - используется для формирования HTTP-ответа и вызывается из метода handlerErrorResponse того же класса
+    - принимает HttpServletRequest, HttpServletResponse, Exception и HttpStatus
+    - использует приватную функцию errorReason для получения текстового описания ошибки
+    - возвращает объект Response с заполненными полями
+* функция errorReason
+    - является функциональным интерфейсом Function, который принимает Exception и возвращает String
+    - используется для получения текстового описания ошибки из метода getErrorResponse того же класса
+    - используется для заполнения поля message объекта Response
+* функция writeResponse
+    - использует функциональный интерфейс BiConsumer, который принимает два аргумента (HttpServletResponse и Response) ничего не возвращает
+    - записывает объект Response в HTTP-ответ HttpServletResponse в формате JSON
+    - использует метод writeValueAsString библиотеки Jackson для преобразования объекта Response в строку JSON
+======================================================================================
+application.yml
+#  mail:
+#    properties:
+#      mail:
+#        mime:
+#          charset: UTF
+#        smtp:
+#          writetimeout: 10000
+#          connectiontimeout: 10000
+#          timeout: 10000
+#          auth: false
+#          starttls:
+#            enable: false
+#            required: true
+======================================================================================
+application-dev.yml
+##mail
+#EMAIL_HOST: smtp.gmail.com
+#EMAIL_PORT: 587
+#EMAIL_ID: davidtnko@gmail.com
+#EMAIL_PASSWORD:
+#VERIFY_EMAIL_HOST: http://localhost:8085
+=======================================================================================
