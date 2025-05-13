@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   postgres:
     container_name: tsp_postgres
@@ -12,6 +14,13 @@ services:
     volumes:
       - ./infrastructure/docker/pgdata:/var/lib/postgresql/data
       - ./infrastructure/docker/db-init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - tsp-network
 
   redis:
     image: redis:7
@@ -19,6 +28,8 @@ services:
     ports:
       - "6379:6379"
     command: redis-server --save 60 1 --loglevel warning
+    networks:
+      - tsp-network
 
   eureka-server:
     image: openjdk:17
@@ -31,7 +42,10 @@ services:
     env_file:
       - .env
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+    networks:
+      - tsp-network
 
   config-server:
     image: openjdk:17
@@ -44,7 +58,10 @@ services:
     env_file:
       - .env
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+    networks:
+      - tsp-network
 
   gateway:
     image: openjdk:17
@@ -57,14 +74,20 @@ services:
     env_file:
       - .env
     depends_on:
-      - eureka-server
-      - config-server
+      config-server:
+        condition: service_started
+      eureka-server:
+        condition: service_started
+    networks:
+      - tsp-network
 
   zipkin:
     image: openzipkin/zipkin
     container_name: tsp_zipkin
     ports:
       - "9411:9411"
+    networks:
+      - tsp-network
 
   user-service:
     image: openjdk:17
@@ -77,16 +100,24 @@ services:
     env_file:
       - .env
     depends_on:
-      - eureka-server
-      - config-server
-      - postgres
-      
+      postgres:
+        condition: service_healthy
+      config-server:
+        condition: service_started
+      eureka-server:
+        condition: service_started
+    networks:
+      - tsp-network
+
   mailhog:
     image: mailhog/mailhog
-    container_name: 'mailhog'
+    container_name: mailhog
     ports:
       - "1025:1025"
       - "8025:8025"
+    networks:
+      - tsp-network
 
-volumes:
-    pgdata:
+networks:
+  tsp-network:
+    driver: bridge
