@@ -48,6 +48,8 @@ spring:
 
     verify:
       host: ${EMAIL_VERIFY_HOST}
+  application:
+    name: user-service
 server:
   port: ${APPLICATION_PORT:8080}
   error:
@@ -67,3 +69,7 @@ api:
     base-url: /api/v1
     user:
       login: /api/v1/user/login
+eureka:
+  client:
+    service-url:
+      defaultZone: http://eureka-server:8761/eureka
