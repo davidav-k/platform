@@ -12,15 +12,26 @@ import org.springframework.web.server.ServerWebExchange;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import reactor.core.publisher.Mono;
 
+import java.util.Set;
+
 @Component
 @RequiredArgsConstructor
 public class AuthenticationFilter implements GlobalFilter, Ordered {
 
     private final JwtUtil jwtUtil;
+    private static final Set<String> EXCLUDED_PATHS = Set.of(
+            "/api/users/login",
+            "/api/users/register");
+
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         String path = exchange.getRequest().getURI().getPath();
+
+         if (EXCLUDED_PATHS.contains(path)) {
+            return chain.filter(exchange);
+        }
+
 
         if (path.equals("/api/users/login") || path.equals("/api/users/register")) {
             return chain.filter(exchange);
@@ -29,8 +40,12 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
 
         String authHeader = exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
 
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            return unauthorized(exchange, "Missing or invalid Authorization header");
+        if (authHeader == null) {
+            return unauthorized(exchange, "Missing Authorization header");
+        }
+
+        if (!authHeader.startsWith("Bearer ")) {
+            return unauthorized(exchange, "Invalid Authorization header format");
         }
 
         String token = authHeader.substring(7);
