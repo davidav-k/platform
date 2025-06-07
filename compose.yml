@@ -1,4 +1,3 @@
-
 services:
   postgres:
     container_name: tsp_postgres
@@ -30,8 +29,24 @@ services:
     networks:
       - tsp-network
 
+  zipkin:
+    image: openzipkin/zipkin
+    container_name: tsp_zipkin
+    ports:
+      - "9411:9411"
+    networks:
+      - tsp-network
+
+  mailhog:
+    image: mailhog/mailhog
+    container_name: mailhog
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    networks:
+      - tsp-network
+
   eureka-server:
-    image: openjdk:17
     container_name: tsp_eureka
     build:
       context: ./infrastructure/eureka-server
@@ -43,27 +58,28 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    environment:
+      - SPRING_CLOUD_CONFIG_ENABLED=false
+      - SPRING_CONFIG_IMPORT=optional:classpath:/application.yml
     networks:
       - tsp-network
 
-  config-server:
-    image: openjdk:17
-    container_name: tsp_config
-    build:
-      context: ./infrastructure/config-server
-      dockerfile: Dockerfile
-    ports:
-      - "8888:8888"
-    env_file:
-      - .env
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - tsp-network
+#  config-server:
+#    container_name: tsp_config
+#    build:
+#      context: ./infrastructure/config-server
+#      dockerfile: Dockerfile
+#    ports:
+#      - "8888:8888"
+#    env_file:
+#      - .env
+#    depends_on:
+#      postgres:
+#        condition: service_healthy
+#    networks:
+#      - tsp-network
 
   gateway:
-    image: openjdk:17
     container_name: tsp_gateway
     build:
       context: ./infrastructure/api-gateway
@@ -73,23 +89,17 @@ services:
     env_file:
       - .env
     depends_on:
-      config-server:
-        condition: service_started
+#      config-server:
+#        condition: service_started
       eureka-server:
         condition: service_started
-    networks:
-      - tsp-network
-
-  zipkin:
-    image: openzipkin/zipkin
-    container_name: tsp_zipkin
-    ports:
-      - "9411:9411"
+    environment:
+      - SPRING_CLOUD_CONFIG_ENABLED=false
+      - SPRING_CONFIG_IMPORT=optional:classpath:/application.yml
     networks:
       - tsp-network
 
   user-service:
-    image: openjdk:17
     container_name: tsp_user_service
     build:
       context: ./backend/user-service
@@ -101,19 +111,13 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      config-server:
-        condition: service_started
+#      config-server:
+#        condition: service_started
       eureka-server:
         condition: service_started
-    networks:
-      - tsp-network
-
-  mailhog:
-    image: mailhog/mailhog
-    container_name: mailhog
-    ports:
-      - "1025:1025"
-      - "8025:8025"
+    environment:
+      - SPRING_CLOUD_CONFIG_ENABLED=false
+      - SPRING_CONFIG_IMPORT=optional:classpath:/application.yml
     networks:
       - tsp-network
 

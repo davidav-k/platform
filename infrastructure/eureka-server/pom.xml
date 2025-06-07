@@ -41,7 +41,7 @@
 			<dependency>
 				<groupId>org.springframework.cloud</groupId>
 				<artifactId>spring-cloud-dependencies</artifactId>
-				<version>2023.0.1</version>
+				<version>2023.0.5</version>
 				<type>pom</type>
 				<scope>import</scope>
 			</dependency>
@@ -53,6 +53,9 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+				<configuration>
+					<mainClass>com.example.eureka_server.EurekaServerApplication</mainClass>
+				</configuration>
 			</plugin>
 		</plugins>
 	</build>

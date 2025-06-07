@@ -17,6 +17,7 @@ spring:
           uri: lb://user-service
           predicates:
             - Path=/api/users/**
+            - Method=POST,GET,PUT,DELETE,OPTIONS
           filters:
             - RewritePath=/api/users/(?<segment>.*), /api/v1/user/${segment}
             - name: CircuitBreaker
@@ -55,7 +56,7 @@ eureka:
   client:
     service-url:
       defaultZone: http://eureka-server:8761/eureka
-
+#       defaultZone: http://localhost:8761/eureka  # TODO для запуска в Idea
 management:
   endpoints:
     web:

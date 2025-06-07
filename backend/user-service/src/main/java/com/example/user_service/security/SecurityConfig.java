@@ -18,10 +18,12 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+import org.springframework.security.web.util.matcher.OrRequestMatcher;
 
 import java.util.List;
 
 import static com.example.user_service.constant.Constants.*;
+import static org.springframework.http.HttpMethod.POST;
 
 
 @Configuration
@@ -30,6 +32,8 @@ public class SecurityConfig {
 
     @Value("${api.endpoint.base-url}")
     private String baseUrl;
+    @Value("${api.endpoint.user.login}")
+    private String loginPath;
 
     private static final String[] SWAGGER_WHITELIST = {
             "/v3/api-docs/**",       // OpenAPI documentation
@@ -53,21 +57,32 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, AuthenticationManager authenticationManager, UserService userService, JwtService jwtService) throws Exception {
-        AuthenticationFilter authenticationFilter = new AuthenticationFilter(baseUrl + "/user/login", authenticationManager, userService, jwtService);
+        AuthenticationFilter authenticationFilter = new AuthenticationFilter(loginPath, authenticationManager, userService, jwtService);
+        authenticationFilter.setRequiresAuthenticationRequestMatcher(
+                new OrRequestMatcher(
+                        new AntPathRequestMatcher(loginPath, POST.name()),
+                        new AntPathRequestMatcher("/login", POST.name()),
+                        new AntPathRequestMatcher("/api/v1/user/login", POST.name())
+                ));
         authenticationFilter.setAuthenticationManager(authenticationManager);
 
         return http
                 .authorizeHttpRequests(authorize -> authorize
 //                        .requestMatchers(HttpMethod.POST, baseUrl + "/user/register").permitAll()
-                        .requestMatchers(HttpMethod.GET, baseUrl + "/user/verify/account").permitAll()
-                        .requestMatchers(HttpMethod.POST, baseUrl + "/user/login").permitAll()
-                        .requestMatchers(SWAGGER_WHITELIST).permitAll()
-                        .requestMatchers(H2_CONSOLE_WHITELIST).permitAll()
-                        .anyRequest().authenticated()
+                                .requestMatchers(HttpMethod.GET, baseUrl + "/user/verify/account").permitAll()
+                                .requestMatchers(POST, loginPath).permitAll()
+                                .requestMatchers(POST, "/login").permitAll()
+                                .requestMatchers(POST, "/api/v1/user/login").permitAll()
+                                .requestMatchers(POST, "/**").permitAll() // TODO временно разрешаем все POST запросы
+                                .requestMatchers(SWAGGER_WHITELIST).permitAll()
+                                .requestMatchers(H2_CONSOLE_WHITELIST).permitAll()
+                                .anyRequest().authenticated()
                 )
                 .headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin)) // Allow H2 console
                 .cors(Customizer.withDefaults())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+//                .addFilterAt(authenticationFilter, UsernamePasswordAuthenticationFilter.class) // todo
+//                .addFilterBefore(new JwtAuthenticationFilter(jwtService), UsernamePasswordAuthenticationFilter.class)// todo
                 .addFilterBefore(new JwtAuthenticationFilter(jwtService), UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(authenticationFilter, JwtAuthenticationFilter.class)
                 .csrf(AbstractHttpConfigurer::disable)

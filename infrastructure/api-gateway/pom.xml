@@ -25,10 +25,27 @@
 			<dependency>
 				<groupId>org.springframework.cloud</groupId>
 				<artifactId>spring-cloud-dependencies</artifactId>
-				<version>${spring-cloud.version}</version>
+				<version>2023.0.5</version>
 				<type>pom</type>
 				<scope>import</scope>
 			</dependency>
+			<!--TODO для отладки start-->
+			<dependency>
+				<groupId>org.springframework</groupId>
+				<artifactId>spring-web</artifactId>
+				<version>6.1.6</version>
+			</dependency>
+			<dependency>
+				<groupId>org.springframework</groupId>
+				<artifactId>spring-core</artifactId>
+				<version>6.1.6</version>
+			</dependency>
+			<dependency>
+				<groupId>org.springframework</groupId>
+				<artifactId>spring-http</artifactId>
+				<version>6.1.6</version>
+			</dependency>
+			<!--TODO для отладки end-->
 		</dependencies>
 	</dependencyManagement>
 
@@ -90,6 +107,9 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+				<configuration>
+					<mainClass>com.example.api_gateway.ApiGatewayApplication</mainClass>
+				</configuration>
 			</plugin>
 		</plugins>
 	</build>

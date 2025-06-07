@@ -1,4 +1,4 @@
-package com.example.api_gateway.security;
+package com.example.api_gateway.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -16,7 +16,8 @@ public class SecurityConfig {
         return http
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .authorizeExchange(exchanges -> exchanges
-                        .pathMatchers(HttpMethod.POST, "/api/users/login", "/api/users/register").permitAll()
+//                        .pathMatchers(HttpMethod.POST, "/api/users/login", "/api/users/register").permitAll()
+                        .pathMatchers("/**").permitAll() // TODO временно разрешаем все запросы
                         .anyExchange().authenticated()
                 )
                 .build();
