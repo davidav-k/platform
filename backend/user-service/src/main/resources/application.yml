@@ -11,12 +11,11 @@ spring:
     deserialization:
       fail-on-unknown-properties: false
   datasource:
-    url: jdbc:postgresql://${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+    url: jdbc:postgresql://${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}  #  for Docker
+    #    url: jdbc:postgresql://localhost:5432/users_db  # for Idea
     username: ${POSTGRES_USER}
     password: ${POSTGRES_PASSWORD}
-#    url: jdbc:postgresql://localhost:5432/users_db
-#    username: user
-#    password: Password123
+
     driver-class-name: org.postgresql.Driver
   jpa:
     open-in-view: false
@@ -75,5 +74,5 @@ api:
 eureka:
   client:
     service-url:
-      defaultZone: http://eureka-server:8761/eureka
-#        defaultZone: http://localhost:8761/eureka  # TODO для запуска в Idea
+      defaultZone: http://eureka-server:8761/eureka #  for Docker
+#        defaultZone: http://localhost:8761/eureka  #  for Idea

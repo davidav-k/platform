@@ -28,8 +28,7 @@ import static java.util.Collections.emptyMap;
 
 @Slf4j
 @RestController
-//@RequestMapping(path = "${api.endpoint.base-url}/user")
-@RequestMapping(path = "/api/v1/user")
+@RequestMapping(path = "${api.endpoint.base-url}/user")
 @RequiredArgsConstructor
 public class UserResource {
 

@@ -73,7 +73,6 @@ public class SecurityConfig {
                                 .requestMatchers(POST, loginPath).permitAll()
                                 .requestMatchers(POST, "/login").permitAll()
                                 .requestMatchers(POST, "/api/v1/user/login").permitAll()
-                                .requestMatchers(POST, "/**").permitAll() // TODO временно разрешаем все POST запросы
                                 .requestMatchers(SWAGGER_WHITELIST).permitAll()
                                 .requestMatchers(H2_CONSOLE_WHITELIST).permitAll()
                                 .anyRequest().authenticated()
@@ -81,8 +80,6 @@ public class SecurityConfig {
                 .headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin)) // Allow H2 console
                 .cors(Customizer.withDefaults())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-//                .addFilterAt(authenticationFilter, UsernamePasswordAuthenticationFilter.class) // todo
-//                .addFilterBefore(new JwtAuthenticationFilter(jwtService), UsernamePasswordAuthenticationFilter.class)// todo
                 .addFilterBefore(new JwtAuthenticationFilter(jwtService), UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(authenticationFilter, JwtAuthenticationFilter.class)
                 .csrf(AbstractHttpConfigurer::disable)

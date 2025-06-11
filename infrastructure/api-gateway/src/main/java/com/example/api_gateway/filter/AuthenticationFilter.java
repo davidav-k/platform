@@ -68,11 +68,6 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
         return chain.filter(mutatedExchange);
     }
 
-//    private Mono<Void> unauthorized(ServerWebExchange exchange, String message) {
-//        exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
-//        return exchange.getResponse().setComplete();
-//    }
-
     private Mono<Void> unauthorized(ServerWebExchange exchange, String message) {
         log.warn("Unauthorized request: {}", message);
 
