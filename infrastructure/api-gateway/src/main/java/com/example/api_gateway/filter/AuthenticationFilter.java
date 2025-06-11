@@ -3,34 +3,48 @@ package com.example.api_gateway.filter;
 import com.example.api_gateway.util.JwtUtil;
 import io.jsonwebtoken.JwtException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
+import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import reactor.core.publisher.Mono;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Set;
+
 @Component
+@Slf4j
 @RequiredArgsConstructor
 public class AuthenticationFilter implements GlobalFilter, Ordered {
 
     private final JwtUtil jwtUtil;
+    private static final Set<String> EXCLUDED_PATHS = Set.of(
+            "/api/users/login",
+            "/api/users/register");
+
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         String path = exchange.getRequest().getURI().getPath();
 
-        if (path.equals("/api/users/login") || path.equals("/api/users/register")) {
+         if (EXCLUDED_PATHS.contains(path)) {
             return chain.filter(exchange);
         }
 
-
         String authHeader = exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
 
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            return unauthorized(exchange, "Missing or invalid Authorization header");
+        if (authHeader == null) {
+            return unauthorized(exchange, "Missing Authorization header");
+        }
+
+        if (!authHeader.startsWith("Bearer ")) {
+            return unauthorized(exchange, "Invalid Authorization header format");
         }
 
         String token = authHeader.substring(7);
@@ -42,16 +56,29 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
         }
 
         String username = jwtUtil.extractUsername(token);
-        exchange.getRequest().mutate()
+        ServerHttpRequest mutatedRequest = exchange.getRequest()
+                .mutate()
                 .header("X-Authenticated-User", username)
                 .build();
 
-        return chain.filter(exchange);
+        ServerWebExchange mutatedExchange = exchange.mutate()
+                .request(mutatedRequest)
+                .build();
+
+        return chain.filter(mutatedExchange);
     }
 
     private Mono<Void> unauthorized(ServerWebExchange exchange, String message) {
-        exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
-        return exchange.getResponse().setComplete();
+        log.warn("Unauthorized request: {}", message);
+
+        var response = exchange.getResponse();
+        response.setStatusCode(HttpStatus.UNAUTHORIZED);
+        response.getHeaders().add(HttpHeaders.CONTENT_TYPE, "application/json");
+
+        String body = String.format("{\"error\": \"Unauthorized\", \"message\": \"%s\"}", message);
+
+        DataBuffer buffer = response.bufferFactory().wrap(body.getBytes(StandardCharsets.UTF_8));
+        return response.writeWith(Mono.just(buffer));
     }
 
     @Override

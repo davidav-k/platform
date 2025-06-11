@@ -11,9 +11,11 @@ spring:
     deserialization:
       fail-on-unknown-properties: false
   datasource:
-    url: jdbc:postgresql://${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+    url: jdbc:postgresql://${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}  #  for Docker
+    #    url: jdbc:postgresql://localhost:5432/users_db  # for Idea
     username: ${POSTGRES_USER}
     password: ${POSTGRES_PASSWORD}
+
     driver-class-name: org.postgresql.Driver
   jpa:
     open-in-view: false
@@ -48,8 +50,10 @@ spring:
 
     verify:
       host: ${EMAIL_VERIFY_HOST}
+  application:
+    name: user-service
 server:
-  port: ${APPLICATION_PORT:8080}
+  port: ${APPLICATION_PORT:8085}
   error:
     path: /user/error
     whitelabel:
@@ -67,3 +71,8 @@ api:
     base-url: /api/v1
     user:
       login: /api/v1/user/login
+eureka:
+  client:
+    service-url:
+      defaultZone: http://eureka-server:8761/eureka #  for Docker
+#        defaultZone: http://localhost:8761/eureka  #  for Idea
