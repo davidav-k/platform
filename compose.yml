@@ -46,6 +46,25 @@ services:
     networks:
       - tsp-network
 
+  config-server:
+    container_name: tsp_config
+    build:
+      context: ./infrastructure/config-server
+      dockerfile: Dockerfile
+    ports:
+      - "8888:8888"
+    env_file:
+      - .env
+    volumes:
+      - ./config:/config  # Add this line
+    environment:
+      - SPRING_CLOUD_CONFIG_SERVER_NATIVE_SEARCH-LOCATIONS=file:/config/
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - tsp-network
+
   eureka-server:
     container_name: tsp_eureka
     build:
@@ -58,26 +77,13 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    environment:
-      - SPRING_CLOUD_CONFIG_ENABLED=false
-      - SPRING_CONFIG_IMPORT=optional:classpath:/application.yml
+#    environment:
+#      - SPRING_CLOUD_CONFIG_ENABLED=false
+#      - SPRING_CONFIG_IMPORT=optional:classpath:/application.yml # using without config server
     networks:
       - tsp-network
 
-#  config-server:
-#    container_name: tsp_config
-#    build:
-#      context: ./infrastructure/config-server
-#      dockerfile: Dockerfile
-#    ports:
-#      - "8888:8888"
-#    env_file:
-#      - .env
-#    depends_on:
-#      postgres:
-#        condition: service_healthy
-#    networks:
-#      - tsp-network
+
 
   gateway:
     container_name: tsp_gateway
@@ -89,13 +95,13 @@ services:
     env_file:
       - .env
     depends_on:
-#      config-server:
-#        condition: service_started
+      config-server:
+        condition: service_started
       eureka-server:
         condition: service_started
-    environment:
-      - SPRING_CLOUD_CONFIG_ENABLED=false
-      - SPRING_CONFIG_IMPORT=optional:classpath:/application.yml
+#    environment:
+#      - SPRING_CLOUD_CONFIG_ENABLED=false
+#      - SPRING_CONFIG_IMPORT=optional:classpath:/application.yml # using without config server
     networks:
       - tsp-network
 
@@ -111,13 +117,13 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-#      config-server:
-#        condition: service_started
+      config-server:
+        condition: service_started
       eureka-server:
         condition: service_started
-    environment:
-      - SPRING_CLOUD_CONFIG_ENABLED=false
-      - SPRING_CONFIG_IMPORT=optional:classpath:/application.yml
+#    environment:
+#      - SPRING_CLOUD_CONFIG_ENABLED=false
+#      - SPRING_CONFIG_IMPORT=optional:classpath:/application.yml # using without config server
     networks:
       - tsp-network
 
