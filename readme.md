@@ -32,7 +32,8 @@ Task Management Platform is a microservice-based system for managing tasks, with
 - **Docker**: Containerization for consistent development and deployment environments
 - **Kubernetes**: Container orchestration for automated deployment, scaling, and management
 - **GitHub Actions**: CI/CD pipelines for automated testing and deployment
-- **Prometheus & Grafana**: Monitoring and visualization of service metrics- **Config Server**: Spring Cloud Config server for centralized, version-controlled configuration management
+- **Prometheus & Grafana**: Monitoring and visualization of service metrics
+- **Config Server**: Spring Cloud Config server for centralized, version-controlled configuration management
 
 ## Stack
 - **Backend**: Java 17, Spring Boot 3.x
