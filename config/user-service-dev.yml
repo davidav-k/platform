@@ -1,0 +1,76 @@
+spring:
+  jackson:
+    default-property-inclusion: non_null
+    serialization:
+      fail-on-empty-beans: false
+      close-closeable: true
+      flush-after-write-value: true
+      write-date-keys-as-timestamps: false
+    deserialization:
+      fail-on-unknown-properties: false
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}  #  for Docker
+    #    url: jdbc:postgresql://localhost:5432/users_db  # for Idea
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
+
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    open-in-view: false
+    generate-ddl: false
+    show-sql: false
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        globally_quoted_identifiers: true
+        format_sql: true
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 1000MB
+      max-request-size: 1000MB
+  mail:
+    host: ${EMAIL_HOST}
+    port: ${EMAIL_PORT}
+    username: ${EMAIL_ID}
+    password: ${EMAIL_PASSWORD}
+    default-encoding: UTF-8
+    properties:
+      # for localhost
+      mail:
+        mime:
+          charset: UTF-8
+        smtp:
+          auth: false
+          starttls:
+            enable: false
+
+    verify:
+      host: ${EMAIL_VERIFY_HOST}
+  application:
+    name: user-service
+server:
+  port: ${APPLICATION_PORT:8085}
+  error:
+    path: /user/error
+    whitelabel:
+      enabled: false
+
+jwt:
+  expiration: ${JWT_EXPIRATION}
+  secret: ${JWT_SECRET}
+
+admin:
+  password: ${ADMIN_PASSWORD}
+
+api:
+  endpoint:
+    base-url: /api/v1
+    user:
+      login: /api/v1/user/login
+eureka:
+  client:
+    service-url:
+      defaultZone: http://eureka-server:8761/eureka #  for Docker
+#        defaultZone: http://localhost:8761/eureka  #  for Idea
