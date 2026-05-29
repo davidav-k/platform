@@ -47,9 +47,31 @@ Task Management Platform is a microservice-based system for managing tasks, with
 - Create a `.env` file in the root directory with same variables as `.env.example`
 - Build and run the Docker containers using Docker Compose:
 ```bash
-   docker compose --env-file .env -f compose.yml up -d
+docker compose --env-file .env -f compose.yml up -d
 ```
 - Access the application at `http://localhost:8080`
+
+Check container readiness:
+```bash
+docker compose --env-file .env -f compose.yml ps
+docker compose --env-file .env -f compose.yml logs -f config-server eureka-server user-service gateway
+```
+
+Expected local ports:
+- `8080` API Gateway
+- `8085` User Service
+- `8888` Config Server
+- `8761` Eureka Server
+- `5432` PostgreSQL
+- `6379` Redis
+- `8025` MailHog UI
+- `9411` Zipkin
+
+Useful health checks:
+```bash
+curl -fsS http://localhost:8888/actuator/health
+curl -fsS http://localhost:8761
+```
 
 ## Development Workflow
 
@@ -74,22 +96,6 @@ GitHub Actions runs the same Maven test matrix on pull requests and pushes to `m
 ## Pre-commit
 
 This repository uses `pre-commit` for basic file hygiene and secret scanning before commits.
-
-Install the tools:
-```bash
-pipx install pre-commit
-pipx install ggshield
-```
-
-Authenticate GitGuardian without storing secrets in the repository:
-```bash
-ggshield auth login
-```
-
-Install the Git hook:
-```bash
-pre-commit install
-```
 
 Run all hooks manually:
 ```bash
