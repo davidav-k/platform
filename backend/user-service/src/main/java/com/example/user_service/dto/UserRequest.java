@@ -33,4 +33,3 @@ public class UserRequest {
     @Pattern(regexp = "^(\\+\\d{1,3}[- ]?)?\\d{10}$", message = "Invalid phone number")
     private String phone;
 }
-

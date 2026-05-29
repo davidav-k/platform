@@ -28,4 +28,3 @@ public class RoleConvertor implements AttributeConverter<Authority, String> {
                 .orElseThrow(IllegalArgumentException::new);
     }
 }
-

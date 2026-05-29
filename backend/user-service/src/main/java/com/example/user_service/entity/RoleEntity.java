@@ -21,4 +21,3 @@ public class RoleEntity extends Auditable {
     private String name;
     private Authority authorities;
 }
-

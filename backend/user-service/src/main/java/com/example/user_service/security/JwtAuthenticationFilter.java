@@ -53,5 +53,3 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         RequestContext.setUserId(null);
     }
 }
-
-

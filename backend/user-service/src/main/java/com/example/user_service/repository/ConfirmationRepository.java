@@ -14,5 +14,3 @@ public interface ConfirmationRepository extends JpaRepository<ConfirmationEntity
 
     Optional<ConfirmationEntity> findByUserEntity(UserEntity userEntity);
 }
-
-

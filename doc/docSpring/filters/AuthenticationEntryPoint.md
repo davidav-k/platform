@@ -55,7 +55,7 @@ public class CustomAuthenticationEntryPoint implements AuthenticationEntryPoint 
         // Устанавливаем HTTP-статус 401 Unauthorized
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.setContentType("application/json");
-        
+
         // Формируем тело ответа
         String json = String.format("{\"error\": \"Unauthorized\", \"message\": \"%s\"}", authException.getMessage());
         response.getWriter().write(json);

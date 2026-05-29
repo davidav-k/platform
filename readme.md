@@ -50,3 +50,50 @@ Task Management Platform is a microservice-based system for managing tasks, with
    docker compose --env-file .env -f compose.yml up -d
 ```
 - Access the application at `http://localhost:8080`
+
+## Development Workflow
+
+Repository workflow documentation:
+- [Development workflow](doc/development-workflow.md)
+- [Development checklist](doc/development-checklist.md)
+- [Technical debt tracking](doc/technical-debt.md)
+
+Pull requests should use the GitHub pull request template and target `dev` during MVP development unless the change is urgent repository maintenance for `main`.
+
+Run Maven tests locally before opening a pull request:
+
+```bash
+mvn -B -f backend/user-service/pom.xml test
+mvn -B -f infrastructure/api-gateway/pom.xml test
+mvn -B -f infrastructure/config-server/pom.xml test
+mvn -B -f infrastructure/eureka-server/pom.xml test
+```
+
+GitHub Actions runs the same Maven test matrix on pull requests and pushes to `main` and `dev`.
+
+## Pre-commit
+
+This repository uses `pre-commit` for basic file hygiene and secret scanning before commits.
+
+Install the tools:
+```bash
+pipx install pre-commit
+pipx install ggshield
+```
+
+Authenticate GitGuardian without storing secrets in the repository:
+```bash
+ggshield auth login
+```
+
+Install the Git hook:
+```bash
+pre-commit install
+```
+
+Run all hooks manually:
+```bash
+pre-commit run --all-files
+```
+
+Configured checks include trailing whitespace cleanup, end-of-file fixing, YAML and JSON validation, merge conflict marker detection, private key detection, and GitGuardian secret scanning.

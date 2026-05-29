@@ -32,5 +32,3 @@ public class EmailUtils {
         return host + baseUrl + "/user/verify/password?key=" + token;
     }
 }
-
-

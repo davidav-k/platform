@@ -64,4 +64,3 @@ public class UserEntity extends Auditable {
     )
     private RoleEntity role;
 }
-

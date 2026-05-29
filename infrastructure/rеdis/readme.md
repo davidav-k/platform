@@ -2,7 +2,7 @@
 
 
 ## Features:
-- 
+-
 
 ## Technologies:
-- 
+-

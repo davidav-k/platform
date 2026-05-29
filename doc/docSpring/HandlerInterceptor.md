@@ -8,7 +8,7 @@
 
 1. **`preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)`**
    - **Когда вызывается:** Перед вызовом метода контроллера.
-   - **Цель:** 
+   - **Цель:**
      - Проверка данных запроса.
      - Аутентификация пользователя.
      - Прекращение обработки и возврат ответа, если определенные условия не выполняются.
@@ -16,13 +16,13 @@
 
 2. **`postHandle(HttpServletRequest request, HttpServletResponse response, Object handler, ModelAndView modelAndView)`**
    - **Когда вызывается:** После выполнения метода контроллера, но перед отправкой ответа.
-   - **Цель:** 
+   - **Цель:**
      - Изменение данных модели (`ModelAndView`) перед их отправкой.
      - Добавление дополнительной информации в ответ.
 
 3. **`afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex)`**
    - **Когда вызывается:** После завершения обработки запроса, независимо от того, произошла ошибка или нет.
-   - **Цель:** 
+   - **Цель:**
      - Очистка ресурсов.
      - Логирование или аналитика обработки запросов.
 

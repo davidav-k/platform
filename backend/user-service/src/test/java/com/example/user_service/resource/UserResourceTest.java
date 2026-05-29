@@ -69,6 +69,7 @@ public class UserResourceTest {
         objectMapper = new ObjectMapper();
         mockMvc = MockMvcBuilders
                 .standaloneSetup(userResource)
+                .addPlaceholderValue("api.endpoint.base-url", "/api/v1")
                 .setControllerAdvice(new ExceptionHandlerAdvice())
                 .build();
     }
@@ -79,7 +80,7 @@ public class UserResourceTest {
         userRequest.setFirstName("John");
         userRequest.setLastName("Doe");
         userRequest.setEmail("john@example.com");
-        userRequest.setPassword("password");
+        userRequest.setPassword("Password123");
 
         doNothing().when(userService).createUser(anyString(), anyString(), anyString(), anyString());
         when(request.getRequestURI()).thenReturn("/api/v1/user/register");

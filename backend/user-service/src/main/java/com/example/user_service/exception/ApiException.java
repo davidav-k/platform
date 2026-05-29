@@ -10,4 +10,3 @@ public class ApiException extends RuntimeException {
         super("An error occurred");
     }
 }
-

@@ -196,7 +196,7 @@ public class SecurityConfig {
 ### Разница между `BasicAuthenticationFilter` и `UsernamePasswordAuthenticationFilter`
 
 #### **1. `BasicAuthenticationFilter`**
-- **Роль:** 
+- **Роль:**
   - Это фильтр Spring Security, который обрабатывает Basic Authentication.
   - Он извлекает учетные данные (логин и пароль) из заголовка `Authorization` и проверяет их.
   - Этот фильтр добавляется в цепочку фильтров Spring Security, если вы используете Basic Authentication.
@@ -211,13 +211,13 @@ public class SecurityConfig {
     - Извлекает логин и пароль.
     - Передает их в `AuthenticationManager` для проверки.
 
-- **Когда используется:** 
+- **Когда используется:**
   - Когда вы хотите реализовать Basic Authentication (например, для простого API или интеграции с внешними системами).
 
 ---
 
 #### **2. `UsernamePasswordAuthenticationFilter`**
-- **Роль:** 
+- **Роль:**
   - Этот фильтр обрабатывает аутентификацию через форму логина (login form-based authentication).
   - Он работает с запросами, содержащими параметры логина и пароля (например, в теле POST-запроса).
 
@@ -226,7 +226,7 @@ public class SecurityConfig {
   - Извлекает логин и пароль из тела HTTP-запроса (`application/x-www-form-urlencoded` или `application/json`).
   - Передает данные в `AuthenticationManager` для проверки.
 
-- **Когда используется:** 
+- **Когда используется:**
   - Когда вам нужна форма для входа в систему (например, для веб-приложения).
 
 ---
@@ -308,4 +308,3 @@ Authorization: Basic dXNlcm5hbWU6cGFzc3dvcmQ=
 - **`BasicAuthenticationFilter`** обрабатывает **Basic Authentication**, извлекая логин и пароль из заголовка HTTP.
 - **`UsernamePasswordAuthenticationFilter`** используется для аутентификации через форму логина.
 - Если вам нужна базовая авторизация для API, то именно `BasicAuthenticationFilter` будет обрабатывать запросы.
-

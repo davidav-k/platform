@@ -47,4 +47,3 @@ public interface UserService {
 
     void lockedUser(String email);
 }
-

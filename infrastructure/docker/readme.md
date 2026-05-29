@@ -13,5 +13,5 @@ This directory contains the Docker setup for the Task Management Platform. Each 
 To start all services locally, run the following command from the root of the repository:
 
 ```bash
-docker-compose up --build
-
+docker compose --env-file .env -f compose.yml up -d
+```

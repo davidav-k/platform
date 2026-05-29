@@ -34,4 +34,3 @@ public class ConfirmationEntity extends Auditable {
         this.key = UUID.randomUUID().toString();
     }
 }
-

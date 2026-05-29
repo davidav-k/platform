@@ -18,5 +18,3 @@ public class RequestContext {
         return USER_ID.get();
     }
 }
-
-

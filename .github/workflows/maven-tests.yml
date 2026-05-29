@@ -1,0 +1,45 @@
+name: Maven Tests
+
+on:
+  pull_request:
+    branches:
+      - main
+      - dev
+  push:
+    branches:
+      - main
+      - dev
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test ${{ matrix.module.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        module:
+          - name: user-service
+            pom: backend/user-service/pom.xml
+          - name: api-gateway
+            pom: infrastructure/api-gateway/pom.xml
+          - name: config-server
+            pom: infrastructure/config-server/pom.xml
+          - name: eureka-server
+            pom: infrastructure/eureka-server/pom.xml
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Run Maven tests
+        run: mvn -B -f "${{ matrix.module.pom }}" test

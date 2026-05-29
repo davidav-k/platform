@@ -14,4 +14,3 @@ public record Response(String time,
                        String exception,
                        Map<?, ?> data) {
 }
-

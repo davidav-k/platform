@@ -1,6 +1,6 @@
 # API Gateway Service
 ### Overview
-This service acts as a centralized entry point for the microservice architecture, 
+This service acts as a centralized entry point for the microservice architecture,
 handling routing, authentication, and cross-cutting concerns like CORS and circuit breaking.
 
 ### Features
@@ -19,13 +19,13 @@ handling routing, authentication, and cross-cutting concerns like CORS and circu
 
 ### Configuration
 
-The API Gateway routes traffic to the following services:  
+The API Gateway routes traffic to the following services:
 - User Service (/api/users/**)
 - Task Service (/api/tasks/**)
 
 ### Authentication
-All requests are validated using JWT tokens. The token must be provided in the Authorization 
-header with the Bearer scheme. The gateway extracts the username and passes it 
+All requests are validated using JWT tokens. The token must be provided in the Authorization
+header with the Bearer scheme. The gateway extracts the username and passes it
 as an X-Authenticated-User header to downstream services.
 
 ### API Routes

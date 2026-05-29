@@ -63,4 +63,3 @@ public abstract class Auditable {
         this.updatedBy = userId;
     }
 }
-
