@@ -79,6 +79,7 @@ Repository workflow documentation:
 - [Development workflow](doc/development-workflow.md)
 - [Development checklist](doc/development-checklist.md)
 - [Technical debt tracking](doc/technical-debt.md)
+- [Environment variables](doc/configuration/env-variables.md)
 
 Pull requests should use the GitHub pull request template and target `dev` during MVP development unless the change is urgent repository maintenance for `main`.
 
