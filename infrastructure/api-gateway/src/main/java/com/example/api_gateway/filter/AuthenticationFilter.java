@@ -27,7 +27,9 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
             "/api/users/register",
             "/api/users/verify/account",
             "/api/users/verify-mfa",
-            "/api/users/refresh");
+            "/api/users/refresh",
+            "/actuator/health",
+            "/actuator/info");
     private static final String ACCESS_TOKEN_COOKIE = "access-token";
 
     public AuthenticationFilter(JwtUtil jwtUtil) {

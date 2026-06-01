@@ -43,6 +43,11 @@ public class SecurityConfig {
             "/h2-console/**"  // H2 database console for testing
     };
 
+    private static final String[] ACTUATOR_WHITELIST = {
+            "/actuator/health",
+            "/actuator/info"
+    };
+
     @Bean
     public BCryptPasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
@@ -67,6 +72,7 @@ public class SecurityConfig {
                                 .requestMatchers(POST, baseUrl + "/user/refresh").permitAll()
                                 .requestMatchers(SWAGGER_WHITELIST).permitAll()
                                 .requestMatchers(H2_CONSOLE_WHITELIST).permitAll()
+                                .requestMatchers(ACTUATOR_WHITELIST).permitAll()
                                 .anyRequest().authenticated()
                 )
                 .headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin)) // Allow H2 console

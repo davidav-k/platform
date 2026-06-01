@@ -61,7 +61,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: '*'
+        include: health,info
 
 resilience4j:
   circuitbreaker:

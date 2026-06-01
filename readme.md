@@ -70,7 +70,9 @@ Expected local ports:
 Useful health checks:
 ```bash
 curl -fsS http://localhost:8888/actuator/health
-curl -fsS http://localhost:8761
+curl -fsS http://localhost:8761/actuator/health
+curl -fsS http://localhost:8085/actuator/health
+curl -fsS http://localhost:8080/actuator/health
 ```
 
 ## Development Workflow
@@ -81,6 +83,7 @@ Repository workflow documentation:
 - [Technical debt tracking](doc/technical-debt.md)
 - [Environment variables](doc/configuration/env-variables.md)
 - [Authentication flow](doc/security/auth-flow.md)
+- [Health checks](doc/operations/health-checks.md)
 
 Pull requests should use the GitHub pull request template and target `dev` during MVP development unless the change is urgent repository maintenance for `main`.
 
