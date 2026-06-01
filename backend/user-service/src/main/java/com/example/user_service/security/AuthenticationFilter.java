@@ -2,6 +2,7 @@ package com.example.user_service.security;
 
 import com.example.user_service.domain.ApiAuthentication;
 import com.example.user_service.domain.Response;
+import com.example.user_service.domain.RequestContext;
 import com.example.user_service.dto.LoginRequest;
 import com.example.user_service.dto.User;
 import com.example.user_service.enumeration.LoginType;
@@ -61,6 +62,7 @@ public class AuthenticationFilter extends AbstractAuthenticationProcessingFilter
         } catch (Exception ex) {
             log.error("Authentication into filter failed: {}", ex.getMessage());
             RequestUtils.handlerErrorResponse(request, response, ex);
+            RequestContext.clear();
             return null;
         }
 
@@ -68,16 +70,20 @@ public class AuthenticationFilter extends AbstractAuthenticationProcessingFilter
 
     @Override
     protected void successfulAuthentication(HttpServletRequest request, HttpServletResponse response, FilterChain chain, Authentication authentication) throws IOException, ServletException {
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-        User user = (User) authentication.getPrincipal();
-        userService.updateLoginAttempt(user.getEmail(), LoginType.LOGIN_SUCCESS, request);
-        Response httpResponse = user.isMfa() ? sendQrCode(request, user) : sendResponse(request, response, user);
-        response.setContentType(APPLICATION_JSON_VALUE);
-        response.setStatus(OK.value());
-        OutputStream out = response.getOutputStream();
-        ObjectMapper mapper = new ObjectMapper();
-        mapper.writeValue(out, httpResponse);
-        out.flush();
+        try {
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+            User user = (User) authentication.getPrincipal();
+            userService.updateLoginAttempt(user.getEmail(), LoginType.LOGIN_SUCCESS, request);
+            Response httpResponse = user.isMfa() ? sendQrCode(request, user) : sendResponse(request, response, user);
+            response.setContentType(APPLICATION_JSON_VALUE);
+            response.setStatus(OK.value());
+            OutputStream out = response.getOutputStream();
+            ObjectMapper mapper = new ObjectMapper();
+            mapper.writeValue(out, httpResponse);
+            out.flush();
+        } finally {
+            RequestContext.clear();
+        }
     }
 
     private Response sendResponse(HttpServletRequest request, HttpServletResponse response, User user) {
@@ -93,6 +99,10 @@ public class AuthenticationFilter extends AbstractAuthenticationProcessingFilter
     @Override
     protected void unsuccessfulAuthentication(HttpServletRequest request, HttpServletResponse response, AuthenticationException failed) throws IOException {
         log.error("Authentication failed: {}", failed.getMessage());
-        RequestUtils.handlerErrorResponse(request, response, failed);
+        try {
+            RequestUtils.handlerErrorResponse(request, response, failed);
+        } finally {
+            RequestContext.clear();
+        }
     }
 }

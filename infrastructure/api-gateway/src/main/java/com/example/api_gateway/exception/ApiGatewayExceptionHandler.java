@@ -12,13 +12,13 @@ public class ApiGatewayExceptionHandler {
     public ResponseEntity<String> handleJwtError(JwtException ex) {
         return ResponseEntity
                 .status(401)
-                .body("JWT error: " + ex.getMessage());
+                .body("Invalid access token");
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<String> handleAll(Throwable ex) {
         return ResponseEntity
                 .status(500)
-                .body("Internal error: " + ex.getMessage());
+                .body("Internal error");
     }
 }

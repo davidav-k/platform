@@ -28,6 +28,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
+import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 
 @ExtendWith(MockitoExtension.class)
 class JwtServiceImplTest {
@@ -47,7 +48,11 @@ class JwtServiceImplTest {
     @BeforeEach
     void setUp() {
         ReflectionTestUtils.setField(jwtService, "secret", "thisIsASecretKeyUsedForTestingPurposesOnly12345678901234567890thisIsASecretKeyUsedForTestingPurposesOnly12345678901234567890");
-        ReflectionTestUtils.setField(jwtService, "expiration", 600L);
+        ReflectionTestUtils.setField(jwtService, "expirationSeconds", 600L);
+        ReflectionTestUtils.setField(jwtService, "cookieSecure", false);
+        ReflectionTestUtils.setField(jwtService, "cookieSameSite", "Lax");
+        ReflectionTestUtils.setField(jwtService, "accessCookieMaxAgeSeconds", 600);
+        ReflectionTestUtils.setField(jwtService, "refreshCookieMaxAgeSeconds", 7200);
     }
 
     @Test
@@ -109,6 +114,16 @@ class JwtServiceImplTest {
     }
 
     @Test
+    void extractTokenReturnsBearerTokenWhenAccessCookieIsMissing() {
+        when(request.getCookies()).thenReturn(null);
+        when(request.getHeader(AUTHORIZATION)).thenReturn("Bearer test-token");
+
+        Optional<String> result = jwtService.extractToken(request, "access-token");
+
+        assertEquals(Optional.of("test-token"), result);
+    }
+
+    @Test
     void addCookieCreatesAccessCookie() {
         User user = User.builder()
                 .userId("test-user-id")
@@ -117,8 +132,6 @@ class JwtServiceImplTest {
                 .build();
 
         doNothing().when(response).addCookie(any(Cookie.class));
-        when(response.getHeader("X-Forwarded-Proto")).thenReturn(null);
-
         jwtService.addCookie(response, user, ACCESS);
 
         verify(response, times(1)).addCookie(any(Cookie.class));
@@ -133,27 +146,30 @@ class JwtServiceImplTest {
                 .build();
 
         doNothing().when(response).addCookie(any(Cookie.class));
-        when(response.getHeader("X-Forwarded-Proto")).thenReturn(null);
-
         jwtService.addCookie(response, user, REFRESH);
 
         verify(response, times(1)).addCookie(any(Cookie.class));
     }
 
     @Test
-    void addCookieSetsSecureAttributeWhenHttps() {
+    void addCookieUsesConfiguredSecurityAttributes() {
         User user = User.builder()
                 .userId("test-user-id")
                 .authorities("READ,WRITE")
                 .role("USER")
                 .build();
 
-        doNothing().when(response).addCookie(any(Cookie.class));
-        when(response.getHeader("X-Forwarded-Proto")).thenReturn("https");
+        ReflectionTestUtils.setField(jwtService, "cookieSecure", true);
+        ArgumentCaptor<Cookie> cookieCaptor = ArgumentCaptor.forClass(Cookie.class);
 
         jwtService.addCookie(response, user, ACCESS);
 
-        verify(response, times(1)).addCookie(any(Cookie.class));
+        verify(response).addCookie(cookieCaptor.capture());
+        Cookie cookie = cookieCaptor.getValue();
+        assertTrue(cookie.getSecure());
+        assertTrue(cookie.isHttpOnly());
+        assertEquals("Lax", cookie.getAttribute("SameSite"));
+        assertEquals(600, cookie.getMaxAge());
     }
 
     @Test
@@ -170,6 +186,20 @@ class JwtServiceImplTest {
         boolean isValid = jwtService.getTokenData(token, TokenData::isValid);
 
         assertTrue(isValid);
+    }
+
+    @Test
+    void getTokenDataLoadsRefreshTokenUserWithoutAccessClaims() {
+        User user = User.builder()
+                .userId("test-user-id")
+                .build();
+
+        String token = jwtService.createToken(user, Token::getRefresh);
+        when(userService.getUserByUserId("test-user-id")).thenReturn(user);
+
+        User tokenUser = jwtService.getTokenData(token, TokenData::getUser);
+
+        assertEquals(user, tokenUser);
     }
 
     @Test

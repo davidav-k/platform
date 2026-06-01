@@ -34,22 +34,25 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(@NotNull HttpServletRequest request, @NotNull HttpServletResponse response, @NotNull FilterChain filterChain)
             throws ServletException, IOException {
 
-        Optional<String> token = jwtService.extractToken(request, TokenType.ACCESS.getValue());
+        try {
+            Optional<String> token = jwtService.extractToken(request, TokenType.ACCESS.getValue());
 
-        if (token.isPresent() && jwtService.getTokenData(token.get(), TokenData::isValid)) {
-            log.info("JWT token found and valid");
-            User user = jwtService.getTokenData(token.get(), TokenData::getUser);
+            if (token.isPresent()) {
+                TokenData tokenData = jwtService.getTokenData(token.get(), data -> data);
+                User user = tokenData.getUser();
 
-            RequestContext.setUserId(user.getId());
-            Authentication authentication = new UsernamePasswordAuthenticationToken(
-                    user, null, jwtService.getTokenData(token.get(), TokenData::getAuthorities)
-            );
-            SecurityContextHolder.getContext().setAuthentication(authentication);
-        } else {
-            log.warn("JWT token is missing or invalid");
+                if (tokenData.isValid()) {
+                    RequestContext.setUserId(user.getId());
+                    Authentication authentication = new UsernamePasswordAuthenticationToken(
+                            user, null, tokenData.getAuthorities()
+                    );
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                }
+            }
+
+            filterChain.doFilter(request, response);
+        } finally {
+            RequestContext.clear();
         }
-
-        filterChain.doFilter(request, response);
-        RequestContext.setUserId(null);
     }
 }

@@ -24,9 +24,14 @@ The API Gateway routes traffic to the following services:
 - Task Service (/api/tasks/**)
 
 ### Authentication
-All requests are validated using JWT tokens. The token must be provided in the Authorization
-header with the Bearer scheme. The gateway extracts the username and passes it
-as an X-Authenticated-User header to downstream services.
+Protected requests are validated using JWT tokens. The gateway accepts the
+`access-token` cookie or an `Authorization` header with the Bearer scheme. It
+extracts the username and passes it as an `X-Authenticated-User` header to
+downstream services. Downstream services still validate JWTs independently.
+
+Registration, login, account verification, MFA verification, and refresh are
+allowed through the gateway without an access token so `user-service` can
+apply the endpoint-specific checks.
 
 ### API Routes
 - User Service: http://localhost:8080/api/users/**

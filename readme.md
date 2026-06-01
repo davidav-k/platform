@@ -3,7 +3,7 @@
 * The project is under active development.
 
 ## Overview
-Task Management Platform is a microservice-based system for managing tasks, with features for user authentication, task creation, editing, and notifications. The platform implements modern security measures with **access** and **refresh tokens** to ensure secure user authentication and authorization. **Access tokens** are stored in **Redis** for fast, scalable, and secure token management.
+Task Management Platform is a microservice-based system for managing tasks, with features for user authentication, task creation, editing, and notifications. The platform currently uses stateless signed **access** and **refresh** JWTs for authentication and authorization.
 
 ### Architecture
 - **Microservices**: Loosely coupled services that can be developed, deployed, and scaled independently
@@ -14,8 +14,8 @@ Task Management Platform is a microservice-based system for managing tasks, with
 
 ### Security
 - **JWT Authentication**: Stateless authentication using signed JSON Web Tokens
-- **Token Management**: Short-lived access tokens (15 minutes) and long-lived refresh tokens (7 days)
-- **Redis Cache**: High-performance in-memory data store for token validation and blacklisting
+- **Token Management**: Signed JWTs with explicit second-based expiration and shorter browser-cookie lifetimes
+- **Redis Cache**: High-performance in-memory data store for application caching
 - **Role-Based Access Control**: Granular permissions based on user roles
 
 ### Backend Services
@@ -80,6 +80,7 @@ Repository workflow documentation:
 - [Development checklist](doc/development-checklist.md)
 - [Technical debt tracking](doc/technical-debt.md)
 - [Environment variables](doc/configuration/env-variables.md)
+- [Authentication flow](doc/security/auth-flow.md)
 
 Pull requests should use the GitHub pull request template and target `dev` during MVP development unless the change is urgent repository maintenance for `main`.
 

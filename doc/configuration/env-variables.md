@@ -81,8 +81,15 @@ Eureka clients use the fixed Docker-network URL
 
 ### Cookies
 
-Cookie names, lifetime, and attributes are configured in application code. No
-cookie environment variable is active.
+Cookie names are fixed in application code. Cookie attributes and lifetimes
+have explicit configuration defaults and optional environment overrides.
+
+| Name | Required | Default | Description |
+| --- | --- | --- | --- |
+| `AUTH_COOKIE_SECURE` | No | `false` | Set to `true` for HTTPS deployments. |
+| `AUTH_COOKIE_SAME_SITE` | No | `Lax` | Explicit `SameSite` value for authentication cookies. |
+| `AUTH_ACCESS_COOKIE_MAX_AGE_SECONDS` | No | `600` | Access-cookie browser lifetime in seconds. |
+| `AUTH_REFRESH_COOKIE_MAX_AGE_SECONDS` | No | `7200` | Refresh-cookie browser lifetime in seconds. |
 
 ### Encryption Secrets
 

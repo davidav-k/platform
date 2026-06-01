@@ -1,6 +1,5 @@
 package com.example.user_service.service;
 
-import com.example.user_service.domain.ApiAuthentication;
 import com.example.user_service.dto.User;
 import com.example.user_service.dto.UserRequest;
 import com.example.user_service.entity.CredentialEntity;
@@ -26,8 +25,6 @@ public interface UserService {
     UserEntity getUserEntityByEmail(String email);
 
     CredentialEntity getUserCredentialById(Long id);
-
-    ApiAuthentication authenticateUser(String email, String password, HttpServletRequest request);
 
     void enableMfa(String email);
 

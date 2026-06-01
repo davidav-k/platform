@@ -18,7 +18,7 @@ This service handles user management, including:
 ## Endpoints and Permissions
 
 ### User Management
-- **POST** `/api/v1/user/register` - Register a new user. **Requires:** `user:create`
+- **POST** `/api/v1/user/register` - Register a new user. **Requires:** No authentication
 - **GET** `/api/v1/user/verify/account` - Verify a new user account using a key. **Requires:** No authentication
 - **POST** `/api/v1/user/login` - Log in a user. **Requires:** No authentication
 - **POST** `/api/v1/user/enable-mfa` - Enable multi-factor authentication (MFA) for a user. **Requires:** `user:update`  or be the owner of the account

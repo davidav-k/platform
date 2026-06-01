@@ -25,8 +25,14 @@ spring:
   main:
     allow-bean-definition-overriding: true
 jwt:
-  expiration: 86400000
+  expiration-seconds: 86400
   secret: test-secret-key-test-secret-key-test-secret-key-test-secret-key-test-secret-key-test
+auth:
+  cookie:
+    secure: false
+    same-site: Lax
+    access-max-age-seconds: 600
+    refresh-max-age-seconds: 7200
 api:
   endpoint:
     base-url: /api/v1

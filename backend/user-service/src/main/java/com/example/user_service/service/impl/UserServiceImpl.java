@@ -1,7 +1,6 @@
 package com.example.user_service.service.impl;
 
 import com.example.user_service.cache.CacheStore;
-import com.example.user_service.domain.ApiAuthentication;
 import com.example.user_service.domain.RequestContext;
 import com.example.user_service.dto.User;
 import com.example.user_service.dto.UserRequest;
@@ -22,7 +21,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -49,6 +47,9 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public void createUser(String firstName, String lastName, String email, String password) {
+        if (RequestContext.getUserId() == null) {
+            RequestContext.setUserId(0L);
+        }
         if (userRepository.existsByEmail(email)) {
             throw new ApiException("User with this email already exists");
         }
@@ -108,26 +109,6 @@ public class UserServiceImpl implements UserService {
     public CredentialEntity getUserCredentialById(Long userId) {
         return credentialRepository.getCredentialByUserEntityId(userId)
                 .orElseThrow(() -> new ApiException("Unable to find user credential"));
-    }
-
-    @Override
-    public ApiAuthentication authenticateUser(String email, String password, HttpServletRequest request) {
-        UserEntity userEntity = getUserEntityByEmail(email);
-        CredentialEntity credential = credentialRepository.getCredentialByUserEntityId(userEntity.getId())
-                .orElseThrow(() -> new ApiException("Invalid credentials"));
-        String ip = request.getRemoteAddr();
-        String userAgent = request.getHeader("User-Agent");
-        if (!passwordEncoder.matches(password, credential.getPassword())) {
-            logLoginAttempt(userEntity, false, ip, userAgent);
-            throw new ApiException("Invalid email or password");
-        }
-
-        logLoginAttempt(userEntity, true, ip, userAgent);
-
-        return ApiAuthentication.authenticated(
-                UserUtils.fromUserEntity(userEntity, userEntity.getRole(), credential),
-                AuthorityUtils.commaSeparatedStringToAuthorityList(userEntity.getRole().getAuthorities().getValue())
-        );
     }
 
     @Override

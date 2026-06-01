@@ -5,7 +5,6 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import com.example.user_service.cache.CacheStore;
-import com.example.user_service.domain.ApiAuthentication;
 import com.example.user_service.domain.RequestContext;
 import com.example.user_service.dto.User;
 import com.example.user_service.dto.UserRequest;
@@ -208,36 +207,6 @@ private void setFieldValue(Object object, String fieldName, Object value) throws
             () -> userService.getUserByEmail("nonexistent@example.com"));
 
         assertEquals("User by email not found", exception.getMessage());
-    }
-
-    @Test
-    void authenticateUserWithValidCredentials() {
-        when(userRepository.findByEmailIgnoreCase("test@example.com")).thenReturn(Optional.of(userEntity));
-        when(credentialRepository.getCredentialByUserEntityId(userEntity.getId())).thenReturn(Optional.of(credentialEntity));
-        when(passwordEncoder.matches("password", "encodedPassword")).thenReturn(true);
-        when(request.getRemoteAddr()).thenReturn("127.0.0.1");
-        when(request.getHeader("User-Agent")).thenReturn("Mozilla/5.0");
-
-        ApiAuthentication authentication = userService.authenticateUser("test@example.com", "password", request);
-
-        assertNotNull(authentication);
-        assertTrue(authentication.isAuthenticated());
-        verify(loginHistoryRepository).save(any(LoginHistoryEntity.class));
-    }
-
-    @Test
-    void authenticateUserWithInvalidPasswordThrowsException() {
-        when(userRepository.findByEmailIgnoreCase("test@example.com")).thenReturn(Optional.of(userEntity));
-        when(credentialRepository.getCredentialByUserEntityId(userEntity.getId())).thenReturn(Optional.of(credentialEntity));
-        when(passwordEncoder.matches("wrongPassword", "encodedPassword")).thenReturn(false);
-        when(request.getRemoteAddr()).thenReturn("127.0.0.1");
-        when(request.getHeader("User-Agent")).thenReturn("Mozilla/5.0");
-
-        ApiException exception = assertThrows(ApiException.class,
-            () -> userService.authenticateUser("test@example.com", "wrongPassword", request));
-
-        assertEquals("Invalid email or password", exception.getMessage());
-        verify(loginHistoryRepository).save(any(LoginHistoryEntity.class));
     }
 
     @Test
