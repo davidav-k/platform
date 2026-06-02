@@ -10,7 +10,7 @@ Task Management Platform is a microservice-based system for managing tasks, with
 - **API Gateway**: Central entry point that routes requests to appropriate microservices
 - **Service Discovery**: Uses Eureka for dynamic service registration and discovery
 - **Config Server**: Centralized configuration management for all microservices, providing externalized configuration properties stored in a Git repository
-- **Event-Driven Communication**: Services communicate asynchronously through Kafka events
+- **Event-Driven Communication**: Planned future integration through broker-delivered events; the current MVP uses synchronous REST
 
 ### Security
 - **JWT Authentication**: Stateless authentication using signed JSON Web Tokens
@@ -20,8 +20,8 @@ Task Management Platform is a microservice-based system for managing tasks, with
 
 ### Backend Services
 - **User Service**: Manages user registration, authentication, and profile management
-- **Task Service**: Handles task CRUD operations, assignments, and status tracking
-- **Notification Service**: Delivers real-time notifications via WebSockets and email
+- **Task Service**: Future owner of task CRUD operations, assignments, and status tracking
+- **Notification Service**: Future owner of system notifications, preferences, and platform email delivery
 
 ### Data Storage
 - **PostgreSQL**: Relational database for persistent data storage with transaction support
@@ -39,7 +39,7 @@ Task Management Platform is a microservice-based system for managing tasks, with
 - **Backend**: Java 17, Spring Boot 3.x
 - **Frontend**: Vue.js 3, Vuex
 - **Database**: PostgreSQL 14
-- **Infrastructure**: Docker, Kubernetes, GitHub Actions, Kafka, Redis
+- **Infrastructure**: Docker, Kubernetes, GitHub Actions, Redis; Kafka is a future integration
 
 ## Run
 ### Local
@@ -84,6 +84,10 @@ Repository workflow documentation:
 - [Environment variables](doc/configuration/env-variables.md)
 - [Authentication flow](doc/security/auth-flow.md)
 - [Health checks](doc/operations/health-checks.md)
+- [API contract standards](doc/api/api-contract-standards.md)
+- [Task service API contract](doc/api/task-service-contract.md)
+- [Notification service API contract](doc/api/notification-service-contract.md)
+- [Service boundaries](doc/architecture/service-boundaries.md)
 
 Pull requests should use the GitHub pull request template and target `dev` during MVP development unless the change is urgent repository maintenance for `main`.
 
