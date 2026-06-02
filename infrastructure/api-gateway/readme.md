@@ -24,7 +24,7 @@ The API Gateway currently defines:
 | External route | Internal rewrite | State |
 | --- | --- | --- |
 | `/api/users/**` | `/api/v1/user/**` | Implemented and routed to `user-service` |
-| `/api/tasks/**` | `/api/v1/task/**` | Reserved route only; no runnable `task-service` exists |
+| `/api/tasks/**` | `/api/v1/tasks/**` | Reserved route only; no runnable `task-service` exists |
 
 The user route forwards `POST`, `GET`, `PUT`, `PATCH`, `DELETE`, and `OPTIONS`.
 Password changes are exposed as `PATCH /api/users/password/{userId}`.

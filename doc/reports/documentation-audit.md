@@ -101,8 +101,8 @@ contracts, or infrastructure.
   documented as complete.
 - IDE startup outside Docker still requires manual host adjustments because
   Config Server and Eureka client URLs use Docker-network hostnames.
-- Gateway task routing currently uses `/api/v1/task/**`, while the future API
-  contract uses `/api/v1/tasks/**`.
+- Gateway task routing was aligned from `/api/v1/task/**` to the future API
+  contract path `/api/v1/tasks/**`.
 
 ## Runtime Debt Discovered During Documentation Verification
 

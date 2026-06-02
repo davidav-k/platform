@@ -155,6 +155,6 @@ contracts, delivery guarantees, and versioning require a separate design.
 | `/api/notifications/**` | `/api/v1/notifications/**` | `notification-service` | Contract only |
 | `/api/notification-preferences/**` | `/api/v1/notification-preferences/**` | `notification-service` | Contract only |
 
-The current gateway configuration reserves `/api/tasks/**` but rewrites it to
-`/api/v1/task/**`. Before task-service implementation, gateway routing must be
-aligned with the plural contract. Notification routes do not exist yet.
+The current gateway configuration reserves `/api/tasks/**` and rewrites it to
+the plural contract path `/api/v1/tasks/**`. Notification routes do not exist
+yet.

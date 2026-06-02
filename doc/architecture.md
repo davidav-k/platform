@@ -36,7 +36,7 @@ validates JWTs again and owns authorization decisions. See
 
 ## Partially Configured
 
-- API Gateway reserves `/api/tasks/**` and rewrites it to `/api/v1/task/**`,
+- API Gateway reserves `/api/tasks/**` and rewrites it to `/api/v1/tasks/**`,
   but no runnable `task-service` module or container exists.
 - Redis and Zipkin run locally, but user-service does not currently integrate
   with Redis and tracing integration is not documented as complete.

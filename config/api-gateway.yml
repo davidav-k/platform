@@ -30,7 +30,7 @@ spring:
           predicates:
             - Path=/api/tasks/**
           filters:
-            - RewritePath=/api/tasks/(?<segment>.*), /api/v1/task/${segment}
+            - RewritePath=/api/tasks/(?<segment>.*), /api/v1/tasks/${segment}
             - name: CircuitBreaker
               args:
                 name: taskService
