@@ -26,8 +26,8 @@ The API Gateway currently defines:
 | `/api/users/**` | `/api/v1/user/**` | Implemented and routed to `user-service` |
 | `/api/tasks/**` | `/api/v1/task/**` | Reserved route only; no runnable `task-service` exists |
 
-The user route currently forwards `POST`, `GET`, `PUT`, `DELETE`, and
-`OPTIONS`. It does not forward `PATCH`.
+The user route forwards `POST`, `GET`, `PUT`, `PATCH`, `DELETE`, and `OPTIONS`.
+Password changes are exposed as `PATCH /api/users/password/{userId}`.
 
 Notification routes do not exist yet. The future routing contract is
 documented in
@@ -49,3 +49,20 @@ apply the endpoint-specific checks.
 
 Use [Health checks](../../doc/operations/health-checks.md) to verify Gateway
 health and the read-only user-service routing probe.
+
+### Manual Password-Change Route Check
+
+After logging in with a local test account, verify the protected route with a
+cookie jar and request-body file stored outside the repository:
+
+```bash
+curl -i --request PATCH \
+  "http://localhost:8080/api/users/password/${USER_ID}" \
+  --cookie /path/to/local-auth-cookies.txt \
+  --header 'Content-Type: application/json' \
+  --data @/path/to/local-password-change.json
+```
+
+The local JSON file contains `oldPassword`, `newPassword`, and
+`confirmNewPassword`. Do not commit or log the cookie jar, request body, or
+password values.

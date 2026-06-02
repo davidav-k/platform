@@ -41,9 +41,8 @@ These are internal service paths. API Gateway exposes user traffic under
 - **PATCH** `/api/v1/user/password/{userId}` - Change a user's password. **Requires:** `user:update` or be the owner of the account
 - **DELETE** `/api/v1/user/{userId}` - Delete a user. **Requires:** `user:delete`
 
-The gateway currently routes `POST`, `GET`, `PUT`, `DELETE`, and `OPTIONS`
-methods for `/api/users/**`. The implemented password-change `PATCH` endpoint
-is therefore not externally reachable through the gateway yet.
+API Gateway exposes password changes externally as
+`PATCH /api/users/password/{userId}`.
 
 For the full registration, login, refresh, JWT, and cookie behavior, see
 [Authentication flow](../../doc/security/auth-flow.md).
