@@ -109,8 +109,6 @@ contracts, or infrastructure.
 These are implementation issues recorded in
 [Technical debt](../technical-debt.md), not documentation changes:
 
-- `UserResource.enableMfa` references `#userId` in a method-security expression,
-  but the method has no `userId` parameter.
 - Gateway error responses are not aligned with the user-service response
   envelope.
 

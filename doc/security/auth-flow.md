@@ -62,6 +62,24 @@ Sequence:
 
 Password login is intentionally handled by the filter, not by a controller.
 
+## MFA Enrollment Flow
+
+External endpoint: `POST /api/users/enable-mfa`
+
+Internal endpoint after gateway rewrite: `POST /api/v1/user/enable-mfa`
+
+Sequence:
+
+1. Gateway and `user-service` require a valid access JWT.
+2. `UserResource.enableMfa` reads the authenticated `User` principal.
+3. The controller calls `UserService.enableMfa` with the principal's email.
+4. The service generates and stores the MFA secret and QR-code URL for that
+   account.
+
+Enrollment is self-service only. The endpoint does not accept an email query
+parameter and cannot target another account. MFA secrets and OTP codes must
+not be logged.
+
 ## Refresh Flow
 
 External endpoint: `POST /api/users/refresh`

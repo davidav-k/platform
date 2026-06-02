@@ -62,10 +62,11 @@ public class UserResource {
                 HttpStatus.OK));
     }
 
-    @PreAuthorize("hasAuthority('user:update') or #userId == authentication.principal.id")
+    @PreAuthorize("isAuthenticated()")
     @PostMapping("/enable-mfa")
-    public ResponseEntity<Response> enableMfa(@RequestParam String email, HttpServletRequest request) {
-        userService.enableMfa(email);
+    public ResponseEntity<Response> enableMfa(HttpServletRequest request, Authentication authentication) {
+        User user = (User) authentication.getPrincipal();
+        userService.enableMfa(user.getEmail());
         return ResponseEntity.ok().body(RequestUtils.getResponse(
                 request,
                 Map.of(),

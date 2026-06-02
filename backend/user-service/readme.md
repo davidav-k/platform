@@ -31,7 +31,7 @@ These are internal service paths. API Gateway exposes user traffic under
 - **POST** `/api/v1/user/register` - Register a new user. **Requires:** No authentication
 - **GET** `/api/v1/user/verify/account` - Verify a new user account using a key. **Requires:** No authentication
 - **POST** `/api/v1/user/login` - Log in a user. **Requires:** No authentication
-- **POST** `/api/v1/user/enable-mfa` - Enable multi-factor authentication (MFA) for a user. **Requires:** `user:update`  or be the owner of the account
+- **POST** `/api/v1/user/enable-mfa` - Enable MFA for the authenticated user's own account. **Requires:** Valid access token
 - **POST** `/api/v1/user/verify-mfa` - Verify MFA for a user. **Requires:** No authentication
 - **POST** `/api/v1/user/unlock` - Unlock a user account. **Requires:** `user:update`
 - **POST** `/api/v1/user/lock` - Lock a user account. **Requires:** `user:update`

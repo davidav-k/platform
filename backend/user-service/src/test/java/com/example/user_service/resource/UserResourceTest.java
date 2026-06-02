@@ -103,16 +103,21 @@ public class UserResourceTest {
     }
 
     @Test
-    void enableMfaSuccessfully() {
+    void enableMfaSuccessfullyForAuthenticatedUserWithoutEmailParameter() throws Exception {
         String email = "john@example.com";
+        User mockUser = User.builder().email(email).build();
+        Authentication authentication = mock(Authentication.class);
+
+        when(authentication.getPrincipal()).thenReturn(mockUser);
         doNothing().when(userService).enableMfa(email);
         when(request.getRequestURI()).thenReturn("/api/v1/user/enable-mfa");
 
-        ResponseEntity<Response> response = userResource.enableMfa(email, request);
+        mockMvc.perform(post("/api/v1/user/enable-mfa")
+                .principal(authentication))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("MFA enabled successfully. Scan QR code in Google Authenticator."));
 
         verify(userService, times(1)).enableMfa(email);
-        assert response.getStatusCode() == HttpStatus.OK;
-        assert response.getBody().message().contains("MFA enabled successfully");
     }
 
     @Test
