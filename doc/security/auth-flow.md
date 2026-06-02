@@ -105,6 +105,21 @@ supports explicit cookie deletion, but it is not exposed by a controller.
 Because tokens are stateless, cookie deletion would not invalidate a copied
 JWT. Server-side revocation remains technical debt.
 
+## Administrative Account Deletion
+
+External endpoint: `DELETE /api/users/{userId}`
+
+Internal endpoint after gateway rewrite: `DELETE /api/v1/user/{userId}`
+
+Deletion requires the `user:delete` authority. The service performs a
+transactional hard delete for the numeric internal user ID. It rejects null
+IDs, missing users, system user `0`, and self-deletion. User-service removes
+login history and role assignments explicitly, then deletes the user.
+Database cascades remove credentials and account confirmations.
+
+Deletion affects only user-service-owned data. Cross-service cleanup is not
+implemented.
+
 ## JWT Validation Flow
 
 Protected request sequence:

@@ -12,3 +12,4 @@ This file tracks known repository and workflow debt during MVP stabilization. Ke
 | TD-006 | Low | Repository hygiene | macOS `.DS_Store` files exist as untracked files in the working tree. | Ignore `.DS_Store` and remove local copies when convenient. | Open |
 | TD-007 | High | Gateway routing | The `/api/users/**` gateway route previously omitted `PATCH`. | `PATCH` routing and CORS support were added for the existing password-change endpoint. | Resolved |
 | TD-008 | High | Authorization | MFA enrollment previously referenced a missing `#userId` parameter and accepted an arbitrary target email. | Enrollment now derives the email from the authenticated principal and is self-service only. | Resolved |
+| TD-009 | Medium | Account lifecycle | User deletion is an MVP hard delete. Soft deletion, retention policy, and future cross-service cleanup are not implemented. | Define retention and cross-service account-deletion behavior before adding dependent services. | Open |

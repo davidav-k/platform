@@ -221,7 +221,27 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public void deleteUser(Long userId, Authentication authentication) {
+        if (userId == null) {
+            throw new ApiException("User ID is required");
+        }
+        if (userId == 0L) {
+            throw new ApiException("System user cannot be deleted");
+        }
 
+        UserEntity userEntity = userRepository.findById(userId)
+                .orElseThrow(() -> new ApiException("User not found"));
+
+        if (authentication == null || !(authentication.getPrincipal() instanceof User authenticatedUser)) {
+            throw new ApiException("Authenticated user is required");
+        }
+        if (userId.equals(authenticatedUser.getId())) {
+            throw new ApiException("Self-deletion is not allowed");
+        }
+
+        loginHistoryRepository.deleteAllByUserId(userId);
+        userRepository.deleteRoleAssignmentsByUserId(userId);
+        userCache.evict(userEntity.getEmail());
+        userRepository.delete(userEntity);
     }
 
 

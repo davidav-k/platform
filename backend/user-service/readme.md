@@ -39,7 +39,7 @@ These are internal service paths. API Gateway exposes user traffic under
 - **GET** `/api/v1/user/profile` - Retrieve the profile of the logged-in user. **Requires:** Valid access token
 - **PUT** `/api/v1/user/{userId}` - Update user details. **Requires:** `user:update` or be the owner of the account
 - **PATCH** `/api/v1/user/password/{userId}` - Change a user's password. **Requires:** `user:update` or be the owner of the account
-- **DELETE** `/api/v1/user/{userId}` - Delete a user. **Requires:** `user:delete`
+- **DELETE** `/api/v1/user/{userId}` - Hard-delete a user and user-service-owned dependent data. **Requires:** `user:delete`. **Restrictions:** system user `0` and self-deletion are rejected
 
 API Gateway exposes password changes externally as
 `PATCH /api/users/password/{userId}`.
