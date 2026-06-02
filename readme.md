@@ -124,6 +124,7 @@ Repository workflow documentation:
 - [Development checklist](doc/development-checklist.md)
 - [Technical debt tracking](doc/technical-debt.md)
 - [Environment variables](doc/configuration/env-variables.md)
+- [Configuration management](doc/architecture/configuration-management.md)
 - [Database migration strategy](doc/database/migration-strategy.md)
 - [Authentication flow](doc/security/auth-flow.md)
 - [Health checks](doc/operations/health-checks.md)

@@ -36,6 +36,8 @@ auth:
 api:
   endpoint:
     base-url: /api/v1
+    user:
+      login: /api/v1/user/login
 admin:
   password: admin
 logging:

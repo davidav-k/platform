@@ -1,7 +1,9 @@
 spring:
+  profiles:
+    active: ${ACTIVE_PROFILE:dev}
   cloud:
     config:
       enabled: true
       discovery:
         enabled: false
-      uri: http://config-server:8888
+      uri: ${CONFIG_SERVER_URI:http://config-server:8888}

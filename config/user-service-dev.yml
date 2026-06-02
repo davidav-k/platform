@@ -48,8 +48,6 @@ spring:
 
     verify:
       host: ${EMAIL_VERIFY_HOST}
-  application:
-    name: user-service
 server:
   port: ${APPLICATION_PORT:8085}
   error:
@@ -58,7 +56,7 @@ server:
       enabled: false
 
 jwt:
-  expiration-seconds: ${JWT_EXPIRATION}
+  expiration-seconds: ${JWT_EXPIRATION:432000}
   secret: ${JWT_SECRET}
 
 auth:
@@ -79,8 +77,7 @@ api:
 eureka:
   client:
     service-url:
-      defaultZone: http://eureka-server:8761/eureka #  for Docker
-#        defaultZone: http://localhost:8761/eureka  #  for Idea
+      defaultZone: ${EUREKA_URL:http://eureka-server:8761/eureka}
 management:
   endpoints:
     web:

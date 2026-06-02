@@ -1,1 +1,2 @@
-JWT_EXPIRATION: 432000 # 5 days in seconds
+# Runtime development settings are served by Config Server from
+# config/user-service-dev.yml.

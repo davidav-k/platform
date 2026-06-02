@@ -26,13 +26,16 @@ docker compose --env-file .env -f compose.yml up -d
 Required local values:
 
 - `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`
-- `JWT_SECRET`, `JWT_EXPIRATION`, `ADMIN_PASSWORD`
+- `JWT_SECRET`, `ADMIN_PASSWORD`
 - `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_ID`, `EMAIL_PASSWORD`, `EMAIL_VERIFY_HOST`
 
 Optional local overrides:
 
 - `APPLICATION_PORT`
 - `ACTIVE_PROFILE`
+- `CONFIG_SERVER_URI`
+- `EUREKA_URL`
+- `JWT_EXPIRATION`
 
 Never commit production values for passwords, JWT signing keys, admin
 credentials, mail credentials, or externally managed service credentials.
@@ -60,14 +63,24 @@ Redis is started by Docker Compose without custom environment variables.
 | --- | --- | --- | --- | --- | --- |
 | `SPRING_CLOUD_CONFIG_SERVER_NATIVE_SEARCH_LOCATIONS` | No; Compose sets it inline | `file:../../config/` in bundled configuration | `file:/config/` | config-server | Overrides the native Config Server repository path inside its container. |
 
-Config Server clients use the fixed Docker-network URL
-`http://config-server:8888`. No Config Server client URI environment variable
-is active.
+Config Server clients default to the Docker-network URL
+`http://config-server:8888`. Set `CONFIG_SERVER_URI=http://localhost:8888`
+when running user-service from an IDE against the local Config Server
+container.
+
+| Name | Required | Default | Example | Consumed by | Description |
+| --- | --- | --- | --- | --- | --- |
+| `CONFIG_SERVER_URI` | No | `http://config-server:8888` | `http://localhost:8888` | user-service | Overrides the Config Server client URL for IDE launches. |
 
 ### Eureka
 
-Eureka clients use the fixed Docker-network URL
-`http://eureka-server:8761/eureka`. No Eureka environment variable is active.
+User-service defaults to the Docker-network Eureka URL
+`http://eureka-server:8761/eureka`. Set `EUREKA_URL=http://localhost:8761/eureka`
+for an IDE launch.
+
+| Name | Required | Default | Example | Consumed by | Description |
+| --- | --- | --- | --- | --- | --- |
+| `EUREKA_URL` | No | `http://eureka-server:8761/eureka` | `http://localhost:8761/eureka` | user-service | Overrides the Config Server-owned Eureka URL for IDE launches. |
 
 ## Security
 
@@ -76,7 +89,7 @@ Eureka clients use the fixed Docker-network URL
 | Name | Required | Default | Example | Consumed by | Description |
 | --- | --- | --- | --- | --- | --- |
 | `JWT_SECRET` | Yes | None | Base64 development-only signing key from `.env.example` | user-service, api-gateway | Base64-encoded JWT signing key. Both services decode it before constructing HMAC keys. Replace it outside local development. |
-| `JWT_EXPIRATION` | Yes | `432000` only in bundled `application-dev.yml` | `432000` | user-service | JWT expiration in seconds. The Docker-mounted Config Server file references the environment variable explicitly, so keep it in `.env`. |
+| `JWT_EXPIRATION` | No | `432000` | `432000` | user-service | Optional JWT expiration override in seconds. Config Server defaults development to five days. |
 | `ADMIN_PASSWORD` | Yes | None | `dev_example_admin_password_change_me` | user-service | Password used when the local bootstrap admin account is created. |
 
 ### Cookies
@@ -152,14 +165,16 @@ required `.env` contract:
 | `.env.example` | All required local values and optional user-service overrides |
 | `compose.yml` | `POSTGRES_USER`, `POSTGRES_DB`, `SPRING_CLOUD_CONFIG_SERVER_NATIVE_SEARCH_LOCATIONS`; commented fallback toggles |
 | `config/user-service-dev.yml` | PostgreSQL, mail, JWT, admin, and `APPLICATION_PORT` variables |
-| `backend/user-service/src/main/resources/application.yml` | Same user-service variables plus `ACTIVE_PROFILE` |
-| `backend/user-service/src/main/resources/application-dev.yml` | Bundled `JWT_EXPIRATION` fallback |
+| `backend/user-service/src/main/resources/application.yml` | `spring.application.name` only |
+| `backend/user-service/src/main/resources/bootstrap.yml` | `ACTIVE_PROFILE` and optional `CONFIG_SERVER_URI` override |
+| `backend/user-service/src/main/resources/application-dev.yml` | Retained development-profile marker only |
 | `infrastructure/api-gateway/.../JwtUtil.java` | Direct `JWT_SECRET` lookup |
 | Dockerfiles | No environment variables |
 
-The duplicated user-service references are intentional: `config/` is the
-Docker-mounted native Config Server repository, while the bundled resources
-support classpath and IDE startup.
+Config Server is the primary source of truth for user-service runtime
+configuration. The bundled resources contain only bootstrap metadata and safe
+developer convenience defaults. See
+[Configuration management](../architecture/configuration-management.md).
 
 ## Inconsistencies Found
 
@@ -187,5 +202,3 @@ Remaining observations:
   infrastructure services that do not consume most application secrets.
 - `APPLICATION_PORT` is configurable in Spring but fixed to `8085` elsewhere
   in Compose.
-- Config Server and Eureka client URLs are fixed for Docker networking, so IDE
-  startup needs manual configuration changes.
