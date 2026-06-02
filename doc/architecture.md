@@ -81,13 +81,6 @@ See [Database migration strategy](database/migration-strategy.md).
 
 ## Local Development
 
-Start and verify the current stack from the repository root:
-
-```bash
-cp .env.example .env
-docker compose --env-file .env -f compose.yml up -d --build
-./scripts/check-local-stack.sh
-```
-
-See [Health checks](operations/health-checks.md) and
-[Environment variables](configuration/env-variables.md) for details.
+See [Configuration management](architecture/configuration-management.md) for startup modes,
+[Health checks](operations/health-checks.md) for verification, and
+[Environment variables](configuration/env-variables.md) for required variables.

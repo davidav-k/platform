@@ -175,30 +175,3 @@ Config Server is the primary source of truth for user-service runtime
 configuration. The bundled resources contain only bootstrap metadata and safe
 developer convenience defaults. See
 [Configuration management](../architecture/configuration-management.md).
-
-## Inconsistencies Found
-
-Resolved in the current configuration pass:
-
-- Config Server's Compose override used `SEARCH-LOCATIONS`; it now uses the
-  Spring-compatible `SEARCH_LOCATIONS`.
-- `.env.example` defined unused `POSTGRES_CONTAINER`, `PGADMIN_EMAIL`, and
-  `PGADMIN_PASSWORD`; they were removed.
-- Production and user-service note examples used legacy `POSTGRESQL_*`,
-  `CONTAINER_PORT`, `SECRET`, and `VERIFY_EMAIL_HOST` names; active examples
-  now use `POSTGRES_*`, `APPLICATION_PORT`, `JWT_SECRET`, and
-  `EMAIL_VERIFY_HOST`.
-- The old JWT example was not valid for consumers that Base64-decode the key;
-  `.env.example` now contains an explicitly development-only Base64 value.
-- `JWT_EXPIRATION` claimed to be milliseconds even though token generation uses
-  seconds; the development value is now `432000` seconds for five days.
-
-Remaining observations:
-
-- Existing ignored local `.env` files may still contain stale unused keys such
-  as `POSTGRES_CONTAINER`, `PGADMIN_*`, or `SPRING_DATASOURCE_*`. Recreate local
-  files from `.env.example`.
-- Compose passes the full `.env` file to several containers, including
-  infrastructure services that do not consume most application secrets.
-- `APPLICATION_PORT` is configurable in Spring but fixed to `8085` elsewhere
-  in Compose.

@@ -64,16 +64,15 @@ See [Environment variables](../../doc/configuration/env-variables.md) and
 
 ### Configuration Ownership
 
-Config Server is the primary source of truth for user-service runtime
-configuration. Add datasource, JPA, Flyway, JWT, cookie, mail, Eureka, logging,
-and service behavior properties to `config/user-service-dev.yml`, using
-environment-variable placeholders for secrets and environment-specific values.
+Config Server is the primary source of truth for runtime configuration.
+For an IntelliJ launch, override the following environment variables:
 
-The bundled `application.yml` contains only the application name and default
-profile. For an IntelliJ launch, start the supporting containers and set
-`CONFIG_SERVER_URI=http://localhost:8888`, `EUREKA_URL=http://localhost:8761/eureka`,
-`POSTGRES_HOST=localhost`, and `EMAIL_HOST=localhost` in the run configuration.
-Keep the remaining values aligned with the root `.env` file.
+```text
+CONFIG_SERVER_URI=http://localhost:8888
+EUREKA_URL=http://localhost:8761/eureka
+POSTGRES_HOST=localhost
+EMAIL_HOST=localhost
+```
 
 See [Configuration management](../../doc/architecture/configuration-management.md)
 for the ownership hierarchy and startup modes.

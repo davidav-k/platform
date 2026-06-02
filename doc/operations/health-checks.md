@@ -22,12 +22,7 @@ A healthy service returns HTTP `200` with an aggregate response:
 Health details remain intentionally limited. Built-in indicators still
 contribute to the aggregate status.
 
-## Startup Verification Gap Analysis
-
-Before `scripts/check-local-stack.sh`, local startup verification was a manual
-procedure. Compose already defined health checks and health-aware startup
-ordering, and the documentation listed direct Actuator calls, but developers
-had to run separate commands and interpret the results themselves.
+## Container Inventory
 
 The local stack expects eight containers:
 
@@ -42,9 +37,6 @@ The local stack expects eight containers:
 | `tsp_user_service` | `8085` | `/actuator/health` |
 | `tsp_gateway` | `8080` | `/actuator/health` |
 
-Gateway health proves that the gateway process is ready, but does not prove a
-route to a downstream service. The automated verification adds a read-only
-public route probe for `user-service`.
 
 ## Dependency Coverage
 
