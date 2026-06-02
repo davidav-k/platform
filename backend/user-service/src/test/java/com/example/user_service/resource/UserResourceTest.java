@@ -4,9 +4,7 @@ import com.example.user_service.UserServiceApplication;
 import com.example.user_service.config.TestContainersConfig;
 import com.example.user_service.config.TestEmailConfig;
 import com.example.user_service.config.TestSecurityConfig;
-import com.example.user_service.domain.ApiAuthentication;
 import com.example.user_service.domain.Response;
-import com.example.user_service.dto.LoginRequest;
 import com.example.user_service.dto.User;
 import com.example.user_service.dto.UserRequest;
 import com.example.user_service.enumeration.TokenType;
@@ -104,41 +102,22 @@ public class UserResourceTest {
                 .andExpect(jsonPath("$.message").value("Account verified successfully."));
     }
 
-@Test
-void loginUserSuccessfully() {
-    LoginRequest loginRequest = new LoginRequest();
-    loginRequest.setEmail("john@example.com");
-    loginRequest.setPassword("password");
-
-    User mockUser = User.builder().id(1L).email("john@example.com").build();
-
-    ApiAuthentication authentication = mock(ApiAuthentication.class);
-    when(authentication.getPrincipal()).thenReturn(mockUser);
-
-    when(userService.authenticateUser(anyString(), anyString(), any(HttpServletRequest.class)))
-            .thenReturn(authentication);
-    when(request.getRequestURI()).thenReturn("/api/v1/user/login");
-    doNothing().when(jwtService).addCookie(any(), any(), any());
-
-    ResponseEntity<Response> response = userResource.loginUser(loginRequest, request, this.response);
-
-    verify(jwtService, times(1)).addCookie(any(), any(), eq(TokenType.ACCESS));
-    verify(jwtService, times(1)).addCookie(any(), any(), eq(TokenType.REFRESH));
-    assert response.getStatusCode() == HttpStatus.OK;
-    assert response.getBody().message().contains("Login successful");
-}
-
     @Test
-    void enableMfaSuccessfully() {
+    void enableMfaSuccessfullyForAuthenticatedUserWithoutEmailParameter() throws Exception {
         String email = "john@example.com";
+        User mockUser = User.builder().email(email).build();
+        Authentication authentication = mock(Authentication.class);
+
+        when(authentication.getPrincipal()).thenReturn(mockUser);
         doNothing().when(userService).enableMfa(email);
         when(request.getRequestURI()).thenReturn("/api/v1/user/enable-mfa");
 
-        ResponseEntity<Response> response = userResource.enableMfa(email, request);
+        mockMvc.perform(post("/api/v1/user/enable-mfa")
+                .principal(authentication))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("MFA enabled successfully. Scan QR code in Google Authenticator."));
 
         verify(userService, times(1)).enableMfa(email);
-        assert response.getStatusCode() == HttpStatus.OK;
-        assert response.getBody().message().contains("MFA enabled successfully");
     }
 
     @Test
@@ -245,35 +224,16 @@ void refreshTokensSuccessfully() {
 
     @Test
     void getUserProfileSuccessfully() {
-        String accessToken = "valid-access-token";
         User mockUser = User.builder().userId("user123").build();
+        Authentication authentication = mock(Authentication.class);
 
-        when(jwtService.extractToken(request, TokenType.ACCESS.getValue())).thenReturn(Optional.of(accessToken));
-        when(jwtService.getTokenData(eq(accessToken), any())).thenReturn(mockUser);
-        when(userService.getUserByUserId(mockUser.getUserId())).thenReturn(mockUser);
+        when(authentication.getPrincipal()).thenReturn(mockUser);
         when(request.getRequestURI()).thenReturn("/api/v1/user/profile");
 
-        ResponseEntity<Response> response = userResource.getUserProfile(request);
+        ResponseEntity<Response> response = userResource.getUserProfile(request, authentication);
 
-        verify(jwtService, times(1)).extractToken(request, TokenType.ACCESS.getValue());
-        verify(jwtService, times(1)).getTokenData(eq(accessToken), any());
-        verify(userService, times(1)).getUserByUserId(mockUser.getUserId());
         assert response.getStatusCode() == HttpStatus.OK;
         assert response.getBody().message().contains("User profile retrieved successfully");
-    }
-
-    @Test
-    void getUserProfileFailsWithMissingToken() {
-        when(jwtService.extractToken(request, TokenType.ACCESS.getValue())).thenReturn(Optional.empty());
-        when(request.getRequestURI()).thenReturn("/api/v1/user/profile");
-
-        ResponseEntity<Response> response = userResource.getUserProfile(request);
-
-        verify(jwtService, times(1)).extractToken(request, TokenType.ACCESS.getValue());
-        verify(jwtService, never()).getTokenData(any(), any());
-        verify(userService, never()).getUserByUserId(any());
-        assert response.getStatusCode() == HttpStatus.UNAUTHORIZED;
-        assert response.getBody().message().contains("Unauthorized access");
     }
 
     @Test

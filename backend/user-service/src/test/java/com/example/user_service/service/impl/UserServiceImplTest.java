@@ -5,7 +5,6 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import com.example.user_service.cache.CacheStore;
-import com.example.user_service.domain.ApiAuthentication;
 import com.example.user_service.domain.RequestContext;
 import com.example.user_service.dto.User;
 import com.example.user_service.dto.UserRequest;
@@ -19,6 +18,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -208,36 +208,6 @@ private void setFieldValue(Object object, String fieldName, Object value) throws
             () -> userService.getUserByEmail("nonexistent@example.com"));
 
         assertEquals("User by email not found", exception.getMessage());
-    }
-
-    @Test
-    void authenticateUserWithValidCredentials() {
-        when(userRepository.findByEmailIgnoreCase("test@example.com")).thenReturn(Optional.of(userEntity));
-        when(credentialRepository.getCredentialByUserEntityId(userEntity.getId())).thenReturn(Optional.of(credentialEntity));
-        when(passwordEncoder.matches("password", "encodedPassword")).thenReturn(true);
-        when(request.getRemoteAddr()).thenReturn("127.0.0.1");
-        when(request.getHeader("User-Agent")).thenReturn("Mozilla/5.0");
-
-        ApiAuthentication authentication = userService.authenticateUser("test@example.com", "password", request);
-
-        assertNotNull(authentication);
-        assertTrue(authentication.isAuthenticated());
-        verify(loginHistoryRepository).save(any(LoginHistoryEntity.class));
-    }
-
-    @Test
-    void authenticateUserWithInvalidPasswordThrowsException() {
-        when(userRepository.findByEmailIgnoreCase("test@example.com")).thenReturn(Optional.of(userEntity));
-        when(credentialRepository.getCredentialByUserEntityId(userEntity.getId())).thenReturn(Optional.of(credentialEntity));
-        when(passwordEncoder.matches("wrongPassword", "encodedPassword")).thenReturn(false);
-        when(request.getRemoteAddr()).thenReturn("127.0.0.1");
-        when(request.getHeader("User-Agent")).thenReturn("Mozilla/5.0");
-
-        ApiException exception = assertThrows(ApiException.class,
-            () -> userService.authenticateUser("test@example.com", "wrongPassword", request));
-
-        assertEquals("Invalid email or password", exception.getMessage());
-        verify(loginHistoryRepository).save(any(LoginHistoryEntity.class));
     }
 
     @Test
@@ -447,6 +417,67 @@ private void setFieldValue(Object object, String fieldName, Object value) throws
                 () -> userService.getRoleName("NONEXISTENT"));
 
         assertEquals("Role not found", exception.getMessage());
+    }
+
+    @Test
+    void deleteUserRemovesOwnedDependenciesBeforeDeletingUser() {
+        User authenticatedUser = User.builder().id(2L).build();
+        when(authentication.getPrincipal()).thenReturn(authenticatedUser);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(userEntity));
+
+        userService.deleteUser(1L, authentication);
+
+        InOrder deletionOrder = inOrder(loginHistoryRepository, userRepository);
+        deletionOrder.verify(loginHistoryRepository).deleteAllByUserId(1L);
+        deletionOrder.verify(userRepository).deleteRoleAssignmentsByUserId(1L);
+        deletionOrder.verify(userRepository).delete(userEntity);
+        verify(userCache).evict("test@example.com");
+    }
+
+    @Test
+    void deleteUserRejectsNullUserId() {
+        ApiException exception = assertThrows(ApiException.class,
+                () -> userService.deleteUser(null, authentication));
+
+        assertEquals("User ID is required", exception.getMessage());
+        verifyNoInteractions(authentication);
+        verify(userRepository, never()).delete(any());
+    }
+
+    @Test
+    void deleteUserRejectsSystemUser() {
+        ApiException exception = assertThrows(ApiException.class,
+                () -> userService.deleteUser(0L, authentication));
+
+        assertEquals("System user cannot be deleted", exception.getMessage());
+        verifyNoInteractions(authentication);
+        verify(userRepository, never()).delete(any());
+    }
+
+    @Test
+    void deleteUserRejectsMissingUser() {
+        when(userRepository.findById(99L)).thenReturn(Optional.empty());
+
+        ApiException exception = assertThrows(ApiException.class,
+                () -> userService.deleteUser(99L, authentication));
+
+        assertEquals("User not found", exception.getMessage());
+        verify(userRepository, never()).delete(any());
+    }
+
+    @Test
+    void deleteUserRejectsSelfDeletion() {
+        User authenticatedUser = User.builder().id(1L).build();
+        when(authentication.getPrincipal()).thenReturn(authenticatedUser);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(userEntity));
+
+        ApiException exception = assertThrows(ApiException.class,
+                () -> userService.deleteUser(1L, authentication));
+
+        assertEquals("Self-deletion is not allowed", exception.getMessage());
+        verify(loginHistoryRepository, never()).deleteAllByUserId(anyLong());
+        verify(userRepository, never()).deleteRoleAssignmentsByUserId(anyLong());
+        verify(userRepository, never()).delete(any());
     }
 
 }

@@ -2,7 +2,6 @@ package com.example.user_service.resource;
 
 import com.example.user_service.domain.Response;
 import com.example.user_service.domain.TokenData;
-import com.example.user_service.dto.LoginRequest;
 import com.example.user_service.dto.User;
 import com.example.user_service.dto.UserRequest;
 import com.example.user_service.enumeration.TokenType;
@@ -39,7 +38,6 @@ public class UserResource {
         return URI.create("");
     }
 
-    @PreAuthorize("hasAuthority('user:create')")
     @PostMapping("/register")
     public ResponseEntity<Response> saveUser(@RequestBody @Valid UserRequest userRequest, HttpServletRequest request) {
         log.info("Creating new user with email: {}", userRequest.getEmail());
@@ -54,9 +52,9 @@ public class UserResource {
 
     @GetMapping("/verify/account")
     public ResponseEntity<Response> verifyNewUserAccount(@RequestParam("key") String key, HttpServletRequest request) {
-        log.info("Verifying account with key: {}", key);
+        log.info("Verifying account");
         userService.verifyAccountKey(key);
-        log.info("Account verified successfully for key: {}", key);
+        log.info("Account verified successfully");
         return ResponseEntity.ok().body(RequestUtils.getResponse(
                 request,
                 emptyMap(),
@@ -64,24 +62,11 @@ public class UserResource {
                 HttpStatus.OK));
     }
 
-    @PostMapping("/login")
-    public ResponseEntity<Response> loginUser(@RequestBody @Valid LoginRequest loginRequest, HttpServletRequest request, HttpServletResponse response) {
-        log.info("Logging in user with email into controller: {}", loginRequest.getEmail());
-        Authentication authentication = userService.authenticateUser(loginRequest.getEmail(), loginRequest.getPassword(), request);
-        log.info("User logged in successfully with email into controller: {}", loginRequest.getEmail());
-        jwtService.addCookie(response, (User) authentication.getPrincipal(), TokenType.ACCESS);
-        jwtService.addCookie(response, (User) authentication.getPrincipal(), TokenType.REFRESH);
-        return ResponseEntity.ok().body(RequestUtils.getResponse(
-                request,
-                Map.of("user", (User) authentication.getPrincipal()),
-                "Login successful into controller.",
-                HttpStatus.OK));
-    }
-
-    @PreAuthorize("hasAuthority('user:update') or #userId == authentication.principal.id")
+    @PreAuthorize("isAuthenticated()")
     @PostMapping("/enable-mfa")
-    public ResponseEntity<Response> enableMfa(@RequestParam String email, HttpServletRequest request) {
-        userService.enableMfa(email);
+    public ResponseEntity<Response> enableMfa(HttpServletRequest request, Authentication authentication) {
+        User user = (User) authentication.getPrincipal();
+        userService.enableMfa(user.getEmail());
         return ResponseEntity.ok().body(RequestUtils.getResponse(
                 request,
                 Map.of(),
@@ -151,13 +136,8 @@ public class UserResource {
     }
 
     @GetMapping("/profile")
-    public ResponseEntity<Response> getUserProfile(HttpServletRequest request) {
-        Optional<String> optionalAccessToken = jwtService.extractToken(request, TokenType.ACCESS.getValue());
-        if (optionalAccessToken.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(RequestUtils.getResponse(request, emptyMap(), "Unauthorized access.", HttpStatus.UNAUTHORIZED));
-        }
-        var tokenData = jwtService.getTokenData(optionalAccessToken.get(), TokenData::getUser);
-        User user = userService.getUserByUserId(tokenData.getUserId());
+    public ResponseEntity<Response> getUserProfile(HttpServletRequest request, Authentication authentication) {
+        User user = (User) authentication.getPrincipal();
         return ResponseEntity.ok().body(RequestUtils.getResponse(request, Map.of("user", user), "User profile retrieved successfully.", HttpStatus.OK));
     }
 

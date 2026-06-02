@@ -32,13 +32,14 @@ Replace all placeholder values in `.env`. Do not commit `.env`.
 Start the local stack from the repository root:
 
 ```bash
-docker compose --env-file .env -f compose.yml up -d
+docker compose --env-file .env -f compose.yml up -d --build
+./scripts/check-local-stack.sh
 ```
 
 Stop the local stack:
 
 ```bash
-docker compose -f compose.yml down
+docker compose --env-file .env -f compose.yml down
 ```
 
 ## Local Quality Gates

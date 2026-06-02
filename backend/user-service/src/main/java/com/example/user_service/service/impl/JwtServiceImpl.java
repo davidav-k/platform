@@ -19,6 +19,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.logging.log4j.util.TriConsumer;
+import org.springframework.http.HttpHeaders;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Service;
 
@@ -53,8 +54,6 @@ public class JwtServiceImpl extends JwrConfig implements JwtService {
                     .parseSignedClaims(token)
                     .getPayload();
 
-    private final Function<String, String> subject = token -> getClaimsValue(token, Claims::getSubject);
-
     private final BiFunction<HttpServletRequest, String, Optional<String>> extractToken = (request, cookieName) ->
             Optional.of(stream(request.getCookies() == null ? new Cookie[]{new Cookie(EMPTY_VALUE, EMPTY_VALUE)} : request.getCookies())
                             .filter(cookie -> Objects.equals(cookieName, cookie.getName()))
@@ -84,48 +83,38 @@ public class JwtServiceImpl extends JwrConfig implements JwtService {
                             .subject(user.getUserId())
                             .claim(AUTHORITIES, user.getAuthorities())
                             .claim(ROLE, user.getRole())
-                            .expiration(Date.from(Instant.now().plusSeconds(getExpiration())))
+                            .expiration(Date.from(Instant.now().plusSeconds(getExpirationSeconds())))
                             .compact() :
                     builder.get()
                             .subject(user.getUserId())
-                            .expiration(Date.from(Instant.now().plusSeconds(getExpiration())))
+                            .expiration(Date.from(Instant.now().plusSeconds(getExpirationSeconds())))
                             .compact();
 
     private final TriConsumer<HttpServletResponse, User, TokenType> addCookie = (response, user, tokenType) -> {
-        boolean isSecure = response.getHeader("X-Forwarded-Proto") != null && response.getHeader("X-Forwarded-Proto").equals("https");
-
         switch (tokenType) {
             case ACCESS -> {
                 var accessToken = createToken(user, Token::getAccess);
                 var cookie = new Cookie(tokenType.getValue(), accessToken);
                 cookie.setHttpOnly(true);
-                cookie.setSecure(isSecure);
-                cookie.setMaxAge(10 * 60);  // 10 мин
+                cookie.setSecure(isCookieSecure());
+                cookie.setMaxAge(getAccessCookieMaxAgeSeconds());
                 cookie.setPath("/");
-                cookie.setAttribute("SameSite", isSecure ? "None" : "Lax");
+                cookie.setAttribute("SameSite", getCookieSameSite());
                 response.addCookie(cookie);
-                log.info("🍪 Cookie: {} = {} | Secure: {} | SameSite: {}", tokenType.getValue(), accessToken, cookie.getSecure(), cookie.getAttribute("SameSite"));
-
             }
             case REFRESH -> {
                 var refreshToken = createToken(user, Token::getRefresh);
                 Cookie cookie = new Cookie(tokenType.getValue(), refreshToken);
                 cookie.setHttpOnly(true);
-                cookie.setSecure(isSecure);
-                cookie.setMaxAge(2 * 60 * 60); // 2 часа
+                cookie.setSecure(isCookieSecure());
+                cookie.setMaxAge(getRefreshCookieMaxAgeSeconds());
                 cookie.setPath("/");
-                cookie.setAttribute("SameSite", isSecure ? "None" : "Lax");
+                cookie.setAttribute("SameSite", getCookieSameSite());
                 response.addCookie(cookie);
-                log.info("🍪 Cookie: {} = {} | Secure: {} | SameSite: {}", tokenType.getValue(), refreshToken, cookie.getSecure(), cookie.getAttribute("SameSite"));
-
             }
         }
     };
 
-
-    private <T> T getClaimsValue(String token, Function<Claims, T> claims) {
-        return claimsFunction.andThen(claims).apply(token);
-    }
 
     public Function<String, List<GrantedAuthority>> authorities = token -> commaSeparatedStringToAuthorityList(
             new StringJoiner(AUTHORITY_DELIMITER)
@@ -144,24 +133,38 @@ public class JwtServiceImpl extends JwrConfig implements JwtService {
 
     @Override
     public Optional<String> extractToken(HttpServletRequest request, String cookieName) {
-        return extractToken.apply(request, cookieName);
+        Optional<String> cookieToken = extractToken.apply(request, cookieName);
+        if (cookieToken.isPresent() || !Objects.equals(cookieName, ACCESS.getValue())) {
+            return cookieToken;
+        }
+
+        return Optional.ofNullable(request.getHeader(HttpHeaders.AUTHORIZATION))
+                .filter(header -> header.startsWith("Bearer "))
+                .map(header -> header.substring(7));
     }
 
     @Override
     public void addCookie(HttpServletResponse response, User user, TokenType tokenType) {
-        log.info("addCookie before accept");
         addCookie.accept(response, user, tokenType);
     }
 
     @Override
     public <T> T getTokenData(String token, Function<TokenData, T> tokenFunction) {
+        Claims claims = claimsFunction.apply(token);
+        User user = userService.getUserByUserId(claims.getSubject());
+        List<GrantedAuthority> tokenAuthorities = claims.containsKey(AUTHORITIES)
+                ? authorities.apply(token)
+                : List.of();
+
         return tokenFunction.apply(
                 TokenData.builder()
-                        .isValid(Objects.equals(userService.getUserByUserId(subject.apply(token)).getUserId(), claimsFunction.apply(token).getSubject()))
-                        .authorities(authorities.apply(token))
-                        .claims(claimsFunction.apply(token))
-                        .user(userService.getUserByUserId(subject.apply(token)))
-
+                        .isValid(user.isEnabled()
+                                && user.isAccountNonExpired()
+                                && user.isAccountNonLocked()
+                                && user.isCredentialsNonExpired())
+                        .authorities(tokenAuthorities)
+                        .claims(claims)
+                        .user(user)
                         .build());
     }
 
@@ -170,6 +173,10 @@ public class JwtServiceImpl extends JwrConfig implements JwtService {
         extractCookie.apply(request, tokenType.getValue()).ifPresent(cookie -> {
             cookie.setValue(EMPTY_VALUE);
             cookie.setMaxAge(0);
+            cookie.setHttpOnly(true);
+            cookie.setSecure(isCookieSecure());
+            cookie.setPath("/");
+            cookie.setAttribute("SameSite", getCookieSameSite());
             response.addCookie(cookie);
         });
     }

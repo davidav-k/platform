@@ -26,3 +26,6 @@ dist/
 .env
 infrastructure/docker/pgdata/
 infrastructure/docker/pgadmindata/
+
+# Added by ggshield
+.cache_ggshield

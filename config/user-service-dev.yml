@@ -20,7 +20,7 @@ spring:
     generate-ddl: false
     show-sql: false
     hibernate:
-      ddl-auto: none
+      ddl-auto: validate
     properties:
       hibernate:
         globally_quoted_identifiers: true
@@ -48,8 +48,6 @@ spring:
 
     verify:
       host: ${EMAIL_VERIFY_HOST}
-  application:
-    name: user-service
 server:
   port: ${APPLICATION_PORT:8085}
   error:
@@ -58,8 +56,15 @@ server:
       enabled: false
 
 jwt:
-  expiration: ${JWT_EXPIRATION}
+  expiration-seconds: ${JWT_EXPIRATION:432000}
   secret: ${JWT_SECRET}
+
+auth:
+  cookie:
+    secure: ${AUTH_COOKIE_SECURE:false}
+    same-site: ${AUTH_COOKIE_SAME_SITE:Lax}
+    access-max-age-seconds: ${AUTH_ACCESS_COOKIE_MAX_AGE_SECONDS:600}
+    refresh-max-age-seconds: ${AUTH_REFRESH_COOKIE_MAX_AGE_SECONDS:7200}
 
 admin:
   password: ${ADMIN_PASSWORD}
@@ -72,5 +77,9 @@ api:
 eureka:
   client:
     service-url:
-      defaultZone: http://eureka-server:8761/eureka #  for Docker
-#        defaultZone: http://localhost:8761/eureka  #  for Idea
+      defaultZone: ${EUREKA_URL:http://eureka-server:8761/eureka}
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

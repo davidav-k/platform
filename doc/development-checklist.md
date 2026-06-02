@@ -30,6 +30,7 @@ Use this checklist before opening a pull request.
 - [ ] `mvn -B -f infrastructure/api-gateway/pom.xml test`
 - [ ] `mvn -B -f infrastructure/config-server/pom.xml test`
 - [ ] `mvn -B -f infrastructure/eureka-server/pom.xml test`
+- [ ] `./scripts/check-local-stack.sh` when local startup behavior is affected
 - [ ] Startup instructions were checked if Docker, config, ports, or service discovery changed.
 
 ## Documentation

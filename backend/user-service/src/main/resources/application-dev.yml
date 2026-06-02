@@ -1,1 +1,2 @@
-JWT_EXPIRATION: 432000000 # 5 days in milliseconds time limit for JWT
+# Runtime development settings are served by Config Server from
+# config/user-service-dev.yml.

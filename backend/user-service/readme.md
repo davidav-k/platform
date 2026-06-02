@@ -1,13 +1,20 @@
 # User Service
 
-This service handles user management, including:
+Implemented service for:
+
 - User registration
 - Authentication using JWT
 - Role management
+- Profiles and account lifecycle
+- MFA
+- Flyway-managed PostgreSQL persistence
 
 ## Technologies
-- Spring Boot
+- Java 17
+- Spring Boot 3.4.0
+- Spring Cloud 2024.0.1
 - PostgreSQL for user data storage
+- Flyway for schema migrations
 - Google Guava for caching
 - Spring Security for authentication and authorization
 - Spring Mail for email notifications
@@ -17,11 +24,14 @@ This service handles user management, including:
 
 ## Endpoints and Permissions
 
+These are internal service paths. API Gateway exposes user traffic under
+`/api/users/**` and rewrites it to `/api/v1/user/**`.
+
 ### User Management
-- **POST** `/api/v1/user/register` - Register a new user. **Requires:** `user:create`
+- **POST** `/api/v1/user/register` - Register a new user. **Requires:** No authentication
 - **GET** `/api/v1/user/verify/account` - Verify a new user account using a key. **Requires:** No authentication
 - **POST** `/api/v1/user/login` - Log in a user. **Requires:** No authentication
-- **POST** `/api/v1/user/enable-mfa` - Enable multi-factor authentication (MFA) for a user. **Requires:** `user:update`  or be the owner of the account
+- **POST** `/api/v1/user/enable-mfa` - Enable MFA for the authenticated user's own account. **Requires:** Valid access token
 - **POST** `/api/v1/user/verify-mfa` - Verify MFA for a user. **Requires:** No authentication
 - **POST** `/api/v1/user/unlock` - Unlock a user account. **Requires:** `user:update`
 - **POST** `/api/v1/user/lock` - Lock a user account. **Requires:** `user:update`
@@ -29,17 +39,41 @@ This service handles user management, including:
 - **GET** `/api/v1/user/profile` - Retrieve the profile of the logged-in user. **Requires:** Valid access token
 - **PUT** `/api/v1/user/{userId}` - Update user details. **Requires:** `user:update` or be the owner of the account
 - **PATCH** `/api/v1/user/password/{userId}` - Change a user's password. **Requires:** `user:update` or be the owner of the account
-- **DELETE** `/api/v1/user/{userId}` - Delete a user. **Requires:** `user:delete`
+- **DELETE** `/api/v1/user/{userId}` - Hard-delete a user and user-service-owned dependent data. **Requires:** `user:delete`. **Restrictions:** system user `0` and self-deletion are rejected
 
-### For local launch
-1. .env file
-   - Copy .env.example to .env
-   - Change the values of the variables in the .env file to your local environment
+API Gateway exposes password changes externally as
+`PATCH /api/users/password/{userId}`.
 
-2. Run in the terminal from the root project folder
+For the full registration, login, refresh, JWT, and cookie behavior, see
+[Authentication flow](../../doc/security/auth-flow.md).
+
+### Local Launch
+
+Run from the repository root:
+
 ```bash
-docker compose --env-file .env -f compose.yml up -d
+cp .env.example .env
+docker compose --env-file .env -f compose.yml up -d --build
+./scripts/check-local-stack.sh
 ```
-Containers with the database, Redis, mail service, infrastructure services, gateway, and user service are built and launched.
 
-#### localhost:8025 - mailhog (email testing tool)
+MailHog UI is available at `http://localhost:8025`.
+
+See [Environment variables](../../doc/configuration/env-variables.md) and
+[Database migration strategy](../../doc/database/migration-strategy.md).
+
+### Configuration Ownership
+
+Config Server is the primary source of truth for user-service runtime
+configuration. Add datasource, JPA, Flyway, JWT, cookie, mail, Eureka, logging,
+and service behavior properties to `config/user-service-dev.yml`, using
+environment-variable placeholders for secrets and environment-specific values.
+
+The bundled `application.yml` contains only the application name and default
+profile. For an IntelliJ launch, start the supporting containers and set
+`CONFIG_SERVER_URI=http://localhost:8888`, `EUREKA_URL=http://localhost:8761/eureka`,
+`POSTGRES_HOST=localhost`, and `EMAIL_HOST=localhost` in the run configuration.
+Keep the remaining values aligned with the root `.env` file.
+
+See [Configuration management](../../doc/architecture/configuration-management.md)
+for the ownership hierarchy and startup modes.

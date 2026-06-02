@@ -1,8 +1,0 @@
-# Redis
-
-
-## Features:
--
-
-## Technologies:
--

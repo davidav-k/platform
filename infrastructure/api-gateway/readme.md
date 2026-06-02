@@ -19,15 +19,50 @@ handling routing, authentication, and cross-cutting concerns like CORS and circu
 
 ### Configuration
 
-The API Gateway routes traffic to the following services:
-- User Service (/api/users/**)
-- Task Service (/api/tasks/**)
+The API Gateway currently defines:
+
+| External route | Internal rewrite | State |
+| --- | --- | --- |
+| `/api/users/**` | `/api/v1/user/**` | Implemented and routed to `user-service` |
+| `/api/tasks/**` | `/api/v1/tasks/**` | Reserved route only; no runnable `task-service` exists |
+
+The user route forwards `POST`, `GET`, `PUT`, `PATCH`, `DELETE`, and `OPTIONS`.
+Password changes are exposed as `PATCH /api/users/password/{userId}`.
+
+Notification routes do not exist yet. The future routing contract is
+documented in
+[Service boundaries](../../doc/architecture/service-boundaries.md).
 
 ### Authentication
-All requests are validated using JWT tokens. The token must be provided in the Authorization
-header with the Bearer scheme. The gateway extracts the username and passes it
-as an X-Authenticated-User header to downstream services.
+Protected requests are validated using JWT tokens. The gateway accepts the
+`access-token` cookie or an `Authorization` header with the Bearer scheme. It
+extracts the username and passes it as an `X-Authenticated-User` header to
+downstream services. Downstream services still validate JWTs independently.
+
+Registration, login, account verification, MFA verification, and refresh are
+allowed through the gateway without an access token so `user-service` can
+apply the endpoint-specific checks.
 
 ### API Routes
 - User Service: http://localhost:8080/api/users/**
-- Task Service: http://localhost:8080/api/tasks/**
+- Reserved task route: http://localhost:8080/api/tasks/**
+
+Use [Health checks](../../doc/operations/health-checks.md) to verify Gateway
+health and the read-only user-service routing probe.
+
+### Manual Password-Change Route Check
+
+After logging in with a local test account, verify the protected route with a
+cookie jar and request-body file stored outside the repository:
+
+```bash
+curl -i --request PATCH \
+  "http://localhost:8080/api/users/password/${USER_ID}" \
+  --cookie /path/to/local-auth-cookies.txt \
+  --header 'Content-Type: application/json' \
+  --data @/path/to/local-password-change.json
+```
+
+The local JSON file contains `oldPassword`, `newPassword`, and
+`confirmNewPassword`. Do not commit or log the cookie jar, request body, or
+password values.

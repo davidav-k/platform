@@ -33,22 +33,26 @@ public class AdminInitializer {
 
     @PostConstruct
     public void initAdminUser() {
-        if (!userRepository.existsByEmail("admin@mail.com")) {
-            RoleEntity adminRole = roleRepository.findByNameIgnoreCase("ADMIN")
-                    .orElseGet(() -> {
-                        RoleEntity role = new RoleEntity();
-                        role.setName("ADMIN");
-                        role.setAuthorities(Authority.ADMIN);
-                        RequestContext.setUserId(0L);
-                        return roleRepository.save(role);
-                    });
-            UserEntity admin = UserUtils.createUserEntity("admin", "admin", "admin@mail.com", adminRole);
-            admin.setEnabled(true);
-            RequestContext.setUserId(0L);
-            userRepository.save(admin);
-            CredentialEntity credentialEntity = new CredentialEntity(admin, passwordEncoder.encode(adminPassword));
-            credentialRepository.save(credentialEntity);
-            log.info("Admin user created successfully!");
+        try {
+            if (!userRepository.existsByEmail("admin@mail.com")) {
+                RoleEntity adminRole = roleRepository.findByNameIgnoreCase("ADMIN")
+                        .orElseGet(() -> {
+                            RoleEntity role = new RoleEntity();
+                            role.setName("ADMIN");
+                            role.setAuthorities(Authority.ADMIN);
+                            RequestContext.setUserId(0L);
+                            return roleRepository.save(role);
+                        });
+                UserEntity admin = UserUtils.createUserEntity("admin", "admin", "admin@mail.com", adminRole);
+                admin.setEnabled(true);
+                RequestContext.setUserId(0L);
+                userRepository.save(admin);
+                CredentialEntity credentialEntity = new CredentialEntity(admin, passwordEncoder.encode(adminPassword));
+                credentialRepository.save(credentialEntity);
+                log.info("Admin user created successfully!");
+            }
+        } finally {
+            RequestContext.clear();
         }
     }
 }

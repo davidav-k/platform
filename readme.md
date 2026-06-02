@@ -3,60 +3,136 @@
 * The project is under active development.
 
 ## Overview
-Task Management Platform is a microservice-based system for managing tasks, with features for user authentication, task creation, editing, and notifications. The platform implements modern security measures with **access** and **refresh tokens** to ensure secure user authentication and authorization. **Access tokens** are stored in **Redis** for fast, scalable, and secure token management.
+Task Management Platform is an MVP-stage microservice project. The runnable
+platform currently focuses on user registration, authentication, authorization,
+profile management, and account lifecycle. Task management and platform
+notifications are documented future service boundaries, not implemented
+features.
 
-### Architecture
-- **Microservices**: Loosely coupled services that can be developed, deployed, and scaled independently
-- **API Gateway**: Central entry point that routes requests to appropriate microservices
-- **Service Discovery**: Uses Eureka for dynamic service registration and discovery
-- **Config Server**: Centralized configuration management for all microservices, providing externalized configuration properties stored in a Git repository
-- **Event-Driven Communication**: Services communicate asynchronously through Kafka events
+## Current MVP Status
+
+### Implemented
+
+- `user-service`: registration, account verification email, login, access and
+  refresh JWT cookies, MFA, profile access, account updates, locking, and
+  deletion
+- `api-gateway`: external `/api/users/**` routing, JWT early rejection,
+  Eureka-backed service discovery, CORS, and circuit breaker fallback
+- `config-server`: native configuration repository served from `./config`
+- `eureka-server`: service registration and discovery
+- Docker Compose support for PostgreSQL, Redis, MailHog, and Zipkin
+- Flyway-owned `user-service` schema with Hibernate validation
+- GitHub Actions Maven test matrix for the four implemented Java modules
+
+### In Progress
+
+- MVP stabilization of startup, security behavior, documentation, and
+  user-service
+- Gateway alignment for future services
+- Frontend integration; `frontend/vue-frontend` currently contains
+  documentation only
+
+### Planned
+
+- `task-service` and `notification-service`; their directories are
+  documentation shells and their future APIs are documented contracts
+- Event-driven communication and Kafka integration
+- Audit service and OpenAI-backed automation
+- Kubernetes, Helm, Prometheus, and Grafana deployment support
 
 ### Security
 - **JWT Authentication**: Stateless authentication using signed JSON Web Tokens
-- **Token Management**: Short-lived access tokens (15 minutes) and long-lived refresh tokens (7 days)
-- **Redis Cache**: High-performance in-memory data store for token validation and blacklisting
+- **Token Management**: Signed JWTs with explicit second-based expiration and shorter browser-cookie lifetimes
+- **User Service Cache**: In-process Guava cache; Redis runs in Compose but is not integrated into user-service
 - **Role-Based Access Control**: Granular permissions based on user roles
 
 ### Backend Services
 - **User Service**: Manages user registration, authentication, and profile management
-- **Task Service**: Handles task CRUD operations, assignments, and status tracking
-- **Notification Service**: Delivers real-time notifications via WebSockets and email
+- **Task Service**: Future owner of task CRUD operations, assignments, and status tracking
+- **Notification Service**: Future owner of system notifications, preferences, and platform email delivery
 
 ### Data Storage
-- **PostgreSQL**: Relational database for persistent data storage with transaction support
-- **Redis**: In-memory data structure store for caching and real-time features
+- **PostgreSQL**: User-service persistence; schema changes are managed by Flyway
+- **Redis**: Started and health-checked by Compose, but not currently used by user-service
 - **Database per Service**: Each microservice has its own database for independence
 
 ### DevOps & Infrastructure
 - **Docker**: Containerization for consistent development and deployment environments
-- **Kubernetes**: Container orchestration for automated deployment, scaling, and management
-- **GitHub Actions**: CI/CD pipelines for automated testing and deployment
-- **Prometheus & Grafana**: Monitoring and visualization of service metrics
-- **Config Server**: Spring Cloud Config server for centralized, version-controlled configuration management
+- **GitHub Actions**: CI workflow for the Maven test matrix
+- **Config Server**: Spring Cloud Config server backed by the local native repository in `./config`
 
 ## Stack
-- **Backend**: Java 17, Spring Boot 3.x
-- **Frontend**: Vue.js 3, Vuex
-- **Database**: PostgreSQL 14
-- **Infrastructure**: Docker, Kubernetes, GitHub Actions, Kafka, Redis
+- **Backend**: Java 17, Spring Boot 3.4.0, Spring Cloud 2024.0.1
+- **Database**: PostgreSQL 16.1, Flyway migrations
+- **Infrastructure**: Docker Compose v2, Redis 7, MailHog, Zipkin, Eureka, Config Server
+- **Future**: Vue 3 frontend, Kafka, Kubernetes, Helm, Prometheus, Grafana
 
 ## Run
 ### Local
-- You need to have Docker and Docker Compose installed on your machine.
-- Create a `.env` file in the root directory with same variables as `.env.example`
-- Build and run the Docker containers using Docker Compose:
+- Install Docker with Docker Compose v2.
+- Create the local environment file from the development-only template:
 ```bash
-   docker compose --env-file .env -f compose.yml up -d
+cp .env.example .env
 ```
-- Access the application at `http://localhost:8080`
+- Replace placeholder values in `.env`. See [Environment variables](doc/configuration/env-variables.md).
+- Build and run the containers from the repository root:
+```bash
+docker compose --env-file .env -f compose.yml up -d --build
+```
+- Use API Gateway as the external API base URL: `http://localhost:8080`
+
+Check container readiness:
+```bash
+docker compose --env-file .env -f compose.yml ps
+docker compose --env-file .env -f compose.yml logs -f config-server eureka-server user-service gateway
+```
+
+Verify the complete local stack after startup:
+```bash
+./scripts/check-local-stack.sh
+```
+
+Windows PowerShell:
+```powershell
+.\scripts\check-local-stack.ps1
+```
+
+Expected local ports:
+- `8080` API Gateway
+- `8085` User Service
+- `8888` Config Server
+- `8761` Eureka Server
+- `5432` PostgreSQL
+- `6379` Redis
+- `1025` MailHog SMTP
+- `8025` MailHog UI
+- `9411` Zipkin
+
+Useful health checks:
+```bash
+curl -fsS http://localhost:8888/actuator/health
+curl -fsS http://localhost:8761/actuator/health
+curl -fsS http://localhost:8085/actuator/health
+curl -fsS http://localhost:8080/actuator/health
+```
 
 ## Development Workflow
 
 Repository workflow documentation:
+- [Architecture overview](doc/architecture.md)
 - [Development workflow](doc/development-workflow.md)
 - [Development checklist](doc/development-checklist.md)
 - [Technical debt tracking](doc/technical-debt.md)
+- [Environment variables](doc/configuration/env-variables.md)
+- [Configuration management](doc/architecture/configuration-management.md)
+- [Database migration strategy](doc/database/migration-strategy.md)
+- [Authentication flow](doc/security/auth-flow.md)
+- [Health checks](doc/operations/health-checks.md)
+- [API contract standards](doc/api/api-contract-standards.md)
+- [Task service API contract](doc/api/task-service-contract.md)
+- [Notification service API contract](doc/api/notification-service-contract.md)
+- [Service boundaries](doc/architecture/service-boundaries.md)
+- [Documentation audit](doc/reports/documentation-audit.md)
 
 Pull requests should use the GitHub pull request template and target `dev` during MVP development unless the change is urgent repository maintenance for `main`.
 
@@ -74,22 +150,6 @@ GitHub Actions runs the same Maven test matrix on pull requests and pushes to `m
 ## Pre-commit
 
 This repository uses `pre-commit` for basic file hygiene and secret scanning before commits.
-
-Install the tools:
-```bash
-pipx install pre-commit
-pipx install ggshield
-```
-
-Authenticate GitGuardian without storing secrets in the repository:
-```bash
-ggshield auth login
-```
-
-Install the Git hook:
-```bash
-pre-commit install
-```
 
 Run all hooks manually:
 ```bash

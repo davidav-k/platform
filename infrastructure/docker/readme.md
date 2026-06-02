@@ -1,17 +1,33 @@
 # Docker Infrastructure
 
-This directory contains the Docker setup for the Task Management Platform. Each microservice is containerized, allowing for easy deployment and scaling. Docker Compose is used to manage the entire stack for local development.
+Docker Compose at the repository root manages the current local MVP stack.
+Application Dockerfiles live next to each implemented Java module.
 
-## Services:
-- **User Service**: Handles user registration, authentication, and role management
-- **Task Service**: Handles task creation, editing, and deletion
-- **Notification Service**: Sends notifications to users when tasks are updated
-- **Redis**: Stores access tokens for user authentication
-- **PostgreSQL**: Stores user and task data
+## Current Services
 
-## Running the project:
-To start all services locally, run the following command from the root of the repository:
+| Service | Purpose |
+| --- | --- |
+| `postgres` | User-service persistence |
+| `redis` | Independently running Redis container; not used for JWT storage |
+| `mailhog` | Local SMTP capture |
+| `zipkin` | Local tracing infrastructure container |
+| `config-server` | Native Spring Cloud Config repository |
+| `eureka-server` | Service discovery |
+| `user-service` | User management and authentication |
+| `gateway` | External API entry point |
+
+`task-service` and `notification-service` are planned and are not Compose
+services.
+
+## Running The Project
+
+From the repository root:
 
 ```bash
-docker compose --env-file .env -f compose.yml up -d
+cp .env.example .env
+docker compose --env-file .env -f compose.yml up -d --build
+./scripts/check-local-stack.sh
 ```
+
+See [Health checks](../../doc/operations/health-checks.md) and
+[Environment variables](../../doc/configuration/env-variables.md).

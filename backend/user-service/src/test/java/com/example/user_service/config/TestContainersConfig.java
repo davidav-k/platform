@@ -27,7 +27,7 @@ public class TestContainersConfig {
                 "spring.datasource.url=" + postgreSQLContainer.getJdbcUrl(),
                 "spring.datasource.username=" + postgreSQLContainer.getUsername(),
                 "spring.datasource.password=" + postgreSQLContainer.getPassword(),
-                "spring.jpa.hibernate.ddl-auto=create-drop"
+                "spring.jpa.hibernate.ddl-auto=validate"
             ).applyTo(context.getEnvironment());
         }
     }

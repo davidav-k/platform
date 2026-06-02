@@ -1,20 +1,21 @@
 ======================================================================================
 Первый запуск приложения
-1. Указать  в application-dev.yml - POSTGRESQL_HOST, EMAIL_HOST local ip address
-2. Удалить все контейнеры и volumes (Docker)
-3. Из папки docker запустить в терминале 'docker compose up -d'
-происходит сборка и запуск контейнеров с базой данных, админ панели базы данных и локальным почтовым сервером
-4. Включить инициализацию БД:
-application.yml: sql: init: mode: always
-5. В настройках запуска приложения указать файл .env в котором должны быть указаны переменные окружения SECRET, ADMIN_PASSWORD
-6. Запустить приложение
-происходит инициализация базы данных с помощью файла db_init.sql
-    - создаются таблицы users, roles, user_roles, credentials, confirmations
+1. Создать корневой файл .env на основе .env.example. Актуальный перечень переменных:
+   doc/configuration/env-variables.md
+2. При необходимости удалить старые контейнеры и volumes (Docker)
+3. Из корневой папки проекта запустить:
+   docker compose --env-file .env -f compose.yml up -d
+происходит сборка и запуск контейнеров с базой данных и локальным почтовым сервером
+4. В настройках запуска приложения указать корневой файл .env
+5. Запустить приложение
+происходит автоматическая инициализация базы данных с помощью Flyway migration
+V1__user_service_baseline.sql
+    - создаются таблицы users, roles, user_roles, credentials, confirmations, login_history
     - в таблицу users добавлен пользователь SYSTEM c id = 0
     - в таблицу roles добавлены роли ADMIN и USER c id = 1 и 2 соответственно
     - создается пользователь admin с ролью ADMIN
-7. Перед повторными запусками приложения выключить инициализацию БД
-application.yml: sql: init: mode: never
+6. При повторных запусках Flyway автоматически проверяет примененные миграции.
+   Ручное переключение режима инициализации БД не требуется.
 
 
 ======================================================================================
@@ -68,9 +69,9 @@ application.yml
 ======================================================================================
 application-dev.yml
 ##mail
-#EMAIL_HOST: smtp.gmail.com
-#EMAIL_PORT: 587
-#EMAIL_ID: davidtnko@gmail.com
+#EMAIL_HOST: mailhog
+#EMAIL_PORT: 1025
+#EMAIL_ID: dev_sender@example.local
 #EMAIL_PASSWORD:
-#VERIFY_EMAIL_HOST: http://localhost:8085
+#EMAIL_VERIFY_HOST: http://localhost:8085
 =======================================================================================
