@@ -5,6 +5,7 @@
 `user-service` owns its PostgreSQL schema. Flyway migrations under
 `backend/user-service/src/main/resources/db/migration` are the source of truth.
 Hibernate validates the migrated schema and must not create or update it.
+The local Docker Compose stack uses PostgreSQL `16.1`.
 
 The baseline migration is `V1__user_service_baseline.sql`. It reproduces the
 current user-service schema and the existing local bootstrap seed data.
@@ -65,10 +66,10 @@ a backup and a reviewed deployment plan before rollout.
 For a clean local environment:
 
 ```bash
-docker compose down
+docker compose --env-file .env -f compose.yml down
 rm -rf infrastructure/docker/pgdata
-docker compose up -d --build
-docker compose logs user-service
+docker compose --env-file .env -f compose.yml up -d --build
+docker compose --env-file .env -f compose.yml logs user-service
 docker exec tsp_postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
   -c "SELECT version, description, success FROM flyway_schema_history ORDER BY installed_rank;"
 ```

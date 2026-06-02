@@ -1,14 +1,19 @@
 # Task Service
 
-The Task Service is responsible for managing user tasks, including creating, editing, and deleting tasks. It supports full CRUD operations and integrates with the User Service for role-based access control.
+## Status
 
-## Features:
-- Create, update, delete tasks
-- Associate tasks with users
-- Support for task priority and status
-- Role-based access control (users can only manage their own tasks)
+Planned service. This directory currently contains documentation only. There
+is no Maven module, application code, database schema, or Docker Compose
+container for `task-service`.
 
-## Technologies:
-- Spring Boot
-- PostgreSQL for task storage
-- Kafka for message exchange with other microservices (optional)
+## Future Responsibility
+
+`task-service` will own tasks, assignments, statuses, comments, and task
+history. It must not access the `user-service` database directly.
+
+The future HTTP API is defined in
+[Task service API contract](../../doc/api/task-service-contract.md). Aggregate
+ownership and gateway alignment notes are defined in
+[Service boundaries](../../doc/architecture/service-boundaries.md).
+
+Kafka integration is a future direction, not a current dependency.

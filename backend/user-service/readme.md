@@ -1,13 +1,20 @@
 # User Service
 
-This service handles user management, including:
+Implemented service for:
+
 - User registration
 - Authentication using JWT
 - Role management
+- Profiles and account lifecycle
+- MFA
+- Flyway-managed PostgreSQL persistence
 
 ## Technologies
-- Spring Boot
+- Java 17
+- Spring Boot 3.4.0
+- Spring Cloud 2024.0.1
 - PostgreSQL for user data storage
+- Flyway for schema migrations
 - Google Guava for caching
 - Spring Security for authentication and authorization
 - Spring Mail for email notifications
@@ -16,6 +23,9 @@ This service handles user management, including:
 - Lombok for reducing boilerplate code
 
 ## Endpoints and Permissions
+
+These are internal service paths. API Gateway exposes user traffic under
+`/api/users/**` and rewrites it to `/api/v1/user/**`.
 
 ### User Management
 - **POST** `/api/v1/user/register` - Register a new user. **Requires:** No authentication
@@ -31,15 +41,24 @@ This service handles user management, including:
 - **PATCH** `/api/v1/user/password/{userId}` - Change a user's password. **Requires:** `user:update` or be the owner of the account
 - **DELETE** `/api/v1/user/{userId}` - Delete a user. **Requires:** `user:delete`
 
-### For local launch
-1. .env file
-   - Copy .env.example to .env
-   - Change the values of the variables in the .env file to your local environment
+The gateway currently routes `POST`, `GET`, `PUT`, `DELETE`, and `OPTIONS`
+methods for `/api/users/**`. The implemented password-change `PATCH` endpoint
+is therefore not externally reachable through the gateway yet.
 
-2. Run in the terminal from the root project folder
+For the full registration, login, refresh, JWT, and cookie behavior, see
+[Authentication flow](../../doc/security/auth-flow.md).
+
+### Local Launch
+
+Run from the repository root:
+
 ```bash
-docker compose --env-file .env -f compose.yml up -d
+cp .env.example .env
+docker compose --env-file .env -f compose.yml up -d --build
+./scripts/check-local-stack.sh
 ```
-Containers with the database, Redis, mail service, infrastructure services, gateway, and user service are built and launched.
 
-#### localhost:8025 - mailhog (email testing tool)
+MailHog UI is available at `http://localhost:8025`.
+
+See [Environment variables](../../doc/configuration/env-variables.md) and
+[Database migration strategy](../../doc/database/migration-strategy.md).

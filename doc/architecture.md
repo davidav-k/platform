@@ -1,125 +1,93 @@
-### Проект - TSP
+# Platform Architecture
 
-**Название:** Task Management Platform
+## Purpose
 
+Platform is an MVP-stage Task Management Platform. The current runnable system
+stabilizes user management and shared infrastructure before task and
+notification services are implemented.
 
-**Описание:** Платформа для управления задачами с поддержкой микросервисной архитектуры, асинхронной обработки сообщений через Kafka, а также встроенной интеграцией ChatGPT для автоматизации создания задач, помощи пользователям и анализа активности системы. Проект включает функционал для работы с пользователями, ролями, уведомлениями и поддерживает рекомендации и взаимодействие с системой через интеллектуальный чат.
+For aggregate ownership and future service rules, see
+[Service boundaries](architecture/service-boundaries.md).
 
----
+## Implemented Runtime
 
-### Архитектура проекта:
+The Docker Compose stack currently runs:
 
-**Frontend:**
-- **Vue.js**: Интерфейс для взаимодействия с пользователями, поддерживающий создание и управление задачами, комментариями, а также интеллектуальный чат для общения с ChatGPT.
-  - Включает регистрацию и авторизацию через JWT.
-  - Компоненты для создания и редактирования задач, просмотра уведомлений, работы с комментариями и взаимодействия с ChatGPT для автоматизации задач.
+| Component | Responsibility | Port |
+| --- | --- | --- |
+| `user-service` | Users, roles, authentication, JWT issuance and validation, MFA, profiles, and account lifecycle | `8085` |
+| `api-gateway` | External entry point, JWT early rejection, routing, CORS, and circuit breaker fallback | `8080` |
+| `config-server` | Spring Cloud Config native repository mounted from `./config` | `8888` |
+| `eureka-server` | Service registration and discovery | `8761` |
+| PostgreSQL 16.1 | User-service persistence | `5432` |
+| Redis 7 | Independently running and health-checked; not integrated into user-service | `6379` |
+| MailHog | Local SMTP capture and UI | `1025`, `8025` |
+| Zipkin | Local tracing infrastructure container | `9411` |
 
-**Backend (микросервисы на Spring Boot):**
-1. **User Service**:
-   - Управление пользователями (регистрация, авторизация, роли).
-   - Безопасность через **Spring Security** и **JWT**.
-   - Хранение данных в **PostgreSQL**.
+The implemented request path for user APIs is:
 
-2. **Task Service**:
-   - Создание, редактирование, удаление задач.
-   - Управление статусами задач, приоритетами, комментариями.
-   - Публикация событий о создании или изменении задач в **Kafka**.
-   - Хранение данных в **PostgreSQL**.
+```text
+client -> api-gateway /api/users/** -> user-service /api/v1/user/**
+```
 
-3. **Notification Service**:
-   - Подписан на события Kafka, связанные с задачами и комментариями.
-   - Отправка уведомлений пользователям через email или push-уведомления.
-   - Асинхронная обработка сообщений через **Kafka**.
+The gateway validates access JWTs as an early rejection layer. `user-service`
+validates JWTs again and owns authorization decisions. See
+[Authentication flow](security/auth-flow.md).
 
-4. **Audit Service**:
-   - Логирование всех действий в системе (создание задач, изменения, комментарии).
-   - Хранение журналов активности для аудита.
+## Partially Configured
 
-5. **Gateway Service**:
-   - Маршрутизация запросов от фронтенда к микросервисам.
-   - JWT-аутентификация и авторизация на уровне Gateway.
+- API Gateway reserves `/api/tasks/**` and rewrites it to `/api/v1/task/**`,
+  but no runnable `task-service` module or container exists.
+- Redis and Zipkin run locally, but user-service does not currently integrate
+  with Redis and tracing integration is not documented as complete.
+- `frontend/vue-frontend` contains documentation only. There is no frontend
+  application manifest or source tree in the repository.
 
-6. **ChatGPT Service**:
-   - Интеграция с **OpenAI API** для обработки запросов пользователей через чат.
-   - Поддержка создания задач через взаимодействие с пользователем.
-   - Анализ активности и рекомендации на основе пользовательских запросов.
+## Planned Services
 
----
+The following directories are documentation shells:
 
-### Технологический стек:
+| Service | Future ownership |
+| --- | --- |
+| `task-service` | Tasks, assignments, task statuses, comments, and task history |
+| `notification-service` | System notifications, preferences, email delivery requests, and delivery tracking |
 
-**Frontend:**
-- **Vue.js**: Для создания динамического интерфейса.
-- **Axios**: Для взаимодействия с backend API.
-- **JWT**: Для аутентификации.
-- **Chat-интерфейс**: Компонент для взаимодействия с ChatGPT.
+Their future contracts are documented in:
 
-**Backend:**
-- **Spring Boot**: Для разработки микросервисов.
-- **Spring Security**: Для защиты API с помощью JWT.
-- **Kafka**: Брокер сообщений для обмена событиями между микросервисами.
-- **PostgreSQL**: База данных для хранения данных о пользователях и задачах.
-- **Redis**: Для кеширования.
-- **Docker**: Контейнеризация всех сервисов.
-- **Kubernetes**: Оркестрация контейнеров.
-- **GitHub Actions**: Автоматизация CI/CD.
-- **Prometheus и Grafana**: Мониторинг состояния сервисов.
-- **Helm**: Управление конфигурациями Kubernetes.
-- **OpenAI API**: Для интеграции ChatGPT.
+- [Task service API contract](api/task-service-contract.md)
+- [Notification service API contract](api/notification-service-contract.md)
 
----
+## Planned Architecture
 
-### Основные фичи проекта:
+The following items are roadmap direction, not implemented functionality:
 
-1. **Аутентификация и авторизация:**
-   - Пользователи могут регистрироваться и авторизоваться через JWT.
-   - Ограничение доступа к API на основе ролей.
+- synchronous REST integration for future MVP services
+- later event-driven communication and Kafka integration
+- audit service
+- OpenAI-backed task automation
+- Vue 3 frontend implementation
+- Kubernetes and Helm deployment configuration
+- Prometheus and Grafana monitoring stack
 
-2. **Управление задачами:**
-   - Пользователи могут создавать, редактировать, удалять задачи.
-   - Поддержка статусов задач, приоритетов и комментариев.
+## Data Ownership
 
-3. **Интеграция ChatGPT:**
-   - **Интеллектуальный чат** позволяет пользователям вводить запросы на создание задач или рекомендации.
-   - Автоматизация рутинных задач: ChatGPT преобразует свободный текст в конкретные задачи.
-   - Анализ пользовательской активности и создание отчетов.
+- `user-service` owns its PostgreSQL schema.
+- Flyway migrations are authoritative for the user-service schema.
+- Hibernate uses `ddl-auto=validate`; it does not create or update schema.
+- Future services must own separate schemas or databases.
+- Services must not access another service's database directly.
 
-4. **Уведомления:**
-   - Сервис уведомлений обрабатывает события из Kafka и отправляет пользователям уведомления.
+See [Database migration strategy](database/migration-strategy.md).
 
-5. **Аудит действий:**
-   - Логирование всех событий в системе для дальнейшего анализа.
+## Local Development
 
-6. **Инфраструктура:**
-   - Контейнеризация через Docker, развертывание через Kubernetes.
-   - CI/CD с помощью GitHub Actions.
-   - Мониторинг и логирование через Prometheus и Grafana.
+Start and verify the current stack from the repository root:
 
----
+```bash
+cp .env.example .env
+docker compose --env-file .env -f compose.yml up -d --build
+./scripts/check-local-stack.sh
+```
 
-### Пример сценария работы системы:
-
-1. **Создание задачи через ChatGPT:**
-   - Пользователь пишет в чат: "Создать задачу для рефакторинга кода Task Service".
-   - **ChatGPT Service** преобразует запрос в задачу с приоритетом и сроком выполнения.
-   - **Task Service** сохраняет задачу в базе данных и публикует событие в Kafka.
-   - **Notification Service** отправляет уведомление пользователям о новой задаче.
-   - **Audit Service** записывает событие в журнал активности.
-
-2. **Общий процесс работы:**
-   - Пользователь взаимодействует с системой через интерфейс Vue.js.
-   - Запросы проходят через **Gateway Service**, который маршрутизирует их к нужным микросервисам.
-   - Микросервисы взаимодействуют друг с другом через события Kafka.
-   - Пользователь получает уведомления о действиях в системе, а ChatGPT помогает автоматизировать задачи и предоставляет рекомендации.
-
----
-
-### Основные этапы проекта:
-1. Настройка инфраструктуры: Docker, Kubernetes, Kafka, PostgreSQL.
-2. Разработка микросервисов (User, Task, Notification, Audit, Gateway).
-3. Интеграция ChatGPT для автоматизации задач.
-4. Настройка CI/CD через GitHub Actions.
-5. Внедрение мониторинга и логирования.
-6. Деплой и масштабирование системы через Kubernetes.
-
----
+See [Health checks](operations/health-checks.md) and
+[Environment variables](configuration/env-variables.md) for details.

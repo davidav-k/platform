@@ -19,9 +19,19 @@ handling routing, authentication, and cross-cutting concerns like CORS and circu
 
 ### Configuration
 
-The API Gateway routes traffic to the following services:
-- User Service (/api/users/**)
-- Task Service (/api/tasks/**)
+The API Gateway currently defines:
+
+| External route | Internal rewrite | State |
+| --- | --- | --- |
+| `/api/users/**` | `/api/v1/user/**` | Implemented and routed to `user-service` |
+| `/api/tasks/**` | `/api/v1/task/**` | Reserved route only; no runnable `task-service` exists |
+
+The user route currently forwards `POST`, `GET`, `PUT`, `DELETE`, and
+`OPTIONS`. It does not forward `PATCH`.
+
+Notification routes do not exist yet. The future routing contract is
+documented in
+[Service boundaries](../../doc/architecture/service-boundaries.md).
 
 ### Authentication
 Protected requests are validated using JWT tokens. The gateway accepts the
@@ -35,4 +45,7 @@ apply the endpoint-specific checks.
 
 ### API Routes
 - User Service: http://localhost:8080/api/users/**
-- Task Service: http://localhost:8080/api/tasks/**
+- Reserved task route: http://localhost:8080/api/tasks/**
+
+Use [Health checks](../../doc/operations/health-checks.md) to verify Gateway
+health and the read-only user-service routing probe.

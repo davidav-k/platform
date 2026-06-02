@@ -1,13 +1,22 @@
 # Notification Service
 
-The Notification Service is responsible for sending notifications to users when certain events occur in the system, such as task updates or comments. It can send notifications via email, push notifications, or other channels.
+## Status
 
-## Features:
-- Send notifications when tasks are created, updated, or deleted
-- Notification types: email, push notifications
-- Integrates with Kafka for receiving events from other microservices
+Planned service. This directory currently contains documentation only. There
+is no Maven module, application code, database schema, or Docker Compose
+container for `notification-service`.
 
-## Technologies:
-- Spring Boot
-- Kafka for receiving task events
-- Redis (optional) for caching notification events
+## Future Responsibility
+
+`notification-service` will own platform notifications, notification
+preferences, email delivery requests, templates, and delivery tracking.
+Existing account-verification email remains in `user-service` during MVP
+stabilization.
+
+The future HTTP API is defined in
+[Notification service API contract](../../doc/api/notification-service-contract.md).
+Aggregate ownership is defined in
+[Service boundaries](../../doc/architecture/service-boundaries.md).
+
+Kafka, push delivery, and WebSocket delivery are future directions, not current
+dependencies.
