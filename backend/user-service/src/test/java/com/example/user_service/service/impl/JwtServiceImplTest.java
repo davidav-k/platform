@@ -178,6 +178,10 @@ class JwtServiceImplTest {
                 .userId("test-user-id")
                 .authorities("READ,WRITE")
                 .role("USER")
+                .enabled(true)
+                .accountNonExpired(true)
+                .accountNonLocked(true)
+                .credentialsNonExpired(true)
                 .build();
 
         String token = jwtService.createToken(user, Token::getAccess);
@@ -243,22 +247,59 @@ class JwtServiceImplTest {
     }
 
     @Test
-    void getTokenDataRejectsInvalidToken() {
-
+    void getTokenDataRejectsDisabledUserAccount() {
         User user = User.builder()
                 .userId("test-user-id")
                 .authorities("READ,WRITE")
                 .role("USER")
+                .enabled(true)
+                .accountNonExpired(true)
+                .accountNonLocked(true)
+                .credentialsNonExpired(true)
                 .build();
 
         String token = jwtService.createToken(user, Token::getAccess);
 
-        User differentUser = User.builder()
-                .userId("different-user-id")
-                .authorities("READ")
+        User disabledUser = User.builder()
+                .userId("test-user-id")
+                .authorities("READ,WRITE")
                 .role("USER")
+                .enabled(false)
+                .accountNonExpired(true)
+                .accountNonLocked(true)
+                .credentialsNonExpired(true)
                 .build();
-        when(userService.getUserByUserId(anyString())).thenReturn(differentUser);
+        when(userService.getUserByUserId(anyString())).thenReturn(disabledUser);
+
+        boolean isValid = jwtService.getTokenData(token, TokenData::isValid);
+
+        assertFalse(isValid);
+    }
+
+    @Test
+    void getTokenDataRejectsLockedUserAccount() {
+        User user = User.builder()
+                .userId("test-user-id")
+                .authorities("READ,WRITE")
+                .role("USER")
+                .enabled(true)
+                .accountNonExpired(true)
+                .accountNonLocked(true)
+                .credentialsNonExpired(true)
+                .build();
+
+        String token = jwtService.createToken(user, Token::getAccess);
+
+        User lockedUser = User.builder()
+                .userId("test-user-id")
+                .authorities("READ,WRITE")
+                .role("USER")
+                .enabled(true)
+                .accountNonExpired(true)
+                .accountNonLocked(false)
+                .credentialsNonExpired(true)
+                .build();
+        when(userService.getUserByUserId(anyString())).thenReturn(lockedUser);
 
         boolean isValid = jwtService.getTokenData(token, TokenData::isValid);
 

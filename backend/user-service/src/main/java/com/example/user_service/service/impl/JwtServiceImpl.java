@@ -158,7 +158,10 @@ public class JwtServiceImpl extends JwrConfig implements JwtService {
 
         return tokenFunction.apply(
                 TokenData.builder()
-                        .isValid(Objects.equals(user.getUserId(), claims.getSubject()))
+                        .isValid(user.isEnabled()
+                                && user.isAccountNonExpired()
+                                && user.isAccountNonLocked()
+                                && user.isCredentialsNonExpired())
                         .authorities(tokenAuthorities)
                         .claims(claims)
                         .user(user)
