@@ -57,6 +57,16 @@ docker compose --env-file .env -f compose.yml ps
 docker compose --env-file .env -f compose.yml logs -f config-server eureka-server user-service gateway
 ```
 
+Verify the complete local stack after startup:
+```bash
+./scripts/check-local-stack.sh
+```
+
+Windows PowerShell:
+```powershell
+.\scripts\check-local-stack.ps1
+```
+
 Expected local ports:
 - `8080` API Gateway
 - `8085` User Service

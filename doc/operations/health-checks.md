@@ -22,6 +22,30 @@ A healthy service returns HTTP `200` with an aggregate response:
 Health details remain intentionally limited. Built-in indicators still
 contribute to the aggregate status.
 
+## Startup Verification Gap Analysis
+
+Before `scripts/check-local-stack.sh`, local startup verification was a manual
+procedure. Compose already defined health checks and health-aware startup
+ordering, and the documentation listed direct Actuator calls, but developers
+had to run separate commands and interpret the results themselves.
+
+The local stack expects eight containers:
+
+| Container | Published port | Docker health check |
+| --- | --- | --- |
+| `tsp_postgres` | `5432` | `pg_isready` |
+| `tsp_redis` | `6379` | `redis-cli ping` |
+| `tsp_zipkin` | `9411` | none |
+| `mailhog` | `1025`, `8025` | none |
+| `tsp_config` | `8888` | `/actuator/health` |
+| `tsp_eureka` | `8761` | `/actuator/health` |
+| `tsp_user_service` | `8085` | `/actuator/health` |
+| `tsp_gateway` | `8080` | `/actuator/health` |
+
+Gateway health proves that the gateway process is ready, but does not prove a
+route to a downstream service. The automated verification adds a read-only
+public route probe for `user-service`.
+
 ## Dependency Coverage
 
 The strategy uses built-in Spring health indicators where active integrations
@@ -63,6 +87,44 @@ Start the stack:
 docker compose --env-file .env -f compose.yml up -d --build
 ```
 
+Run the read-only local verification script from the repository root:
+
+```bash
+./scripts/check-local-stack.sh
+```
+
+Windows PowerShell:
+
+```powershell
+.\scripts\check-local-stack.ps1
+```
+
+The script fails immediately when a required dependency is unavailable and
+prints an `ERROR:` line with a diagnostic hint. A successful run ends with:
+
+```text
+Local platform stack verification passed.
+```
+
+The script verifies:
+
+1. Docker CLI, Docker Compose v2, the Docker daemon, `.env`, and `compose.yml`.
+2. All eight expected Compose containers are running.
+3. The six containers with Docker health checks report `healthy`.
+4. PostgreSQL accepts connections and Redis responds with `PONG`.
+5. Config Server health and mounted-repository access.
+6. Eureka Server health and registry access.
+7. User Service and API Gateway health.
+8. API Gateway routing to User Service through a public account-verification
+   request with an intentionally invalid non-UUID key.
+
+The routing probe does not create users, mutate confirmation data, send email,
+or require credentials. `user-service` currently may return HTTP `200` with an
+error envelope for the invalid key; a corrected implementation should return
+HTTP `400`. The script accepts both responses as evidence that routing worked.
+
+For manual inspection, use:
+
 Inspect health status:
 
 ```bash
@@ -93,6 +155,15 @@ curl -fsS http://localhost:8761/eureka/apps
 ```
 
 ## Troubleshooting
+
+### Docker daemon unavailable
+
+The verification script exits before inspecting containers when Docker Desktop
+or the Docker service is stopped. Start Docker, then run:
+
+```bash
+./scripts/check-local-stack.sh
+```
 
 ### PostgreSQL unavailable
 
