@@ -12,6 +12,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.util.Map;
@@ -41,7 +42,7 @@ public class ExceptionHandlerAdvice {
                 violation -> violation.getMessage(),
                 (existingValue, newValue) -> existingValue
             ));
-        return error(request, errors, "Constraint violation", HttpStatus.BAD_REQUEST);
+        return error(request, errors, "Provided arguments are not valid", HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
@@ -62,6 +63,12 @@ public class ExceptionHandlerAdvice {
                                                       HttpServletRequest request) {
         return error(request, Map.of(ex.getName(), "Value has an invalid format"),
             "Provided arguments are not valid", HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    public ResponseEntity<Response> handleHandlerMethodValidation(HandlerMethodValidationException ex,
+                                                                 HttpServletRequest request) {
+        return error(request, Map.of(), "Provided arguments are not valid", HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)

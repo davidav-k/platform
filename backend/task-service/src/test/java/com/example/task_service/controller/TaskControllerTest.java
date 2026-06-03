@@ -2,12 +2,16 @@ package com.example.task_service.controller;
 
 import com.example.task_service.dto.CreateTaskRequest;
 import com.example.task_service.dto.CreateTaskResponse;
+import com.example.task_service.dto.PageResponse;
+import com.example.task_service.dto.TaskListQuery;
+import com.example.task_service.dto.TaskListResponse;
 import com.example.task_service.dto.TaskResponse;
 import com.example.task_service.enumeration.TaskPriority;
 import com.example.task_service.enumeration.TaskStatus;
 import com.example.task_service.exception.TaskNotFoundException;
 import com.example.task_service.usecase.CreateTaskUseCase;
 import com.example.task_service.usecase.GetTaskUseCase;
+import com.example.task_service.usecase.ListTasksUseCase;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,10 +21,12 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.argThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -43,6 +49,9 @@ class TaskControllerTest {
 
     @MockitoBean
     private GetTaskUseCase getTaskUseCase;
+
+    @MockitoBean
+    private ListTasksUseCase listTasksUseCase;
 
     @Test
     void createsTask() throws Exception {
@@ -200,5 +209,117 @@ class TaskControllerTest {
             .andExpect(jsonPath("$.code").value(400))
             .andExpect(jsonPath("$.message").value("Provided arguments are not valid"))
             .andExpect(jsonPath("$.data.taskId").value("Value has an invalid format"));
+    }
+
+    @Test
+    void listsTasks() throws Exception {
+        UUID taskId = UUID.randomUUID();
+        UUID creatorUserId = UUID.randomUUID();
+        OffsetDateTime createdAt = OffsetDateTime.parse("2026-06-03T04:00:00Z");
+        OffsetDateTime updatedAt = OffsetDateTime.parse("2026-06-03T05:00:00Z");
+
+        when(listTasksUseCase.list(any(TaskListQuery.class)))
+            .thenReturn(new TaskListResponse(
+                List.of(new TaskResponse(
+                    taskId,
+                    "Implement login",
+                    "Create login functionality",
+                    TaskStatus.NEW,
+                    TaskPriority.HIGH,
+                    null,
+                    creatorUserId,
+                    createdAt,
+                    updatedAt
+                )),
+                new PageResponse(0, 20, 1, 1)
+            ));
+
+        mockMvc.perform(get("/api/v1/tasks"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.code").value(200))
+            .andExpect(jsonPath("$.status").value("OK"))
+            .andExpect(jsonPath("$.message").value("Tasks retrieved successfully."))
+            .andExpect(jsonPath("$.data.items[0].taskId").value(taskId.toString()))
+            .andExpect(jsonPath("$.data.items[0].title").value("Implement login"))
+            .andExpect(jsonPath("$.data.items[0].id").doesNotExist())
+            .andExpect(jsonPath("$.data.page.number").value(0))
+            .andExpect(jsonPath("$.data.page.size").value(20))
+            .andExpect(jsonPath("$.data.page.totalElements").value(1))
+            .andExpect(jsonPath("$.data.page.totalPages").value(1));
+
+        verify(listTasksUseCase).list(argThat(query ->
+            query.getStatus() == null
+                && query.getPriority() == null
+                && query.getAssigneeUserId() == null
+                && query.getCreatedByUserId() == null
+                && query.getPage() == 0
+                && query.getSize() == 20
+                && "createdAt,desc".equals(query.getSort())
+        ));
+    }
+
+    @Test
+    void listsTasksWithFilters() throws Exception {
+        UUID assigneeUserId = UUID.randomUUID();
+        UUID createdByUserId = UUID.randomUUID();
+
+        when(listTasksUseCase.list(any(TaskListQuery.class)))
+            .thenReturn(new TaskListResponse(List.of(), new PageResponse(0, 10, 0, 0)));
+
+        mockMvc.perform(get("/api/v1/tasks")
+                .param("status", "NEW")
+                .param("priority", "HIGH")
+                .param("assigneeUserId", assigneeUserId.toString())
+                .param("createdByUserId", createdByUserId.toString())
+                .param("page", "0")
+                .param("size", "10")
+                .param("sort", "updatedAt,asc"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.items").isArray())
+            .andExpect(jsonPath("$.data.page.size").value(10));
+
+        verify(listTasksUseCase).list(argThat(query ->
+            query.getStatus() == TaskStatus.NEW
+                && query.getPriority() == TaskPriority.HIGH
+                && assigneeUserId.equals(query.getAssigneeUserId())
+                && createdByUserId.equals(query.getCreatedByUserId())
+                && query.getPage() == 0
+                && query.getSize() == 10
+                && "updatedAt,asc".equals(query.getSort())
+        ));
+    }
+
+    @Test
+    void invalidStatusReturnsBadRequest() throws Exception {
+        mockMvc.perform(get("/api/v1/tasks").param("status", "UNKNOWN"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value(400))
+            .andExpect(jsonPath("$.message").value("Provided arguments are not valid"))
+            .andExpect(jsonPath("$.data.status").value("Value has an invalid format"));
+    }
+
+    @Test
+    void invalidPriorityReturnsBadRequest() throws Exception {
+        mockMvc.perform(get("/api/v1/tasks").param("priority", "CRITICAL"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value(400))
+            .andExpect(jsonPath("$.message").value("Provided arguments are not valid"))
+            .andExpect(jsonPath("$.data.priority").value("Value has an invalid format"));
+    }
+
+    @Test
+    void invalidPageReturnsBadRequest() throws Exception {
+        mockMvc.perform(get("/api/v1/tasks").param("page", "-1"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value(400))
+            .andExpect(jsonPath("$.message").value("Provided arguments are not valid"));
+    }
+
+    @Test
+    void invalidSizeReturnsBadRequest() throws Exception {
+        mockMvc.perform(get("/api/v1/tasks").param("size", "101"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value(400))
+            .andExpect(jsonPath("$.message").value("Provided arguments are not valid"));
     }
 }

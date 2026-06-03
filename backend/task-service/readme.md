@@ -52,6 +52,15 @@ Returns one task by public task UUID through `GetTaskUseCase`.
 - Response DTO: `TaskResponse` in the standard `data.task` envelope
 - Missing tasks return `404 NOT_FOUND`
 
+### `GET /api/v1/tasks`
+
+Returns a paginated task list through `ListTasksUseCase`.
+
+- Optional filters: `status`, `priority`, `assigneeUserId`, `createdByUserId`
+- Pagination: `page` defaults to `0`, `size` defaults to `20`
+- Sorting: `sort` defaults to `createdAt,desc`
+- Response shape: standard envelope with `data.items` and `data.page`
+
 ## Local Startup
 
 ### Prerequisites
