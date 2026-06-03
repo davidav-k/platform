@@ -11,6 +11,7 @@ services:
       - "5432:5432"
     volumes:
       - ./infrastructure/docker/pgdata:/var/lib/postgresql/data
+      - ./infrastructure/docker/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
@@ -117,6 +118,8 @@ services:
         condition: service_healthy
       user-service:
         condition: service_healthy
+      task-service:
+        condition: service_healthy
 #    environment:
 #      - SPRING_CLOUD_CONFIG_ENABLED=false
 #      - SPRING_CONFIG_IMPORT=optional:classpath:/application.yml # using without config server
@@ -166,7 +169,11 @@ services:
       - "8086:8086"
     env_file:
       - .env
+    environment:
+      - APPLICATION_PORT=8086
     depends_on:
+      postgres:
+        condition: service_healthy
       config-server:
         condition: service_healthy
       eureka-server:

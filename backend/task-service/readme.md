@@ -8,7 +8,8 @@ Business logic is not yet implemented.
 ## Purpose
 
 Manages tasks within the Task Management Platform (TMP).
-Exposed via API Gateway at `/api/tasks/**`.
+Exposed via API Gateway at `/api/tasks` and `/api/tasks/**`, which route to
+the internal `/api/v1/tasks` endpoints through Eureka service discovery.
 
 `task-service` will own tasks, assignments, statuses, comments, and task history.
 It must not access the `user-service` database directly.
@@ -44,6 +45,7 @@ Creates an MVP task through `CreateTaskUseCase`.
 - Request DTO: `CreateTaskRequest`
 - Response DTO: `CreateTaskResponse` in the standard `data.task` envelope
 - Temporary creator input: `X-Created-By-User-Id` header with a public user UUID
+- Gateway route: `POST /api/tasks`
 
 ### `GET /api/v1/tasks/{taskId}`
 
@@ -51,6 +53,7 @@ Returns one task by public task UUID through `GetTaskUseCase`.
 
 - Response DTO: `TaskResponse` in the standard `data.task` envelope
 - Missing tasks return `404 NOT_FOUND`
+- Gateway route: `GET /api/tasks/{taskId}`
 
 ### `GET /api/v1/tasks`
 
@@ -60,6 +63,7 @@ Returns a paginated task list through `ListTasksUseCase`.
 - Pagination: `page` defaults to `0`, `size` defaults to `20`
 - Sorting: `sort` defaults to `createdAt,desc`
 - Response shape: standard envelope with `data.items` and `data.page`
+- Gateway route: `GET /api/tasks`
 
 ## Local Startup
 

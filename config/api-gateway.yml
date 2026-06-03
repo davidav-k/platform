@@ -25,10 +25,23 @@ spring:
                 name: userService
                 fallbackUri: forward:/fallback/user-service
 
+        - id: task-service-root
+          uri: lb://task-service
+          predicates:
+            - Path=/api/tasks
+            - Method=POST,GET,OPTIONS
+          filters:
+            - SetPath=/api/v1/tasks
+            - name: CircuitBreaker
+              args:
+                name: taskService
+                fallbackUri: forward:/fallback/task-service
+
         - id: task-service
           uri: lb://task-service
           predicates:
             - Path=/api/tasks/**
+            - Method=POST,GET,PUT,PATCH,DELETE,OPTIONS
           filters:
             - RewritePath=/api/tasks/(?<segment>.*), /api/v1/tasks/${segment}
             - name: CircuitBreaker
