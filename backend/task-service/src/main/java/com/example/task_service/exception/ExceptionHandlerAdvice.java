@@ -70,6 +70,16 @@ public class ExceptionHandlerAdvice {
         return error(request, Map.of(), "Task data violates persistence constraints", HttpStatus.CONFLICT);
     }
 
+    @ExceptionHandler(TaskNotFoundException.class)
+    public ResponseEntity<Response> handleTaskNotFound(TaskNotFoundException ex, HttpServletRequest request) {
+        return error(request, Map.of(), "Task not found.", HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Response> handleIllegalArgument(IllegalArgumentException ex, HttpServletRequest request) {
+        return error(request, Map.of(), ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Response> handleGenericException(Exception ex, HttpServletRequest request) {
         return error(request, Map.of(), "An unexpected error occurred", HttpStatus.INTERNAL_SERVER_ERROR);

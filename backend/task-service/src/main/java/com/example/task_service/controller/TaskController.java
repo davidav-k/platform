@@ -3,12 +3,16 @@ package com.example.task_service.controller;
 import com.example.task_service.domain.Response;
 import com.example.task_service.dto.CreateTaskRequest;
 import com.example.task_service.dto.CreateTaskResponse;
+import com.example.task_service.dto.TaskResponse;
 import com.example.task_service.usecase.CreateTaskUseCase;
+import com.example.task_service.usecase.GetTaskUseCase;
 import com.example.task_service.utils.RequestUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -24,9 +28,11 @@ import java.util.UUID;
 public class TaskController {
 
     private final CreateTaskUseCase createTaskUseCase;
+    private final GetTaskUseCase getTaskUseCase;
 
-    public TaskController(CreateTaskUseCase createTaskUseCase) {
+    public TaskController(CreateTaskUseCase createTaskUseCase, GetTaskUseCase getTaskUseCase) {
         this.createTaskUseCase = createTaskUseCase;
+        this.getTaskUseCase = getTaskUseCase;
     }
 
     @PostMapping
@@ -41,5 +47,16 @@ public class TaskController {
             HttpStatus.CREATED
         );
         return ResponseEntity.created(URI.create("/api/v1/tasks/" + task.getTaskId())).body(response);
+    }
+
+    @GetMapping("/{taskId}")
+    public ResponseEntity<Response> getTask(@PathVariable UUID taskId, HttpServletRequest request) {
+        TaskResponse task = getTaskUseCase.getByTaskId(taskId);
+        return ResponseEntity.ok(RequestUtils.getResponse(
+            request,
+            Map.of("task", task),
+            "Task retrieved successfully.",
+            HttpStatus.OK
+        ));
     }
 }

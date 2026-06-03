@@ -2,9 +2,12 @@ package com.example.task_service.controller;
 
 import com.example.task_service.dto.CreateTaskRequest;
 import com.example.task_service.dto.CreateTaskResponse;
+import com.example.task_service.dto.TaskResponse;
 import com.example.task_service.enumeration.TaskPriority;
 import com.example.task_service.enumeration.TaskStatus;
+import com.example.task_service.exception.TaskNotFoundException;
 import com.example.task_service.usecase.CreateTaskUseCase;
+import com.example.task_service.usecase.GetTaskUseCase;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,6 +24,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -36,6 +40,9 @@ class TaskControllerTest {
 
     @MockitoBean
     private CreateTaskUseCase createTaskUseCase;
+
+    @MockitoBean
+    private GetTaskUseCase getTaskUseCase;
 
     @Test
     void createsTask() throws Exception {
@@ -130,5 +137,68 @@ class TaskControllerTest {
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.code").value(400))
             .andExpect(jsonPath("$.message").value("Request payload is not valid"));
+    }
+
+    @Test
+    void getsTaskByTaskId() throws Exception {
+        UUID taskId = UUID.randomUUID();
+        UUID creatorUserId = UUID.randomUUID();
+        UUID assigneeUserId = UUID.randomUUID();
+        OffsetDateTime createdAt = OffsetDateTime.parse("2026-06-03T04:00:00Z");
+        OffsetDateTime updatedAt = OffsetDateTime.parse("2026-06-03T05:00:00Z");
+
+        when(getTaskUseCase.getByTaskId(taskId))
+            .thenReturn(new TaskResponse(
+                taskId,
+                "Implement login",
+                "Create login functionality",
+                TaskStatus.NEW,
+                TaskPriority.HIGH,
+                assigneeUserId,
+                creatorUserId,
+                createdAt,
+                updatedAt
+            ));
+
+        mockMvc.perform(get("/api/v1/tasks/{taskId}", taskId))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.code").value(200))
+            .andExpect(jsonPath("$.status").value("OK"))
+            .andExpect(jsonPath("$.message").value("Task retrieved successfully."))
+            .andExpect(jsonPath("$.data.task.taskId").value(taskId.toString()))
+            .andExpect(jsonPath("$.data.task.title").value("Implement login"))
+            .andExpect(jsonPath("$.data.task.description").value("Create login functionality"))
+            .andExpect(jsonPath("$.data.task.status").value("NEW"))
+            .andExpect(jsonPath("$.data.task.priority").value("HIGH"))
+            .andExpect(jsonPath("$.data.task.assigneeUserId").value(assigneeUserId.toString()))
+            .andExpect(jsonPath("$.data.task.createdByUserId").value(creatorUserId.toString()))
+            .andExpect(jsonPath("$.data.task.createdAt").value("2026-06-03T04:00:00Z"))
+            .andExpect(jsonPath("$.data.task.updatedAt").value("2026-06-03T05:00:00Z"))
+            .andExpect(jsonPath("$.data.task.id").doesNotExist());
+
+        verify(getTaskUseCase).getByTaskId(taskId);
+    }
+
+    @Test
+    void missingTaskReturnsNotFound() throws Exception {
+        UUID taskId = UUID.randomUUID();
+
+        when(getTaskUseCase.getByTaskId(taskId))
+            .thenThrow(new TaskNotFoundException(taskId));
+
+        mockMvc.perform(get("/api/v1/tasks/{taskId}", taskId))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.code").value(404))
+            .andExpect(jsonPath("$.status").value("NOT_FOUND"))
+            .andExpect(jsonPath("$.message").value("Task not found."));
+    }
+
+    @Test
+    void invalidTaskIdReturnsBadRequest() throws Exception {
+        mockMvc.perform(get("/api/v1/tasks/{taskId}", "not-a-uuid"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value(400))
+            .andExpect(jsonPath("$.message").value("Provided arguments are not valid"))
+            .andExpect(jsonPath("$.data.taskId").value("Value has an invalid format"));
     }
 }

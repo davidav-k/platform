@@ -45,6 +45,13 @@ Creates an MVP task through `CreateTaskUseCase`.
 - Response DTO: `CreateTaskResponse` in the standard `data.task` envelope
 - Temporary creator input: `X-Created-By-User-Id` header with a public user UUID
 
+### `GET /api/v1/tasks/{taskId}`
+
+Returns one task by public task UUID through `GetTaskUseCase`.
+
+- Response DTO: `TaskResponse` in the standard `data.task` envelope
+- Missing tasks return `404 NOT_FOUND`
+
 ## Local Startup
 
 ### Prerequisites
