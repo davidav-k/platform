@@ -35,6 +35,16 @@ Runtime database settings are served by Config Server from
 `config/task-service-dev.yml`. The task-service database name defaults to
 `tasks_db` through `TASK_POSTGRES_DB`.
 
+## API
+
+### `POST /api/v1/tasks`
+
+Creates an MVP task through `CreateTaskUseCase`.
+
+- Request DTO: `CreateTaskRequest`
+- Response DTO: `CreateTaskResponse` in the standard `data.task` envelope
+- Temporary creator input: `X-Created-By-User-Id` header with a public user UUID
+
 ## Local Startup
 
 ### Prerequisites
