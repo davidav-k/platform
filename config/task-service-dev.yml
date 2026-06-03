@@ -1,6 +1,15 @@
 server:
   port: ${APPLICATION_PORT:8086}
 
+spring:
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST}:${POSTGRES_PORT}/${TASK_POSTGRES_DB:tasks_db}
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+  flyway:
+    enabled: true
+
 eureka:
   client:
     service-url:

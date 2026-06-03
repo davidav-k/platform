@@ -21,7 +21,19 @@ Service boundary and gateway alignment notes are in [Service boundaries](../../d
 - Java 17
 - Spring Boot 3.4.0
 - Spring Cloud 2024.0.1
+- PostgreSQL 16.x
+- Flyway
 - Maven
+
+## Database Migrations
+
+Flyway owns task-service schema evolution. Versioned migrations live under
+`src/main/resources/db/migration`; the initial MVP baseline is
+`V1__task_service_baseline.sql`.
+
+Runtime database settings are served by Config Server from
+`config/task-service-dev.yml`. The task-service database name defaults to
+`tasks_db` through `TASK_POSTGRES_DB`.
 
 ## Local Startup
 
