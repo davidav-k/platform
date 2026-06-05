@@ -11,6 +11,7 @@ endpoints. Sensitive Actuator endpoints such as `env`, `beans`, `mappings`,
 | Config Server | `http://localhost:8888/actuator/health` | `http://localhost:8888/actuator/info` | Confirms application health and native configuration-repository availability |
 | Eureka Server | `http://localhost:8761/actuator/health` | `http://localhost:8761/actuator/info` | Confirms service-discovery application readiness |
 | User Service | `http://localhost:8085/actuator/health` | `http://localhost:8085/actuator/info` | Confirms application health, PostgreSQL connectivity, and SMTP availability |
+| Task Service | `http://localhost:8086/actuator/health` | `http://localhost:8086/actuator/info` | Confirms application health and PostgreSQL connectivity |
 | API Gateway | `http://localhost:8080/actuator/health` | `http://localhost:8080/actuator/info` | Confirms gateway application readiness |
 
 A healthy service returns HTTP `200` with an aggregate response:
@@ -24,7 +25,7 @@ contribute to the aggregate status.
 
 ## Container Inventory
 
-The local stack expects eight containers:
+The local stack expects nine containers:
 
 | Container | Published port | Docker health check |
 | --- | --- | --- |
@@ -35,6 +36,7 @@ The local stack expects eight containers:
 | `tsp_config` | `8888` | `/actuator/health` |
 | `tsp_eureka` | `8761` | `/actuator/health` |
 | `tsp_user_service` | `8085` | `/actuator/health` |
+| `tsp_task_service` | `8086` | `/actuator/health` |
 | `tsp_gateway` | `8080` | `/actuator/health` |
 
 
@@ -65,8 +67,10 @@ Docker Compose uses health-aware startup dependencies:
 4. User Service starts after PostgreSQL, Config Server, and Eureka Server. Its
    health endpoint reports `UP` only when its datasource and configured SMTP
    server are healthy.
-5. API Gateway starts after Config Server, Eureka Server, and User Service. It
-   must report `UP`.
+5. Task Service starts after PostgreSQL, Config Server, and Eureka Server. Its
+   health endpoint reports `UP` when its datasource is healthy.
+6. API Gateway starts after Config Server, Eureka Server, User Service, and
+   Task Service. It must report `UP`.
 
 Services continue to register with Eureka as before. Config Server continues
 to serve the native repository mounted from `./config`.
@@ -101,12 +105,12 @@ Local platform stack verification passed.
 The script verifies:
 
 1. Docker CLI, Docker Compose v2, the Docker daemon, `.env`, and `compose.yml`.
-2. All eight expected Compose containers are running.
-3. The six containers with Docker health checks report `healthy`.
+2. All nine expected Compose containers are running.
+3. The seven containers with Docker health checks report `healthy`.
 4. PostgreSQL accepts connections and Redis responds with `PONG`.
 5. Config Server health and mounted-repository access.
 6. Eureka Server health and registry access.
-7. User Service and API Gateway health.
+7. User Service, Task Service, and API Gateway health.
 8. API Gateway routing to User Service through a public account-verification
    request with an intentionally invalid non-UUID key.
 
@@ -120,9 +124,9 @@ For manual inspection, use:
 Inspect health status:
 
 ```bash
-docker compose --env-file .env -f compose.yml ps
+```bash
 docker inspect --format '{{.Name}} {{.State.Health.Status}}' \
-  tsp_config tsp_eureka tsp_user_service tsp_gateway tsp_postgres tsp_redis
+  tsp_config tsp_eureka tsp_user_service tsp_task_service tsp_gateway tsp_postgres tsp_redis
 ```
 
 Verify endpoints directly:
@@ -131,6 +135,7 @@ Verify endpoints directly:
 curl -fsS http://localhost:8888/actuator/health
 curl -fsS http://localhost:8761/actuator/health
 curl -fsS http://localhost:8085/actuator/health
+curl -fsS http://localhost:8086/actuator/health
 curl -fsS http://localhost:8080/actuator/health
 ```
 
@@ -203,4 +208,21 @@ discovery if Eureka is unavailable. Check:
 ```bash
 docker compose --env-file .env -f compose.yml logs eureka-server user-service gateway
 curl -fsS http://localhost:8761/eureka/apps
+```
+
+### Task Service unavailable
+
+Task Service stays unhealthy when PostgreSQL is unavailable or Config Server
+has not started. API Gateway will not pass health checks until Task Service
+is healthy. Check:
+
+```bash
+docker compose --env-file .env -f compose.yml logs task-service
+curl -fsS http://localhost:8086/actuator/health
+```
+
+Verify that Config Server can serve the task-service configuration:
+
+```bash
+curl -fsS http://localhost:8888/task-service/dev
 ```

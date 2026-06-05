@@ -2,10 +2,10 @@
 
 ## Scope
 
-This document defines future `task-service` endpoints only. It does not
-describe implemented controllers. The service owns tasks, assignments,
-statuses, comments, and task history as defined in
-[Service boundaries](../architecture/service-boundaries.md).
+This document describes `task-service` API endpoints. Implemented endpoints
+reflect the running MVP. Planned endpoints are contracts for future work. The
+service owns tasks, assignments, statuses, comments, and task history as defined
+in [Service boundaries](../architecture/service-boundaries.md).
 
 All endpoints:
 
@@ -14,7 +14,41 @@ All endpoints:
 - use UUID strings for task-domain identifiers
 - use the stable `user-service` public `userId` for user references
 
-## DTOs
+## Implemented Endpoints
+
+### `POST /api/v1/tasks`
+
+Creates a task owned by the authenticated user. `createdByUserId` is set from
+the JWT subject and is ignored if supplied in the request payload.
+
+- Gateway route: `POST /api/tasks`
+- Request DTO: `CreateTaskRequest`
+- Response: `201 CREATED`, `data.task` contains `CreateTaskResponse`
+- Authentication: required
+
+### `GET /api/v1/tasks/{taskId}`
+
+Returns one task by its public UUID.
+
+- Gateway route: `GET /api/tasks/{taskId}`
+- Request DTO: none
+- Response: `200 OK`, `data.task` contains `TaskResponse`
+- Authentication: required
+- Missing task: `404 NOT_FOUND`
+
+### `GET /api/v1/tasks`
+
+Returns a filtered, paginated task list.
+
+- Gateway route: `GET /api/tasks`
+- Request DTO: none
+- Response: `200 OK`, `data.items` contains `TaskResponse` entries and `data.page` contains pagination metadata
+- Authentication: required
+- Optional filters: `status`, `priority`, `assigneeUserId`, `createdByUserId`
+- Pagination: `page` (default `0`), `size` (default `20`, max `100`)
+- Sorting: `sort` (default `createdAt,desc`)
+
+## Implemented DTOs
 
 ### CreateTaskRequest
 
@@ -22,8 +56,112 @@ All endpoints:
 | --- | --- | --- | --- |
 | `title` | string | yes | Not blank; maximum 200 characters |
 | `description` | string | no | Maximum 5000 characters |
-| `priority` | enum | yes | `LOW`, `MEDIUM`, `HIGH`, or `CRITICAL` |
-| `dueAt` | string | no | ISO-8601 timestamp with offset |
+| `priority` | enum | no | `LOW`, `MEDIUM`, `HIGH` |
+| `assigneeUserId` | UUID string | no | Target user identifier |
+
+### CreateTaskResponse
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `taskId` | UUID string | Task identifier |
+| `title` | string | Task title |
+| `description` | string or null | Task description |
+| `status` | enum | Always `NEW` on creation |
+| `priority` | enum | Task priority |
+| `assigneeUserId` | UUID string or null | Assigned user, if provided |
+| `createdByUserId` | UUID string | Derived from authenticated JWT subject |
+| `createdAt` | string | ISO-8601 timestamp with offset |
+
+### TaskResponse
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `taskId` | UUID string | Task identifier |
+| `title` | string | Task title |
+| `description` | string or null | Task description |
+| `status` | enum | Current status: `NEW`, `IN_PROGRESS`, `DONE`, `CANCELLED` |
+| `priority` | enum | `LOW`, `MEDIUM`, `HIGH` |
+| `assigneeUserId` | UUID string or null | Assigned user identifier |
+| `createdByUserId` | UUID string | Public identifier of the creator |
+| `createdAt` | string | ISO-8601 timestamp with offset |
+| `updatedAt` | string | ISO-8601 timestamp with offset |
+
+## Enumerations
+
+### TaskStatus
+
+| Value | Description |
+| --- | --- |
+| `NEW` | Newly created task, not yet started |
+| `IN_PROGRESS` | Task is being worked on |
+| `DONE` | Task is completed |
+| `CANCELLED` | Task was cancelled |
+
+### TaskPriority
+
+| Value | Description |
+| --- | --- |
+| `LOW` | Low priority |
+| `MEDIUM` | Medium priority |
+| `HIGH` | High priority |
+
+## Planned Endpoints
+
+The following endpoints are not yet implemented. Their contracts are defined
+here as targets for future MVP work.
+
+### `PUT /api/v1/tasks/{taskId}`
+
+Replaces editable task fields.
+
+- Request DTO: `UpdateTaskRequest`
+- Response: `200 OK`, `data.task` contains `TaskResponse`
+- Authorization: creator, `ROLE_ADMIN`, or `ROLE_SUPER_ADMIN`
+
+### `DELETE /api/v1/tasks/{taskId}`
+
+Soft-deletes a task.
+
+- Response: `200 OK`, `data` is empty
+- Authorization: creator, `ROLE_ADMIN`, or `ROLE_SUPER_ADMIN`
+- Whether deletion is soft or hard must be decided before implementation.
+
+### `PATCH /api/v1/tasks/{taskId}/status`
+
+Changes the task status and records task history.
+
+- Request DTO: `UpdateTaskStatusRequest`
+- Response: `200 OK`, `data.task` contains `TaskResponse`
+- Transition rules are a task-domain decision and must be finalized before implementation.
+
+### `POST /api/v1/tasks/{taskId}/assign`
+
+Assigns a task to a user.
+
+- Request DTO: `AssignTaskRequest`
+- Response: `201 CREATED`, `data.assignment` contains `TaskAssignmentResponse`
+
+### `DELETE /api/v1/tasks/{taskId}/assign/{userId}`
+
+Removes an active task assignment.
+
+- Response: `200 OK`, `data` is empty
+
+### `POST /api/v1/tasks/{taskId}/comments`
+
+Adds a comment to a task.
+
+- Request DTO: `CreateTaskCommentRequest`
+- Response: `201 CREATED`, `data.comment` contains `TaskCommentResponse`
+
+### `GET /api/v1/tasks/{taskId}/comments`
+
+Returns comments for a task.
+
+- Response: `200 OK`, `data.items` contains `TaskCommentResponse` entries and `data.page` contains pagination metadata
+- Default sort: `createdAt,asc`
+
+## Planned DTOs
 
 ### UpdateTaskRequest
 
@@ -31,20 +169,13 @@ All endpoints:
 | --- | --- | --- | --- |
 | `title` | string | yes | Not blank; maximum 200 characters |
 | `description` | string | no | Maximum 5000 characters |
-| `priority` | enum | yes | `LOW`, `MEDIUM`, `HIGH`, or `CRITICAL` |
-| `dueAt` | string | no | ISO-8601 timestamp with offset |
-
-Status and assignments are intentionally excluded. Their dedicated endpoints
-make authorization and history recording explicit.
+| `priority` | enum | yes | `LOW`, `MEDIUM`, `HIGH` |
 
 ### UpdateTaskStatusRequest
 
 | Field | Type | Required | Validation |
 | --- | --- | --- | --- |
-| `status` | enum | yes | `TODO`, `IN_PROGRESS`, `BLOCKED`, or `DONE` |
-
-Allowed transition rules are a task-domain decision and must be finalized
-before implementation.
+| `status` | enum | yes | `NEW`, `IN_PROGRESS`, `DONE`, `CANCELLED` |
 
 ### AssignTaskRequest
 
@@ -57,21 +188,6 @@ before implementation.
 | Field | Type | Required | Validation |
 | --- | --- | --- | --- |
 | `text` | string | yes | Not blank; maximum 5000 characters |
-
-### TaskResponse
-
-| Field | Type | Description |
-| --- | --- | --- |
-| `taskId` | UUID string | Task identifier |
-| `title` | string | Task title |
-| `description` | string or null | Task description |
-| `priority` | enum | Task priority |
-| `status` | enum | Current task status |
-| `creatorUserId` | UUID string | Public identifier of the creator |
-| `assignments` | array of `TaskAssignmentResponse` | Current assignments |
-| `dueAt` | string or null | ISO-8601 timestamp |
-| `createdAt` | string | ISO-8601 timestamp |
-| `updatedAt` | string | ISO-8601 timestamp |
 
 ### TaskAssignmentResponse
 
@@ -93,126 +209,6 @@ before implementation.
 | `text` | string | Comment text |
 | `createdAt` | string | ISO-8601 timestamp |
 | `updatedAt` | string | ISO-8601 timestamp |
-
-## Task Endpoints
-
-### `POST /api/v1/tasks`
-
-Creates a task owned by the authenticated user.
-
-- Request DTO: `CreateTaskRequest`
-- Response: `201 CREATED`, `data.task` contains `TaskResponse`
-- Authorization: authenticated `ROLE_USER`, `ROLE_MANAGER`, `ROLE_ADMIN`, or
-  `ROLE_SUPER_ADMIN`
-- Validation: request DTO rules apply
-
-### `GET /api/v1/tasks/{taskId}`
-
-Returns one visible task.
-
-- Request DTO: none
-- Response: `200 OK`, `data.task` contains `TaskResponse`
-- Authorization: creator, assignee, `ROLE_ADMIN`, or `ROLE_SUPER_ADMIN`;
-  manager scope remains to be defined
-- Validation: `taskId` must be a UUID
-
-### `PUT /api/v1/tasks/{taskId}`
-
-Replaces editable task fields.
-
-- Request DTO: `UpdateTaskRequest`
-- Response: `200 OK`, `data.task` contains `TaskResponse`
-- Authorization: creator, `ROLE_ADMIN`, or `ROLE_SUPER_ADMIN`; manager scope
-  remains to be defined
-- Validation: `taskId` and request DTO rules apply
-
-### `DELETE /api/v1/tasks/{taskId}`
-
-Deletes a task according to the future retention policy.
-
-- Request DTO: none
-- Response: `200 OK`, `data` is empty
-- Authorization: creator, `ROLE_ADMIN`, or `ROLE_SUPER_ADMIN`; manager scope
-  remains to be defined
-- Validation: `taskId` must be a UUID
-
-Whether deletion is soft or hard deletion must be decided before
-implementation.
-
-### `GET /api/v1/tasks`
-
-Returns a filtered page of tasks visible to the caller.
-
-- Request DTO: none
-- Response: `200 OK`, `data.items` contains `TaskResponse` entries and
-  `data.page` contains standard pagination metadata
-- Authorization: authenticated user sees created or assigned tasks;
-  `ROLE_ADMIN` and `ROLE_SUPER_ADMIN` may see all tasks
-- Pagination: standard `page`, `size`, and `sort`; default sort is
-  `createdAt,desc`
-- Optional filters: `status`, `priority`, `assigneeUserId`, `creatorUserId`
-- Validation: identifier filters must be UUIDs; enum filters must be supported values
-
-## Assignment Endpoints
-
-### `POST /api/v1/tasks/{taskId}/assign`
-
-Assigns a task to a user. Repeating an active assignment is a conflict.
-
-- Request DTO: `AssignTaskRequest`
-- Response: `201 CREATED`, `data.assignment` contains `TaskAssignmentResponse`
-- Authorization: creator, `ROLE_ADMIN`, or `ROLE_SUPER_ADMIN`; manager scope
-  remains to be defined
-- Validation: `taskId` and `userId` must be UUIDs; assignment target must be
-  an existing active user
-
-### `DELETE /api/v1/tasks/{taskId}/assign/{userId}`
-
-Removes an active task assignment.
-
-- Request DTO: none
-- Response: `200 OK`, `data` is empty
-- Authorization: creator, `ROLE_ADMIN`, or `ROLE_SUPER_ADMIN`; manager scope
-  remains to be defined
-- Validation: `taskId` and `userId` must be UUIDs
-
-## Status Endpoint
-
-### `PATCH /api/v1/tasks/{taskId}/status`
-
-Changes the task status and records task history.
-
-- Request DTO: `UpdateTaskStatusRequest`
-- Response: `200 OK`, `data.task` contains `TaskResponse`
-- Authorization: creator, assignee, `ROLE_ADMIN`, or `ROLE_SUPER_ADMIN`;
-  manager scope remains to be defined
-- Validation: `taskId` must be a UUID; status must be supported; transition
-  must satisfy task-domain rules
-
-## Comment Endpoints
-
-### `POST /api/v1/tasks/{taskId}/comments`
-
-Adds a comment to a visible task.
-
-- Request DTO: `CreateTaskCommentRequest`
-- Response: `201 CREATED`, `data.comment` contains `TaskCommentResponse`
-- Authorization: creator, assignee, `ROLE_ADMIN`, or `ROLE_SUPER_ADMIN`;
-  manager scope remains to be defined
-- Validation: `taskId` and request DTO rules apply
-
-### `GET /api/v1/tasks/{taskId}/comments`
-
-Returns comments for a visible task.
-
-- Request DTO: none
-- Response: `200 OK`, `data.items` contains `TaskCommentResponse` entries and
-  `data.page` contains standard pagination metadata
-- Authorization: creator, assignee, `ROLE_ADMIN`, or `ROLE_SUPER_ADMIN`;
-  manager scope remains to be defined
-- Pagination: standard `page`, `size`, and `sort`; default sort is
-  `createdAt,asc`
-- Validation: `taskId` must be a UUID
 
 ## Future History API
 
