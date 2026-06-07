@@ -88,7 +88,7 @@ for an IDE launch.
 
 | Name | Required | Default | Example | Consumed by | Description |
 | --- | --- | --- | --- | --- | --- |
-| `JWT_SECRET` | Yes | None | Base64 development-only signing key from `.env.example` | user-service, task-service, api-gateway | Base64-encoded JWT signing key. Both services decode it before constructing HMAC keys. Replace it outside local development. |
+| `JWT_SECRET` | Yes | None | Base64 development-only signing key from `.env.example` | user-service, task-service, api-gateway | Base64-encoded JWT signing key. All services decode it before constructing HMAC keys. Replace it outside local development. |
 | `JWT_EXPIRATION` | No | `432000` | `432000` | user-service | Optional JWT expiration override in seconds. Config Server defaults development to five days. |
 | `ADMIN_PASSWORD` | Yes | None | `dev_example_admin_password_change_me` | user-service | Password used when the local bootstrap admin account is created. |
 

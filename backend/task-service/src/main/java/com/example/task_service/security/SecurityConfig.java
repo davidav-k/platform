@@ -23,7 +23,7 @@ import java.util.Map;
 public class SecurityConfig {
 
     private static final String[] PUBLIC_ENDPOINTS = {
-        "/actuator/health"
+        "/actuator/health", "/actuator/info"
     };
 
     @Bean

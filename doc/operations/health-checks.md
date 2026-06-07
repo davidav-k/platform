@@ -123,7 +123,7 @@ For manual inspection, use:
 
 Inspect health status:
 
-```bash
+
 ```bash
 docker inspect --format '{{.Name}} {{.State.Health.Status}}' \
   tsp_config tsp_eureka tsp_user_service tsp_task_service tsp_gateway tsp_postgres tsp_redis

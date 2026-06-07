@@ -121,7 +121,7 @@ Response body shape:
 {
   "code": 201,
   "status": "CREATED",
-  "message": "Task created successfully",
+  "message": "Task created successfully.",
   "data": {
     "task": {
       "taskId": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
@@ -176,7 +176,7 @@ Response body shape:
 {
   "code": 200,
   "status": "OK",
-  "message": "Task retrieved successfully",
+  "message": "Task retrieved successfully.",
   "data": {
     "task": {
       "taskId": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
@@ -224,7 +224,7 @@ Response body shape:
 {
   "code": 200,
   "status": "OK",
-  "message": "Tasks retrieved successfully",
+  "message": "Tasks retrieved successfully.",
   "data": {
     "items": [
       {
@@ -240,7 +240,7 @@ Response body shape:
       }
     ],
     "page": {
-      "page": 0,
+      "number": 0,
       "size": 20,
       "totalElements": 1,
       "totalPages": 1
