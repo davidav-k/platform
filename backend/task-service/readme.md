@@ -68,7 +68,7 @@ curl -i \
   http://localhost:8080/api/tasks
 ```
 
-Unauthenticated requests return `401`:
+When calling task-service through API Gateway, unauthenticated requests are rejected by the Gateway before reaching task-service and return `401`.
 
 ```bash
 curl -i http://localhost:8080/api/tasks
@@ -78,9 +78,8 @@ Example error body:
 
 ```json
 {
-  "code": 401,
-  "status": "UNAUTHORIZED",
-  "message": "Authentication is required"
+  "error": "Unauthorized",
+  "message": "Missing or invalid token"
 }
 ```
 

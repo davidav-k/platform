@@ -28,7 +28,7 @@ spring:
         - id: task-service-root
           uri: lb://task-service
           predicates:
-            - Path=/api/tasks
+            - Path=/api/tasks,/api/tasks/
             - Method=POST,GET,OPTIONS
           filters:
             - SetPath=/api/v1/tasks
