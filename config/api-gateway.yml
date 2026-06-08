@@ -13,6 +13,20 @@ spring:
           lower-case-service-id: true
 
       routes:
+        - id: notification-service-root
+          uri: lb://notification-service
+          predicates:
+            - Path=/api/notifications,/api/notifications/
+          filters:
+            - RewritePath=/api/notifications/?$, /api/v1/notifications
+
+        - id: notification-service
+          uri: lb://notification-service
+          predicates:
+            - Path=/api/notifications/**
+          filters:
+            - RewritePath=/api/notifications/(?<segment>.*), /api/v1/notifications/${segment}
+
         - id: user-service
           uri: lb://user-service
           predicates:

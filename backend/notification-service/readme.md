@@ -2,8 +2,8 @@
 
 ## Status
 
-Bootstrap module created. The service is expected to use port `8087` in a
-future deployment, but it is not wired into Docker Compose yet.
+The MVP API is wired into Docker Compose on port `8087` and is available
+through the API Gateway.
 
 ## Configuration and Database
 
@@ -19,7 +19,7 @@ implemented for notifications and notification preferences.
 ## API
 
 `POST /api/v1/notifications` creates a notification record. This endpoint does
-not send email. It is not routed through the API Gateway yet.
+not send email.
 
 `GET /api/v1/notifications/{notificationId}` retrieves one notification by its
 public UUID.
@@ -90,8 +90,36 @@ List responses return notification DTOs and pagination metadata:
 }
 ```
 
-These are internal service paths. Gateway routing is not implemented, and
-notification creation still does not perform email delivery.
+Notification creation still does not perform email delivery.
+
+## Local Startup and Routing
+
+Start the service and its dependencies through Docker Compose:
+
+```bash
+docker compose --env-file .env -f compose.yml up -d --build notification-service
+```
+
+Health check:
+
+```text
+GET http://localhost:8087/actuator/health
+```
+
+Gateway route:
+
+```text
+http://localhost:8080/api/notifications
+```
+
+Internal service route:
+
+```text
+http://localhost:8087/api/v1/notifications
+```
+
+Notification API requests through either route require a valid access JWT.
+Unauthenticated requests return `401 Unauthorized`.
 
 ## Authentication
 
@@ -102,11 +130,11 @@ tokens independently and accepts them from either:
 * the `access-token` cookie
 
 The bearer header takes precedence when both are present. `/actuator/health`
-and `/actuator/info` remain public. Gateway routing is not wired yet, and
-role-based or ownership authorization is not implemented.
+and `/actuator/info` remain public. Role-based or ownership authorization is
+not implemented.
 
 ## Not Implemented Yet
 
-Gateway routing, Docker Compose integration, Kafka, email delivery, task-service
-integration, notification preferences API, role-based authorization, ownership
-filtering, status updates, delete, and mark-as-read remain for later branches.
+Kafka, email delivery, task-service integration, notification preferences API,
+role-based authorization, ownership filtering, status updates, delete, and
+mark-as-read remain for later branches.

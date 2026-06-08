@@ -2,6 +2,28 @@
 
 set -euo pipefail
 
+check_expected_status() {
+  local name="$1"
+  local url="$2"
+  local expected_status="$3"
+  local actual_status
+
+  for _ in $(seq 1 30); do
+    actual_status=$(curl --silent --output /dev/null --write-out "%{http_code}" "$url") || actual_status="000"
+    if [[ "$actual_status" == "$expected_status" ]]; then
+      echo "[OK] $name returned HTTP $expected_status."
+      return 0
+    fi
+    sleep 2
+  done
+
+  echo "[FAIL] $name returned HTTP $actual_status; expected $expected_status."
+  return 1
+}
+
+check_expected_status "Notification service health" "http://localhost:8087/actuator/health" "200"
+check_expected_status "Gateway notification route" "http://localhost:8080/api/notifications" "401"
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 COMPOSE_FILE="${REPO_ROOT}/compose.yml"

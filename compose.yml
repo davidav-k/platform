@@ -102,6 +102,33 @@ services:
 
 
 
+  notification-service:
+    container_name: tsp_notification_service
+    build:
+      context: ./backend/notification-service
+      dockerfile: Dockerfile
+    ports:
+      - "8087:8087"
+    env_file:
+      - .env
+    environment:
+      - APPLICATION_PORT=8087
+    depends_on:
+      postgres:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "bash -ec 'exec 3<>/dev/tcp/127.0.0.1/8087; printf \"GET /actuator/health HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n\" >&3; head -n 1 <&3 | grep -q \" 200 \"'"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    networks:
+      - tsp-network
+
   gateway:
     container_name: tsp_gateway
     build:
@@ -119,6 +146,8 @@ services:
       user-service:
         condition: service_healthy
       task-service:
+        condition: service_healthy
+      notification-service:
         condition: service_healthy
 #    environment:
 #      - SPRING_CLOUD_CONFIG_ENABLED=false
