@@ -9,6 +9,9 @@ import com.example.notification_service.enumeration.NotificationChannel;
 import com.example.notification_service.enumeration.NotificationStatus;
 import com.example.notification_service.enumeration.NotificationType;
 import com.example.notification_service.exception.NotificationNotFoundException;
+import com.example.notification_service.security.JwtAuthenticationFilter;
+import com.example.notification_service.security.JwtTokenService;
+import com.example.notification_service.security.SecurityConfig;
 import com.example.notification_service.usecase.CreateNotificationUseCase;
 import com.example.notification_service.usecase.GetNotificationUseCase;
 import com.example.notification_service.usecase.ListNotificationsUseCase;
@@ -16,7 +19,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -31,6 +36,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.anonymous;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -43,6 +49,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         }
 )
 @ActiveProfiles("test")
+@Import({SecurityConfig.class, JwtAuthenticationFilter.class})
+@WithMockUser
 class NotificationControllerTest {
 
     @Autowired
@@ -59,6 +67,9 @@ class NotificationControllerTest {
 
     @MockitoBean
     private ListNotificationsUseCase listNotificationsUseCase;
+
+    @MockitoBean
+    private JwtTokenService jwtTokenService;
 
     @Test
     void createsNotificationWithStandardEnvelope() throws Exception {
@@ -269,6 +280,30 @@ class NotificationControllerTest {
         mockMvc.perform(get("/api/v1/notifications").param("size", "101"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("Provided arguments are not valid"));
+    }
+
+    @Test
+    void unauthenticatedCreateReturnsUnauthorized() throws Exception {
+        mockMvc.perform(post("/api/v1/notifications")
+                        .with(anonymous())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(validRequest())))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("Authentication is required"));
+    }
+
+    @Test
+    void unauthenticatedListReturnsUnauthorized() throws Exception {
+        mockMvc.perform(get("/api/v1/notifications").with(anonymous()))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("Authentication is required"));
+    }
+
+    @Test
+    void unauthenticatedGetReturnsUnauthorized() throws Exception {
+        mockMvc.perform(get("/api/v1/notifications/{notificationId}", UUID.randomUUID()).with(anonymous()))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("Authentication is required"));
     }
 
     private CreateNotificationRequest validRequest() {

@@ -19,8 +19,7 @@ implemented for notifications and notification preferences.
 ## API
 
 `POST /api/v1/notifications` creates a notification record. This endpoint does
-not send email and does not require security in this branch. It is not routed
-through the API Gateway yet.
+not send email. It is not routed through the API Gateway yet.
 
 `GET /api/v1/notifications/{notificationId}` retrieves one notification by its
 public UUID.
@@ -91,11 +90,23 @@ List responses return notification DTOs and pagination metadata:
 }
 ```
 
-These are internal service paths. Gateway routing and security are not
-implemented, and notification creation still does not perform email delivery.
+These are internal service paths. Gateway routing is not implemented, and
+notification creation still does not perform email delivery.
+
+## Authentication
+
+Notification API endpoints require a valid access JWT. The service validates
+tokens independently and accepts them from either:
+
+* `Authorization: Bearer <token>`
+* the `access-token` cookie
+
+The bearer header takes precedence when both are present. `/actuator/health`
+and `/actuator/info` remain public. Gateway routing is not wired yet, and
+role-based or ownership authorization is not implemented.
 
 ## Not Implemented Yet
 
-Security, Gateway routing, Docker Compose integration, Kafka, email delivery,
-task-service integration, notification preferences API, status updates, delete,
-and mark-as-read remain for later branches.
+Gateway routing, Docker Compose integration, Kafka, email delivery, task-service
+integration, notification preferences API, role-based authorization, ownership
+filtering, status updates, delete, and mark-as-read remain for later branches.
