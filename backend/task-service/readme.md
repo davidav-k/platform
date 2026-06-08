@@ -83,6 +83,29 @@ Example error body:
 }
 ```
 
+## Notification Integration
+
+Creating a task with an `assigneeUserId` prepares an internal synchronous REST
+request to notification-service. The request creates an `IN_APP`
+`TASK_ASSIGNED` notification after the task has been persisted. Unassigned
+tasks do not trigger the integration.
+
+Notification failures are logged using task and recipient identifiers and do
+not fail or roll back task creation. The integration is disabled by default
+because notification-service requires JWT authentication and service-to-service
+credentials are not implemented yet. Do not enable it until that authentication
+boundary is configured.
+
+Configuration variables:
+
+- `NOTIFICATION_SERVICE_ENABLED` (default `false`)
+- `NOTIFICATION_SERVICE_BASE_URL` (default `http://notification-service:8087`)
+- `NOTIFICATION_SERVICE_CONNECT_TIMEOUT` (default `2s`)
+- `NOTIFICATION_SERVICE_READ_TIMEOUT` (default `2s`)
+
+Kafka and an outbox-based delivery flow are planned replacements for this MVP
+synchronous integration.
+
 ## API
 
 External clients should call task-service through API Gateway:

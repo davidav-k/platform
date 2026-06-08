@@ -8,3 +8,4 @@
 | User deletion is a hard delete with no cross-service cleanup | Dependent data in future services will not be cleaned up | Medium | Define retention and cross-service deletion behavior before adding dependent services | Open |
 | task-service MVP scope: no update, delete, assign, status-change, or comment endpoints | Task lifecycle management is incomplete | Medium | Implement remaining task endpoints as next MVP milestone | Open |
 | task-service has no role-based authorization | All authenticated users can create and read all tasks regardless of role | Medium | Add role and ownership checks to task endpoints before any user-facing release | Open |
+| Synchronous task-to-notification REST call is MVP-only | Notification delivery is best-effort and has no durable retry or atomic handoff | Medium | Replace with an event-driven outbox flow and add service-to-service authentication | Open |

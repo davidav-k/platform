@@ -5,6 +5,8 @@ import com.example.task_service.dto.CreateTaskResponse;
 import com.example.task_service.entity.TaskEntity;
 import com.example.task_service.enumeration.TaskPriority;
 import com.example.task_service.enumeration.TaskStatus;
+import com.example.task_service.notification.TaskNotificationContext;
+import com.example.task_service.notification.TaskNotificationPublisher;
 import com.example.task_service.repository.TaskRepository;
 import jakarta.validation.ConstraintViolationException;
 import org.junit.jupiter.api.Test;
@@ -12,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -21,6 +24,10 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 @SpringBootTest(properties = {
     "spring.cloud.config.enabled=false",
@@ -49,6 +56,9 @@ class CreateTaskUseCaseTest {
 
     @Autowired
     private TaskRepository taskRepository;
+
+    @MockitoBean
+    private TaskNotificationPublisher taskNotificationPublisher;
 
     @Test
     void createsTaskWithNewStatusGeneratedTaskIdAndPersistsEntity() {
@@ -80,6 +90,33 @@ class CreateTaskUseCaseTest {
         assertThat(persisted.getStatus()).isEqualTo(TaskStatus.NEW);
         assertThat(persisted.getPriority()).isEqualTo(TaskPriority.HIGH);
         assertThat(persisted.getCreatedAt()).isNotNull();
+        verify(taskNotificationPublisher).notifyTaskAssigned(new TaskNotificationContext(
+            response.getTaskId(), response.getTitle(), assigneeUserId, createdByUserId
+        ));
+    }
+
+    @Test
+    void doesNotPublishNotificationWhenTaskHasNoAssignee() {
+        CreateTaskRequest request = new CreateTaskRequest("Unassigned task", null, TaskPriority.LOW, null);
+
+        createTaskUseCase.create(request, UUID.randomUUID());
+
+        verify(taskNotificationPublisher, never()).notifyTaskAssigned(any());
+    }
+
+    @Test
+    void persistsTaskWhenNotificationPublisherFails() {
+        UUID assigneeUserId = UUID.randomUUID();
+        doThrow(new IllegalStateException("notification unavailable"))
+            .when(taskNotificationPublisher).notifyTaskAssigned(any());
+
+        CreateTaskResponse response = createTaskUseCase.create(
+            new CreateTaskRequest("Persist despite notification failure", null, TaskPriority.HIGH, assigneeUserId),
+            UUID.randomUUID()
+        );
+
+        assertThat(response.getTaskId()).isNotNull();
+        assertThat(taskRepository.findByTaskId(response.getTaskId())).isPresent();
     }
 
     @Test
