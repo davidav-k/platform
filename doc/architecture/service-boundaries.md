@@ -151,10 +151,9 @@ contracts, delivery guarantees, and versioning require a separate design.
 | External route | Future internal route | Service | State |
 | --- | --- | --- | --- |
 | `/api/users/**` | `/api/v1/user/**` | `user-service` | Implemented |
-| `/api/tasks/**` | `/api/v1/tasks/**` | `task-service` | Contract only |
+| `/api/tasks/**` | `/api/v1/tasks/**` | `task-service` | Implemented (create, get, list) |
 | `/api/notifications/**` | `/api/v1/notifications/**` | `notification-service` | Contract only |
 | `/api/notification-preferences/**` | `/api/v1/notification-preferences/**` | `notification-service` | Contract only |
 
-The current gateway configuration reserves `/api/tasks/**` and rewrites it to
-the plural contract path `/api/v1/tasks/**`. Notification routes do not exist
-yet.
+The current gateway configuration serves both `/api/users/**` and
+`/api/tasks/**`. Notification routes do not exist yet.

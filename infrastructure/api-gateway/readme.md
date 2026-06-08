@@ -24,7 +24,8 @@ The API Gateway currently defines:
 | External route | Internal rewrite | State |
 | --- | --- | --- |
 | `/api/users/**` | `/api/v1/user/**` | Implemented and routed to `user-service` |
-| `/api/tasks/**` | `/api/v1/tasks/**` | Reserved route only; no runnable `task-service` exists |
+| `/api/tasks` | `/api/v1/tasks` | Implemented and routed to `task-service` |
+| `/api/tasks/**` | `/api/v1/tasks/**` | Implemented and routed to `task-service` |
 
 The user route forwards `POST`, `GET`, `PUT`, `PATCH`, `DELETE`, and `OPTIONS`.
 Password changes are exposed as `PATCH /api/users/password/{userId}`.
@@ -45,7 +46,7 @@ apply the endpoint-specific checks.
 
 ### API Routes
 - User Service: http://localhost:8080/api/users/**
-- Reserved task route: http://localhost:8080/api/tasks/**
+- Task Service: http://localhost:8080/api/tasks and http://localhost:8080/api/tasks/**
 
 Use [Health checks](../../doc/operations/health-checks.md) to verify Gateway
 health and the read-only user-service routing probe.

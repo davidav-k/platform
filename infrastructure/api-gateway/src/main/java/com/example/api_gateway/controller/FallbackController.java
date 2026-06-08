@@ -6,21 +6,28 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.HashMap;
+import java.util.Map;
+
 @RestController
 @RequestMapping("/fallback")
 public class FallbackController {
 
-    @GetMapping("/user-service")
-    public ResponseEntity<String> userServiceFallback() {
-        return ResponseEntity
-                .status(HttpStatus.SERVICE_UNAVAILABLE)
-                .body("User service is temporarily unavailable. Try again later.");
+    @RequestMapping("/user-service")
+    public ResponseEntity<Map<String, Object>> userServiceFallback() {
+        Map<String, Object> body = new HashMap<>();
+        body.put("service", "user-service");
+        body.put("message", "Service temporarily unavailable");
+        body.put("status", 503);
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(body);
     }
 
-    @GetMapping("/task-service")
-    public ResponseEntity<String> taskServiceFallback() {
-        return ResponseEntity
-                .status(HttpStatus.SERVICE_UNAVAILABLE)
-                .body("Task service is temporarily unavailable. Try again later.");
+    @RequestMapping("/task-service")
+    public ResponseEntity<Map<String, Object>> taskServiceFallback() {
+        Map<String, Object> body = new HashMap<>();
+        body.put("service", "task-service");
+        body.put("message", "Service temporarily unavailable");
+        body.put("status", 503);
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(body);
     }
 }

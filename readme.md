@@ -2,7 +2,7 @@
 
 Microservice-based Task Management Platform built with Spring Boot.
 
-> Current focus: MVP stabilization and user-service hardening.
+> Current focus: MVP stabilization — user-service and task-service are operational.
 
 ## Implemented
 
@@ -15,6 +15,13 @@ Microservice-based Task Management Platform built with Spring Boot.
   - MFA
   - Profile management
   - User lifecycle management
+
+- task-service
+  - Create task
+  - Get task by ID
+  - List tasks with filters and pagination
+  - JWT-based authentication
+  - Flyway-managed PostgreSQL schema
 
 - api-gateway
   - Routing
@@ -34,7 +41,6 @@ Microservice-based Task Management Platform built with Spring Boot.
 
 ## Planned
 
-- task-service
 - notification-service
 - Kafka integration
 - Audit service

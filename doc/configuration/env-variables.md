@@ -88,7 +88,7 @@ for an IDE launch.
 
 | Name | Required | Default | Example | Consumed by | Description |
 | --- | --- | --- | --- | --- | --- |
-| `JWT_SECRET` | Yes | None | Base64 development-only signing key from `.env.example` | user-service, api-gateway | Base64-encoded JWT signing key. Both services decode it before constructing HMAC keys. Replace it outside local development. |
+| `JWT_SECRET` | Yes | None | Base64 development-only signing key from `.env.example` | user-service, task-service, api-gateway | Base64-encoded JWT signing key. All services decode it before constructing HMAC keys. Replace it outside local development. |
 | `JWT_EXPIRATION` | No | `432000` | `432000` | user-service | Optional JWT expiration override in seconds. Config Server defaults development to five days. |
 | `ADMIN_PASSWORD` | Yes | None | `dev_example_admin_password_change_me` | user-service | Password used when the local bootstrap admin account is created. |
 
@@ -112,8 +112,8 @@ No separate encryption-secret environment variable is active.
 
 | Name | Required | Default | Example | Consumed by | Description |
 | --- | --- | --- | --- | --- | --- |
-| `ACTIVE_PROFILE` | No | `dev` | `dev` | user-service | Active Spring profile override. |
-| `APPLICATION_PORT` | No | `8085` | `8085` | user-service | User-service HTTP port override. Compose currently publishes fixed host and container port `8085`, so changing this alone breaks routing and health checks. |
+| `ACTIVE_PROFILE` | No | `dev` | `dev` | user-service, task-service | Active Spring profile override. |
+| `APPLICATION_PORT` | No | service-specific | `8085` (user), `8086` (task) | user-service, task-service | HTTP port override. Compose sets `APPLICATION_PORT=8086` for task-service explicitly. Changing this alone breaks routing and health checks. |
 
 No logging environment variable is active. Infrastructure service ports are
 fixed in configuration and Compose:
@@ -122,6 +122,7 @@ fixed in configuration and Compose:
 | --- | --- |
 | API Gateway | `8080` |
 | User Service | `8085` |
+| Task Service | `8086` |
 | Config Server | `8888` |
 | Eureka Server | `8761` |
 | PostgreSQL | `5432` |
@@ -144,9 +145,8 @@ fixed in configuration and Compose:
 
 ### Future Integrations
 
-No active environment variable contract exists for task-service,
-notification-service, Kafka, Prometheus, Grafana, production mail providers,
-or OpenAI integration.
+No active environment variable contract exists for notification-service, Kafka,
+Prometheus, Grafana, production mail providers, or OpenAI integration.
 
 ## Commented Fallback Toggles
 
@@ -162,12 +162,15 @@ required `.env` contract:
 
 | Source | Variables |
 | --- | --- |
-| `.env.example` | All required local values and optional user-service overrides |
-| `compose.yml` | `POSTGRES_USER`, `POSTGRES_DB`, `SPRING_CLOUD_CONFIG_SERVER_NATIVE_SEARCH_LOCATIONS`; commented fallback toggles |
+| `.env.example` | All required local values and optional service overrides |
+| `compose.yml` | `POSTGRES_USER`, `POSTGRES_DB`, `SPRING_CLOUD_CONFIG_SERVER_NATIVE_SEARCH_LOCATIONS`, `APPLICATION_PORT` for task-service; commented fallback toggles |
 | `config/user-service-dev.yml` | PostgreSQL, mail, JWT, admin, and `APPLICATION_PORT` variables |
+| `config/task-service-dev.yml` | PostgreSQL (`TASK_POSTGRES_DB`), JWT, Eureka, and `APPLICATION_PORT` variables |
 | `backend/user-service/src/main/resources/application.yml` | `spring.application.name` only |
 | `backend/user-service/src/main/resources/bootstrap.yml` | `ACTIVE_PROFILE` and optional `CONFIG_SERVER_URI` override |
 | `backend/user-service/src/main/resources/application-dev.yml` | Retained development-profile marker only |
+| `backend/task-service/src/main/resources/application.yml` | `spring.application.name` only |
+| `backend/task-service/src/main/resources/bootstrap.yml` | `ACTIVE_PROFILE` and optional `CONFIG_SERVER_URI` override |
 | `infrastructure/api-gateway/.../JwtUtil.java` | Direct `JWT_SECRET` lookup |
 | Dockerfiles | No environment variables |
 

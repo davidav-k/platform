@@ -18,6 +18,7 @@
 - [ ] JWT validation, expiration, refresh flow, cookies, and filter order were reviewed if authentication changed.
 - [ ] Maven tests pass for affected services:
   - [ ] `mvn -B -f backend/user-service/pom.xml test`
+  - [ ] `mvn -B -f backend/task-service/pom.xml test`
   - [ ] `mvn -B -f infrastructure/api-gateway/pom.xml test`
   - [ ] `mvn -B -f infrastructure/config-server/pom.xml test`
   - [ ] `mvn -B -f infrastructure/eureka-server/pom.xml test`
