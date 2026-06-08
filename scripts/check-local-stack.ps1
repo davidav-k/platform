@@ -1,5 +1,41 @@
 $ErrorActionPreference = "Stop"
 
+function Test-ExpectedStatus {
+    param(
+        [string]$Name,
+        [string]$Url,
+        [int]$ExpectedStatus
+    )
+
+    $actualStatus = 0
+    for ($attempt = 1; $attempt -le 30; $attempt++) {
+        try {
+            $response = Invoke-WebRequest -Uri $Url -Method Get -UseBasicParsing -TimeoutSec 5
+            $actualStatus = [int]$response.StatusCode
+        }
+        catch {
+            if ($null -ne $_.Exception.Response) {
+                $actualStatus = [int]$_.Exception.Response.StatusCode
+            }
+            else {
+                $actualStatus = 0
+            }
+        }
+
+        if ($actualStatus -eq $ExpectedStatus) {
+            Write-Host "[OK] $Name returned HTTP $ExpectedStatus."
+            return
+        }
+
+        Start-Sleep -Seconds 2
+    }
+
+    throw "[FAIL] $Name returned HTTP $actualStatus; expected $ExpectedStatus."
+}
+
+Test-ExpectedStatus -Name "Notification service health" -Url "http://localhost:8087/actuator/health" -ExpectedStatus 200
+Test-ExpectedStatus -Name "Gateway notification route" -Url "http://localhost:8080/api/notifications" -ExpectedStatus 401
+
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 $ComposeFile = Join-Path $RepoRoot "compose.yml"
 $EnvFile = Join-Path $RepoRoot ".env"
