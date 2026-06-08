@@ -2,9 +2,8 @@
 
 ## Current Phase
 
-The MVP currently runs `user-service` and supporting infrastructure. The
-`task-service` and `notification-service` directories are documentation shells.
-Their APIs in this repository are contracts for future implementation.
+The MVP currently runs `user-service`, `task-service`, `notification-service`,
+and supporting infrastructure. Each service owns its domain and persistence.
 
 The current communication model for new MVP services is synchronous REST.
 Event-driven integration is a future direction only. No broker is introduced
@@ -152,8 +151,14 @@ contracts, delivery guarantees, and versioning require a separate design.
 | --- | --- | --- | --- |
 | `/api/users/**` | `/api/v1/user/**` | `user-service` | Implemented |
 | `/api/tasks/**` | `/api/v1/tasks/**` | `task-service` | Implemented (create, get, list) |
-| `/api/notifications/**` | `/api/v1/notifications/**` | `notification-service` | Contract only |
+| `/api/notifications/**` | `/api/v1/notifications/**` | `notification-service` | Implemented (create, get, list) |
 | `/api/notification-preferences/**` | `/api/v1/notification-preferences/**` | `notification-service` | Contract only |
 
-The current gateway configuration serves both `/api/users/**` and
-`/api/tasks/**`. Notification routes do not exist yet.
+The current gateway configuration serves `/api/users/**`, `/api/tasks/**`, and
+`/api/notifications/**`.
+
+Task assignment notification requests use synchronous internal REST from
+`task-service` to `notification-service`; each service retains ownership of its
+own data. This integration is disabled by default until service-to-service
+authentication is implemented. A future Kafka/outbox design can replace the
+synchronous call without changing aggregate ownership.

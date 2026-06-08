@@ -27,3 +27,9 @@ management:
 
 jwt:
   secret: ${JWT_SECRET}
+
+notification-service:
+  enabled: ${NOTIFICATION_SERVICE_ENABLED:false}
+  base-url: ${NOTIFICATION_SERVICE_BASE_URL:http://notification-service:8087}
+  connect-timeout: ${NOTIFICATION_SERVICE_CONNECT_TIMEOUT:2s}
+  read-timeout: ${NOTIFICATION_SERVICE_READ_TIMEOUT:2s}
