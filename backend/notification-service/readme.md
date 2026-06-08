@@ -11,7 +11,12 @@ Runtime configuration is served by Config Server from
 `config/notification-service-dev.yml`. Flyway owns schema migrations, and the
 database name defaults to `notifications_db`.
 
+## Domain Model
+
+Domain entities, response DTOs, mappers, and Spring Data repositories are
+implemented for notifications and notification preferences.
+
 ## Not Implemented Yet
 
-Notification domain logic, REST API, Gateway routing, Docker Compose service,
-Kafka integration, and email delivery remain for later branches.
+REST API, use cases, security, Gateway routing, Docker Compose service, Kafka
+integration, and email delivery remain for later branches.
