@@ -22,6 +22,14 @@ implemented for notifications and notification preferences.
 not send email and does not require security in this branch. It is not routed
 through the API Gateway yet.
 
+`GET /api/v1/notifications/{notificationId}` retrieves one notification by its
+public UUID.
+
+`GET /api/v1/notifications` lists notifications with optional
+`recipientUserId`, `status`, `channel`, and `type` filters. Pagination uses
+`page` and `size`; sorting uses `sort=field,direction` and defaults to
+`createdAt,desc`.
+
 Example request:
 
 ```json
@@ -55,8 +63,39 @@ Example response:
 }
 ```
 
+Example read request:
+
+```text
+GET /api/v1/notifications/cd970e48-eb47-4c62-b983-2ade6ba203ef
+```
+
+Example list request:
+
+```text
+GET /api/v1/notifications?status=PENDING&channel=EMAIL&page=0&size=20&sort=createdAt,desc
+```
+
+List responses return notification DTOs and pagination metadata:
+
+```json
+{
+  "data": {
+    "items": [],
+    "page": {
+      "number": 0,
+      "size": 20,
+      "totalElements": 0,
+      "totalPages": 0
+    }
+  }
+}
+```
+
+These are internal service paths. Gateway routing and security are not
+implemented, and notification creation still does not perform email delivery.
+
 ## Not Implemented Yet
 
 Security, Gateway routing, Docker Compose integration, Kafka, email delivery,
-task-service integration, list/read endpoints, and notification preferences API
-remain for later branches.
+task-service integration, notification preferences API, status updates, delete,
+and mark-as-read remain for later branches.
