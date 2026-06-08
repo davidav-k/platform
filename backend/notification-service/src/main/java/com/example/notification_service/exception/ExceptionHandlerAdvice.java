@@ -11,6 +11,8 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -57,6 +59,25 @@ public class ExceptionHandlerAdvice {
                 "Notification data violates persistence constraints",
                 HttpStatus.CONFLICT
         );
+    }
+
+    @ExceptionHandler(NotificationNotFoundException.class)
+    public ResponseEntity<Response> handleNotificationNotFound(NotificationNotFoundException ex,
+                                                               HttpServletRequest request) {
+        return error(request, Map.of(), "Notification not found.", HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<Response> handleTypeMismatch(MethodArgumentTypeMismatchException ex,
+                                                       HttpServletRequest request) {
+        return error(request, Map.of(ex.getName(), "Value has an invalid format"),
+                "Provided arguments are not valid", HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    public ResponseEntity<Response> handleHandlerMethodValidation(HandlerMethodValidationException ex,
+                                                                  HttpServletRequest request) {
+        return error(request, Map.of(), "Provided arguments are not valid", HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
