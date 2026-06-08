@@ -20,6 +20,7 @@ Implemented service for:
 - Spring Mail for email notifications
 - Docker for containerization
 - JUnit and Mockito for testing
+- PostgreSQL Testcontainers for migration and integration testing
 - Lombok for reducing boilerplate code
 
 ## Endpoints and Permissions
@@ -76,3 +77,15 @@ EMAIL_HOST=localhost
 
 See [Configuration management](../../doc/architecture/configuration-management.md)
 for the ownership hierarchy and startup modes.
+
+### Build and Test
+
+```bash
+mvn -B -f backend/user-service/pom.xml test
+```
+
+Controller and service tests run with MockMvc and Mockito. The focused
+`UserServiceIntegrationTest` starts PostgreSQL 16.1 through Testcontainers,
+runs Flyway, validates Hibernate mappings, and verifies deletion of
+user-service-owned dependent rows. Docker must be running. Maven Surefire sets
+Docker API version `1.44` for Docker Engine 29 compatibility.

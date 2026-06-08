@@ -304,3 +304,9 @@ GET http://localhost:8086/actuator/health
 ```bash
 mvn -B -f backend/task-service/pom.xml test
 ```
+
+The repository test uses PostgreSQL 16.1 through Testcontainers and validates
+the Flyway baseline, Hibernate mappings, sequences, and database constraints.
+Use-case and security tests use H2 in PostgreSQL compatibility mode to keep the
+suite fast. Docker must be running for the full command. Maven Surefire sets
+Docker API version `1.44` for Docker Engine 29 compatibility.

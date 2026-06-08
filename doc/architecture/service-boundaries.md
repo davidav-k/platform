@@ -99,7 +99,8 @@ their own aggregates.
 - `user-service` must not become the owner of tasks or notification preferences.
 - Services must not use shared entity classes or shared persistence models.
 - Services must not trust gateway headers as the sole authentication proof.
-- Internal notification APIs must not be exposed through API Gateway.
+- Service-to-service notification calls must use the internal service URL or
+  service discovery, not the API Gateway route intended for external clients.
 
 ## Authorization Model
 

@@ -121,6 +121,16 @@ http://localhost:8087/api/v1/notifications
 Notification API requests through either route require a valid access JWT.
 Unauthenticated requests return `401 Unauthorized`.
 
+## Build and Test
+
+```bash
+mvn -B -f backend/notification-service/pom.xml test
+```
+
+Repository, migration, use-case, and security integration tests use PostgreSQL
+16.1 through Testcontainers. Docker must be running for the full suite. Maven
+Surefire sets Docker API version `1.44` for Docker Engine 29 compatibility.
+
 ## Authentication
 
 Notification API endpoints require a valid access JWT. The service validates
