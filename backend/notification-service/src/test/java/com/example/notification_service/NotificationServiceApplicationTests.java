@@ -1,8 +1,10 @@
 package com.example.notification_service;
 
+import com.example.notification_service.repository.NotificationRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 @SpringBootTest(properties = {
         "spring.cloud.config.enabled=false",
@@ -15,6 +17,9 @@ import org.springframework.test.context.ActiveProfiles;
 })
 @ActiveProfiles("test")
 class NotificationServiceApplicationTests {
+
+    @MockitoBean
+    private NotificationRepository notificationRepository;
 
     @Test
     void contextLoads() {
