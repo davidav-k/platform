@@ -96,7 +96,7 @@ class TaskControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isCreated())
-            .andExpect(header().string("Location", "/api/v1/tasks/" + taskId))
+            .andExpect(header().string("Location", taskId.toString()))
             .andExpect(jsonPath("$.code").value(201))
             .andExpect(jsonPath("$.status").value("CREATED"))
             .andExpect(jsonPath("$.message").value("Task created successfully."))

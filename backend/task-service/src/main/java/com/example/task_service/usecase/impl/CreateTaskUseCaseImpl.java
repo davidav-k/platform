@@ -7,17 +7,18 @@ import com.example.task_service.enumeration.TaskPriority;
 import com.example.task_service.enumeration.TaskStatus;
 import com.example.task_service.repository.TaskRepository;
 import com.example.task_service.usecase.CreateTaskUseCase;
-import jakarta.transaction.Transactional;
+
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Validator;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Set;
 import java.util.UUID;
 
 @Service
-@Transactional(rollbackOn = Exception.class)
+@Transactional
 public class CreateTaskUseCaseImpl implements CreateTaskUseCase {
 
     private final TaskRepository taskRepository;

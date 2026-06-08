@@ -49,19 +49,19 @@ public class TaskController {
         this.listTasksUseCase = listTasksUseCase;
     }
 
-    @PostMapping
-    public ResponseEntity<Response> createTask(@RequestBody @Valid CreateTaskRequest createTaskRequest,
-                                               @AuthenticationPrincipal AuthenticatedUser authenticatedUser,
-                                               HttpServletRequest request) {
-        CreateTaskResponse task = createTaskUseCase.create(createTaskRequest, authenticatedUser.userId());
-        Response response = RequestUtils.getResponse(
-            request,
-            Map.of("task", task),
-            "Task created successfully.",
-            HttpStatus.CREATED
-        );
-        return ResponseEntity.created(URI.create("/api/v1/tasks/" + task.getTaskId())).body(response);
-    }
+@PostMapping
+public ResponseEntity<Response> createTask(@RequestBody @Valid CreateTaskRequest createTaskRequest,
+                                           @AuthenticationPrincipal AuthenticatedUser authenticatedUser,
+                                           HttpServletRequest request) {
+    CreateTaskResponse task = createTaskUseCase.create(createTaskRequest, authenticatedUser.userId());
+    Response response = RequestUtils.getResponse(
+        request,
+        Map.of("task", task),
+        "Task created successfully.",
+        HttpStatus.CREATED
+    );
+    return ResponseEntity.created(URI.create(task.getTaskId().toString())).body(response);
+}
 
     @GetMapping("/{taskId}")
     public ResponseEntity<Response> getTask(@PathVariable UUID taskId, HttpServletRequest request) {
