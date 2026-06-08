@@ -50,6 +50,8 @@ credentials, mail credentials, or externally managed service credentials.
 | `POSTGRES_HOST` | Yes | None | `postgres` | user-service | PostgreSQL hostname in the JDBC URL. |
 | `POSTGRES_PORT` | Yes | None | `5432` | user-service | PostgreSQL port in the JDBC URL. |
 | `POSTGRES_DB` | Yes | None | `users_db` | postgres, user-service, Compose healthcheck | Local user-service database name. |
+| `TASK_POSTGRES_DB` | No | `tasks_db` | `tasks_db` | postgres init, task-service | Local task-service database name. |
+| `NOTIFICATION_POSTGRES_DB` | No | `notifications_db` | `notifications_db` | postgres init, notification-service | Local notification-service database name. |
 | `POSTGRES_USER` | Yes | None | `user` | postgres, user-service, Compose healthcheck | PostgreSQL username. |
 | `POSTGRES_PASSWORD` | Yes | None | `dev_example_postgres_password_change_me` | postgres, user-service | Development-only PostgreSQL password placeholder. |
 
@@ -113,7 +115,7 @@ No separate encryption-secret environment variable is active.
 | Name | Required | Default | Example | Consumed by | Description |
 | --- | --- | --- | --- | --- | --- |
 | `ACTIVE_PROFILE` | No | `dev` | `dev` | user-service, task-service | Active Spring profile override. |
-| `APPLICATION_PORT` | No | service-specific | `8085` (user), `8086` (task) | user-service, task-service | HTTP port override. Compose sets `APPLICATION_PORT=8086` for task-service explicitly. Changing this alone breaks routing and health checks. |
+| `APPLICATION_PORT` | No | service-specific | `8085` (user), `8086` (task), `8087` (notification) | user-service, task-service, notification-service | HTTP port override. Compose sets `APPLICATION_PORT=8086` for task-service explicitly. Changing this alone breaks routing and health checks. |
 
 No logging environment variable is active. Infrastructure service ports are
 fixed in configuration and Compose:
@@ -123,6 +125,7 @@ fixed in configuration and Compose:
 | API Gateway | `8080` |
 | User Service | `8085` |
 | Task Service | `8086` |
+| Notification Service | `8087` |
 | Config Server | `8888` |
 | Eureka Server | `8761` |
 | PostgreSQL | `5432` |
@@ -145,8 +148,8 @@ fixed in configuration and Compose:
 
 ### Future Integrations
 
-No active environment variable contract exists for notification-service, Kafka,
-Prometheus, Grafana, production mail providers, or OpenAI integration.
+No active environment variable contract exists for Kafka, Prometheus, Grafana,
+production mail providers, or OpenAI integration.
 
 ## Commented Fallback Toggles
 
@@ -166,11 +169,14 @@ required `.env` contract:
 | `compose.yml` | `POSTGRES_USER`, `POSTGRES_DB`, `SPRING_CLOUD_CONFIG_SERVER_NATIVE_SEARCH_LOCATIONS`, `APPLICATION_PORT` for task-service; commented fallback toggles |
 | `config/user-service-dev.yml` | PostgreSQL, mail, JWT, admin, and `APPLICATION_PORT` variables |
 | `config/task-service-dev.yml` | PostgreSQL (`TASK_POSTGRES_DB`), JWT, Eureka, and `APPLICATION_PORT` variables |
+| `config/notification-service-dev.yml` | PostgreSQL (`NOTIFICATION_POSTGRES_DB`), Eureka, and `APPLICATION_PORT` variables |
 | `backend/user-service/src/main/resources/application.yml` | `spring.application.name` only |
 | `backend/user-service/src/main/resources/bootstrap.yml` | `ACTIVE_PROFILE` and optional `CONFIG_SERVER_URI` override |
 | `backend/user-service/src/main/resources/application-dev.yml` | Retained development-profile marker only |
 | `backend/task-service/src/main/resources/application.yml` | `spring.application.name` only |
 | `backend/task-service/src/main/resources/bootstrap.yml` | `ACTIVE_PROFILE` and optional `CONFIG_SERVER_URI` override |
+| `backend/notification-service/src/main/resources/application.yml` | `spring.application.name` only |
+| `backend/notification-service/src/main/resources/bootstrap.yml` | `ACTIVE_PROFILE` and optional `CONFIG_SERVER_URI` override |
 | `infrastructure/api-gateway/.../JwtUtil.java` | Direct `JWT_SECRET` lookup |
 | Dockerfiles | No environment variables |
 
