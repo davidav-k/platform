@@ -168,7 +168,7 @@ required `.env` contract:
 | `.env.example` | All required local values and optional service overrides |
 | `compose.yml` | `POSTGRES_USER`, `POSTGRES_DB`, `SPRING_CLOUD_CONFIG_SERVER_NATIVE_SEARCH_LOCATIONS`, `APPLICATION_PORT` for task-service; commented fallback toggles |
 | `config/user-service-dev.yml` | PostgreSQL, mail, JWT, admin, and `APPLICATION_PORT` variables |
-| `config/task-service-dev.yml` | PostgreSQL (`TASK_POSTGRES_DB`), JWT, Eureka, and `APPLICATION_PORT` variables |
+| `config/task-service-dev.yml` | PostgreSQL (`TASK_POSTGRES_DB`), JWT, Eureka, `APPLICATION_PORT`, and `NOTIFICATION_SERVICE_ENABLED`, `NOTIFICATION_SERVICE_BASE_URL`, `NOTIFICATION_SERVICE_CONNECT_TIMEOUT`, `NOTIFICATION_SERVICE_READ_TIMEOUT` variables |
 | `config/notification-service-dev.yml` | PostgreSQL (`NOTIFICATION_POSTGRES_DB`), Eureka, and `APPLICATION_PORT` variables |
 | `backend/user-service/src/main/resources/application.yml` | `spring.application.name` only |
 | `backend/user-service/src/main/resources/bootstrap.yml` | `ACTIVE_PROFILE` and optional `CONFIG_SERVER_URI` override |
