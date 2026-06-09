@@ -61,7 +61,7 @@ public class NotificationController {
                 HttpStatus.CREATED
         );
         return ResponseEntity.created(URI.create("/api/v1/notifications/" + notification.getNotificationId())).body(response);
-
+    }
     @GetMapping("/{notificationId}")
     public ResponseEntity<Response> getNotification(@PathVariable UUID notificationId,
                                                     HttpServletRequest request) {
