@@ -60,8 +60,7 @@ public class NotificationController {
                 "Notification created successfully.",
                 HttpStatus.CREATED
         );
-        return ResponseEntity.created(URI.create(notification.getNotificationId().toString())).body(response);
-    }
+        return ResponseEntity.created(URI.create("/api/v1/notifications/" + notification.getNotificationId())).body(response);
 
     @GetMapping("/{notificationId}")
     public ResponseEntity<Response> getNotification(@PathVariable UUID notificationId,
