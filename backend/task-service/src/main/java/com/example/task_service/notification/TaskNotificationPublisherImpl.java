@@ -38,7 +38,7 @@ public class TaskNotificationPublisherImpl implements TaskNotificationPublisher 
             notificationClient.createNotification(request);
         } catch (RuntimeException exception) {
             LOGGER.warn("Notification request failed for recipientUserId={} and type={}",
-                request.getRecipientUserId(), request.getType());
+                request.getRecipientUserId(), request.getType(), exception);
         }
     }
 }
