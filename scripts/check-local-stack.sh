@@ -21,9 +21,6 @@ check_expected_status() {
   return 1
 }
 
-check_expected_status "Notification service health" "http://localhost:8087/actuator/health" "200"
-check_expected_status "Gateway notification route" "http://localhost:8080/api/notifications" "401"
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 COMPOSE_FILE="${REPO_ROOT}/compose.yml"
@@ -71,6 +68,8 @@ required_services=(
   config-server
   eureka-server
   user-service
+  task-service
+  notification-service
   gateway
 )
 
@@ -90,6 +89,8 @@ healthy_containers=(
   tsp_config
   tsp_eureka
   tsp_user_service
+  tsp_task_service
+  tsp_notification_service
   tsp_gateway
 )
 
@@ -99,6 +100,8 @@ healthy_services=(
   config-server
   eureka-server
   user-service
+  task-service
+  notification-service
   gateway
 )
 
@@ -128,7 +131,10 @@ check_http "Config Server repository" "http://localhost:8888/user-service/dev"
 check_http "Eureka Server" "http://localhost:8761/actuator/health"
 check_http "Eureka registry" "http://localhost:8761/eureka/apps"
 check_http "User Service" "http://localhost:8085/actuator/health"
+check_http "Task Service" "http://localhost:8086/actuator/health"
+check_http "Notification Service" "http://localhost:8087/actuator/health"
 check_http "API Gateway" "http://localhost:8080/actuator/health"
+check_expected_status "Gateway notification route" "http://localhost:8080/api/notifications" "401"
 
 gateway_route_status="$(
   curl --silent --show-error --output /dev/null --write-out '%{http_code}' --max-time 10 \
