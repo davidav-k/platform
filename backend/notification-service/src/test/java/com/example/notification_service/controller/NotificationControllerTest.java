@@ -105,7 +105,7 @@ class NotificationControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
-                .andExpect(header().string("Location", notificationId.toString()))
+                .andExpect(header().string("Location", "/api/v1/notifications/" + notificationId))
                 .andExpect(jsonPath("$.code").value(201))
                 .andExpect(jsonPath("$.status").value("CREATED"))
                 .andExpect(jsonPath("$.path").value("/api/v1/notifications"))
