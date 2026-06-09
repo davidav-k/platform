@@ -132,7 +132,7 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
                     <systemPropertyVariables>
-                        <api.version>1.44</api.version>
+                        <api.version>${docker.api.version}</api.version>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>
