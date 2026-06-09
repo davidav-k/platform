@@ -17,6 +17,7 @@ spring:
           uri: lb://notification-service
           predicates:
             - Path=/api/notifications,/api/notifications/
+            - Method=POST,GET,OPTIONS
           filters:
             - RewritePath=/api/notifications/?$, /api/v1/notifications
 
