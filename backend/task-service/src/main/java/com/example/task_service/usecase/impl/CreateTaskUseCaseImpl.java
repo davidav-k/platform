@@ -71,7 +71,7 @@ public class CreateTaskUseCaseImpl implements CreateTaskUseCase {
             ));
         } catch (RuntimeException exception) {
             LOGGER.warn("Task assignment notification failed for taskId={} and assigneeUserId={}",
-                task.getTaskId(), task.getAssigneeUserId());
+                task.getTaskId(), task.getAssigneeUserId(), exception);
         }
     }
 
