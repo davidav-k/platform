@@ -90,8 +90,8 @@ current Testcontainers 1.x dependency. Do not override
 ## CI
 
 GitHub Actions runs the modules listed in `.github/workflows/maven-tests.yml`
-on pull requests and pushes to `main` and `dev`. The current matrix does not
-yet include every buildable backend module; this is tracked in
-`doc/technical-debt.md`.
+on pull requests and pushes to `main` and `dev`. The matrix runs tests for all
+six buildable Maven modules: the three backend services, API gateway, Config
+Server, and Eureka Server.
 
 The repository does not currently have a root Maven aggregator. Add new Maven services to `.github/workflows/maven-tests.yml` when they become buildable modules.
