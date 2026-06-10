@@ -25,6 +25,9 @@ the JWT subject and is ignored if supplied in the request payload.
 - Request DTO: `CreateTaskRequest`
 - Response: `201 CREATED`, `data.task` contains `CreateTaskResponse`
 - Authentication: required
+- Notification side effect: an assigned, non-self-assigned task triggers a
+  best-effort `TASK_ASSIGNED` notification after persistence; notification
+  delivery failure does not change the task response
 
 ### `GET /api/v1/tasks/{taskId}`
 
@@ -34,7 +37,8 @@ Returns one task by its public UUID.
 - Request DTO: none
 - Response: `200 OK`, `data.task` contains `TaskResponse`
 - Authentication: required
-- Missing task: `404 NOT_FOUND`
+- Authorization: `ROLE_ADMIN` and `ROLE_SUPER_ADMIN` can read any task; other users can read tasks they created or are assigned to
+- Missing or inaccessible task: `404 NOT_FOUND`
 
 ### `GET /api/v1/tasks`
 
@@ -44,9 +48,68 @@ Returns a filtered, paginated task list.
 - Request DTO: none
 - Response: `200 OK`, `data.items` contains `TaskResponse` entries and `data.page` contains pagination metadata
 - Authentication: required
+- Authorization: `ROLE_ADMIN` and `ROLE_SUPER_ADMIN` can list all tasks; other users see only tasks they created or are assigned to
 - Optional filters: `status`, `priority`, `assigneeUserId`, `createdByUserId`
 - Pagination: `page` (default `0`), `size` (default `20`, max `100`)
 - Sorting: `sort` (default `createdAt,desc`)
+
+### `PATCH /api/v1/tasks/{taskId}`
+
+Partially updates editable task fields.
+
+- Gateway route: `PATCH /api/tasks/{taskId}`
+- Request DTO: `UpdateTaskRequest`
+- Response: `200 OK`, `data.task` contains `TaskResponse`
+- Authentication: required
+- Authorization: `ROLE_ADMIN` and `ROLE_SUPER_ADMIN` can update any task; other users can update tasks they created or are assigned to
+- Missing or inaccessible task: `404 NOT_FOUND`
+- At least one editable field must be provided
+- Omitted fields remain unchanged; `description` and `assigneeUserId` may be cleared with `null`
+- Changing `assigneeUserId` requires `ROLE_ADMIN`, `ROLE_SUPER_ADMIN`, or task creator permission
+- Status changes are not supported by this endpoint
+
+### `PATCH /api/v1/tasks/{taskId}/status`
+
+Changes the task status independently from generic task updates.
+
+- Gateway route: `PATCH /api/tasks/{taskId}/status`
+- Request DTO: `UpdateTaskStatusRequest`
+- Response: `200 OK`, `data.task` contains `TaskResponse`
+- Authentication: required
+- Authorization: `ROLE_ADMIN` and `ROLE_SUPER_ADMIN` can change any task; other users can change tasks they created or are assigned to
+- Missing or inaccessible task: `404 NOT_FOUND`
+- All valid `TaskStatus` enum-to-enum changes are allowed for the MVP
+- Other task fields remain unchanged; `updatedAt` is managed by the service
+- Task history and workflow transition rules are not implemented yet
+
+### `DELETE /api/v1/tasks/{taskId}`
+
+Soft-deletes an active task without removing its database row.
+
+- Gateway route: `DELETE /api/tasks/{taskId}`
+- Request DTO: none
+- Response: `200 OK` with the standard response metadata and no `data` field
+- Authentication: required
+- Authorization: `ROLE_ADMIN` and `ROLE_SUPER_ADMIN` can delete any task; other users can delete only tasks they created
+- Assignment alone does not grant delete permission
+- Missing, inaccessible, or already deleted task: `404 NOT_FOUND`
+- Deleted tasks are excluded from normal get and list operations and cannot be updated or have their status changed
+- `deletedAt` and `deletedByUserId` are internal persistence fields and are not exposed by `TaskResponse`
+
+### `PATCH /api/v1/tasks/{taskId}/assignee`
+
+Assigns, reassigns, or unassigns an active task.
+
+- Gateway route: `PATCH /api/tasks/{taskId}/assignee`
+- Request DTO: `AssignTaskRequest`
+- Response: `200 OK`, `data.task` contains `TaskResponse`
+- Authentication: required
+- Authorization: `ROLE_ADMIN` and `ROLE_SUPER_ADMIN` can assign any task; other users can assign only tasks they created
+- Assignment alone does not grant reassignment permission
+- Missing, inaccessible, or deleted task: `404 NOT_FOUND`
+- `assigneeUserId` must be present and contain a UUID or explicit `null` to unassign
+- The service does not synchronously verify user existence in this endpoint
+- Other task fields remain unchanged; `updatedAt` is managed by the service
 
 ## Implemented DTOs
 
@@ -86,6 +149,27 @@ Returns a filtered, paginated task list.
 | `createdAt` | string | ISO-8601 timestamp with offset |
 | `updatedAt` | string | ISO-8601 timestamp with offset |
 
+### UpdateTaskRequest
+
+| Field | Type | Required | Validation |
+| --- | --- | --- | --- |
+| `title` | string | no | When provided, not null or blank; maximum 200 characters |
+| `description` | string or null | no | Maximum 5000 characters; `null` clears the description |
+| `priority` | enum | no | When provided, not null; `LOW`, `MEDIUM`, `HIGH` |
+| `assigneeUserId` | UUID string or null | no | `null` clears the assignee |
+
+### UpdateTaskStatusRequest
+
+| Field | Type | Required | Validation |
+| --- | --- | --- | --- |
+| `status` | enum | yes | `NEW`, `IN_PROGRESS`, `DONE`, `CANCELLED` |
+
+### AssignTaskRequest
+
+| Field | Type | Required | Validation |
+| --- | --- | --- | --- |
+| `assigneeUserId` | UUID string or null | yes | UUID assigns or reassigns; explicit `null` unassigns |
+
 ## Enumerations
 
 ### TaskStatus
@@ -110,43 +194,6 @@ Returns a filtered, paginated task list.
 The following endpoints are not yet implemented. Their contracts are defined
 here as targets for future MVP work.
 
-### `PUT /api/v1/tasks/{taskId}`
-
-Replaces editable task fields.
-
-- Request DTO: `UpdateTaskRequest`
-- Response: `200 OK`, `data.task` contains `TaskResponse`
-- Authorization: creator, `ROLE_ADMIN`, or `ROLE_SUPER_ADMIN`
-
-### `DELETE /api/v1/tasks/{taskId}`
-
-Soft-deletes a task.
-
-- Response: `200 OK`, `data` is empty
-- Authorization: creator, `ROLE_ADMIN`, or `ROLE_SUPER_ADMIN`
-- Whether deletion is soft or hard must be decided before implementation.
-
-### `PATCH /api/v1/tasks/{taskId}/status`
-
-Changes the task status and records task history.
-
-- Request DTO: `UpdateTaskStatusRequest`
-- Response: `200 OK`, `data.task` contains `TaskResponse`
-- Transition rules are a task-domain decision and must be finalized before implementation.
-
-### `POST /api/v1/tasks/{taskId}/assign`
-
-Assigns a task to a user.
-
-- Request DTO: `AssignTaskRequest`
-- Response: `201 CREATED`, `data.assignment` contains `TaskAssignmentResponse`
-
-### `DELETE /api/v1/tasks/{taskId}/assign/{userId}`
-
-Removes an active task assignment.
-
-- Response: `200 OK`, `data` is empty
-
 ### `POST /api/v1/tasks/{taskId}/comments`
 
 Adds a comment to a task.
@@ -163,41 +210,11 @@ Returns comments for a task.
 
 ## Planned DTOs
 
-### UpdateTaskRequest
-
-| Field | Type | Required | Validation |
-| --- | --- | --- | --- |
-| `title` | string | yes | Not blank; maximum 200 characters |
-| `description` | string | no | Maximum 5000 characters |
-| `priority` | enum | yes | `LOW`, `MEDIUM`, `HIGH` |
-
-### UpdateTaskStatusRequest
-
-| Field | Type | Required | Validation |
-| --- | --- | --- | --- |
-| `status` | enum | yes | `NEW`, `IN_PROGRESS`, `DONE`, `CANCELLED` |
-
-### AssignTaskRequest
-
-| Field | Type | Required | Validation |
-| --- | --- | --- | --- |
-| `userId` | UUID string | yes | Existing active `user-service` public user identifier |
-
 ### CreateTaskCommentRequest
 
 | Field | Type | Required | Validation |
 | --- | --- | --- | --- |
 | `text` | string | yes | Not blank; maximum 5000 characters |
-
-### TaskAssignmentResponse
-
-| Field | Type | Description |
-| --- | --- | --- |
-| `assignmentId` | UUID string | Assignment identifier |
-| `taskId` | UUID string | Task identifier |
-| `userId` | UUID string | Assigned public user identifier |
-| `assignedAt` | string | ISO-8601 timestamp |
-| `assignedByUserId` | UUID string | Public identifier of assigning actor |
 
 ### TaskCommentResponse
 

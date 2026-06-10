@@ -9,6 +9,14 @@ infrastructure.
 For aggregate ownership and future service rules, see
 [Service boundaries](architecture/service-boundaries.md).
 
+For the MVP decision on account deactivation, retained cross-service user
+references, and future lifecycle propagation, see
+[User deletion and deactivation policy](architecture/user-deletion-policy.md).
+
+For the proposed transactional outbox model, candidate domain events, broker
+options, and incremental migration phases, see
+[Outbox pattern design](architecture/outbox-pattern-design.md).
+
 ## Implemented Runtime
 
 The Docker Compose stack currently runs:
@@ -52,7 +60,7 @@ The notification API contract is documented in
 
 The following items are roadmap direction, not implemented functionality:
 
-- later event-driven communication and Kafka integration
+- later event-driven communication using the proposed outbox pattern; broker selection remains open
 - audit service
 - OpenAI-backed task automation
 - Vue 3 frontend implementation

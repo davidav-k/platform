@@ -2,8 +2,8 @@
 
 ## Scope
 
-This document defines future `notification-service` endpoints only. It does
-not describe implemented controllers. The service owns notifications,
+This document describes implemented `notification-service` endpoints and
+planned contracts for future work. The service owns notifications,
 preferences, templates, and delivery tracking as defined in
 [Service boundaries](../architecture/service-boundaries.md).
 
@@ -128,8 +128,9 @@ Replaces the authenticated user's notification preferences.
 ## Internal Delivery Endpoints
 
 Internal endpoints are for service-to-service calls only. API Gateway must not
-route them. When implemented, they require service authentication,
-idempotency handling through `requestId`, and audit-safe logging.
+route them. The implemented system endpoint uses a delegated platform access
+JWT for the MVP; dedicated service authentication and idempotency remain future
+work. Internal calls require audit-safe logging.
 
 ### `POST /internal/api/v1/notifications/email`
 
@@ -144,10 +145,14 @@ Requests email notification delivery.
 
 Creates an in-application notification.
 
-- Request DTO: `SendSystemNotificationRequest`
+- Request DTO: `CreateSystemNotificationRequest`
 - Response: `201 CREATED`, `data.notification` contains
   `NotificationResponse`
 - Caller: trusted platform service only
+- Authentication: valid platform access JWT; task-service delegates the initiating user's JWT for the MVP
+- Required fields: `recipientUserId`, `type`, `message`, `sourceService`, `sourceEntityType`, `sourceEntityId`
+- Optional field: `title`
+- The endpoint always creates an `IN_APP` notification with `PENDING` status
 
 ## Delivery Notes
 

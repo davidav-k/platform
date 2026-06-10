@@ -1,11 +1,14 @@
 package com.example.task_service.security;
 
 import com.example.task_service.entity.TaskEntity;
+import com.example.task_service.enumeration.TaskPriority;
+import com.example.task_service.enumeration.TaskStatus;
 import com.example.task_service.repository.TaskRepository;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -18,7 +21,10 @@ import java.util.Date;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -47,6 +53,11 @@ class TaskSecurityIntegrationTest {
 
     @Autowired
     private TaskRepository taskRepository;
+
+    @BeforeEach
+    void setUp() {
+        taskRepository.deleteAll();
+    }
 
     @Test
     void authenticatedCreateStoresTokenSubjectAsCreator() throws Exception {
@@ -84,20 +95,416 @@ class TaskSecurityIntegrationTest {
     }
 
     @Test
+    void regularUserListIncludesOwnedAndAssignedTasksOnly() throws Exception {
+        UUID userId = UUID.randomUUID();
+        TaskEntity created = saveTask("Created", UUID.randomUUID(), userId);
+        TaskEntity assigned = saveTask("Assigned", userId, UUID.randomUUID());
+        saveTask("Unrelated", UUID.randomUUID(), UUID.randomUUID());
+
+        mockMvc.perform(get("/api/v1/tasks")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken(userId, "USER")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.items.length()").value(2))
+            .andExpect(jsonPath("$.data.items[*].taskId").value(containsInAnyOrder(
+                created.getTaskId().toString(),
+                assigned.getTaskId().toString()
+            )));
+    }
+
+    @Test
+    void regularUserCannotReadUnrelatedTask() throws Exception {
+        TaskEntity unrelated = saveTask("Unrelated", UUID.randomUUID(), UUID.randomUUID());
+
+        mockMvc.perform(get("/api/v1/tasks/{taskId}", unrelated.getTaskId())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken(UUID.randomUUID(), "USER")))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.message").value("Task not found."));
+    }
+
+    @Test
+    void adminCanListAndReadAllTasks() throws Exception {
+        TaskEntity first = saveTask("First", UUID.randomUUID(), UUID.randomUUID());
+        saveTask("Second", UUID.randomUUID(), UUID.randomUUID());
+        UUID adminUserId = UUID.randomUUID();
+
+        mockMvc.perform(get("/api/v1/tasks")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken(adminUserId, "ADMIN")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.items.length()").value(2));
+
+        mockMvc.perform(get("/api/v1/tasks/{taskId}", first.getTaskId())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken(adminUserId, "ADMIN")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.task.taskId").value(first.getTaskId().toString()));
+    }
+
+    @Test
+    void adminCanUpdateAnyTask() throws Exception {
+        TaskEntity task = saveTask("Original", UUID.randomUUID(), UUID.randomUUID());
+
+        mockMvc.perform(patch("/api/v1/tasks/{taskId}", task.getTaskId())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken(UUID.randomUUID(), "ADMIN"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"Admin update\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.task.title").value("Admin update"));
+    }
+
+    @Test
+    void creatorCanUpdateOwnTask() throws Exception {
+        UUID creatorUserId = UUID.randomUUID();
+        TaskEntity task = saveTask("Original", UUID.randomUUID(), creatorUserId);
+        UUID originalTaskId = task.getTaskId();
+
+        mockMvc.perform(patch("/api/v1/tasks/{taskId}", task.getTaskId())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken(creatorUserId, "USER"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "priority": "HIGH",
+                      "taskId": "%s",
+                      "createdByUserId": "%s",
+                      "createdAt": "2030-01-01T00:00:00Z",
+                      "updatedAt": "2030-01-01T00:00:00Z",
+                      "status": "DONE"
+                    }
+                    """.formatted(UUID.randomUUID(), UUID.randomUUID())))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.task.priority").value("HIGH"))
+            .andExpect(jsonPath("$.data.task.taskId").value(originalTaskId.toString()))
+            .andExpect(jsonPath("$.data.task.createdByUserId").value(creatorUserId.toString()))
+            .andExpect(jsonPath("$.data.task.status").value("NEW"));
+
+        TaskEntity updated = taskRepository.findByTaskId(originalTaskId).orElseThrow();
+        assertThat(updated.getTaskId()).isEqualTo(originalTaskId);
+        assertThat(updated.getCreatedByUserId()).isEqualTo(creatorUserId);
+        assertThat(updated.getStatus()).isEqualTo(TaskStatus.NEW);
+    }
+
+    @Test
+    void assigneeCanUpdateAssignedTask() throws Exception {
+        UUID assigneeUserId = UUID.randomUUID();
+        TaskEntity task = saveTask("Original", assigneeUserId, UUID.randomUUID());
+
+        mockMvc.perform(patch("/api/v1/tasks/{taskId}", task.getTaskId())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken(assigneeUserId, "USER"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"description\":\"Assignee update\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.task.description").value("Assignee update"));
+    }
+
+    @Test
+    void unrelatedUserCannotUpdateTask() throws Exception {
+        TaskEntity task = saveTask("Original", UUID.randomUUID(), UUID.randomUUID());
+
+        mockMvc.perform(patch("/api/v1/tasks/{taskId}", task.getTaskId())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken(UUID.randomUUID(), "USER"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"Denied update\"}"))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.message").value("Task not found."));
+    }
+
+    @Test
+    void adminCanChangeStatusOfAnyTask() throws Exception {
+        TaskEntity task = saveTask("Original", UUID.randomUUID(), UUID.randomUUID());
+
+        mockMvc.perform(patch("/api/v1/tasks/{taskId}/status", task.getTaskId())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken(UUID.randomUUID(), "ADMIN"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"DONE\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.task.status").value("DONE"));
+    }
+
+    @Test
+    void creatorCanChangeStatusOfOwnTask() throws Exception {
+        UUID creatorUserId = UUID.randomUUID();
+        TaskEntity task = saveTask("Original", UUID.randomUUID(), creatorUserId);
+        Instant originalUpdatedAt = task.getUpdatedAt().toInstant();
+
+        mockMvc.perform(patch("/api/v1/tasks/{taskId}/status", task.getTaskId())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken(creatorUserId, "USER"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"IN_PROGRESS\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.task.status").value("IN_PROGRESS"))
+            .andExpect(jsonPath("$.data.task.title").value("Original"));
+
+        TaskEntity updated = taskRepository.findByTaskId(task.getTaskId()).orElseThrow();
+        assertThat(updated.getStatus()).isEqualTo(TaskStatus.IN_PROGRESS);
+        assertThat(updated.getUpdatedAt().toInstant()).isAfter(originalUpdatedAt);
+        assertThat(updated.getTitle()).isEqualTo("Original");
+        assertThat(updated.getCreatedByUserId()).isEqualTo(creatorUserId);
+    }
+
+    @Test
+    void assigneeCanChangeStatusOfAssignedTask() throws Exception {
+        UUID assigneeUserId = UUID.randomUUID();
+        TaskEntity task = saveTask("Original", assigneeUserId, UUID.randomUUID());
+
+        mockMvc.perform(patch("/api/v1/tasks/{taskId}/status", task.getTaskId())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken(assigneeUserId, "USER"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"CANCELLED\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.task.status").value("CANCELLED"));
+    }
+
+    @Test
+    void unrelatedUserCannotChangeTaskStatus() throws Exception {
+        TaskEntity task = saveTask("Original", UUID.randomUUID(), UUID.randomUUID());
+
+        mockMvc.perform(patch("/api/v1/tasks/{taskId}/status", task.getTaskId())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken(UUID.randomUUID(), "USER"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"DONE\"}"))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.message").value("Task not found."));
+
+        assertThat(taskRepository.findByTaskId(task.getTaskId()).orElseThrow().getStatus())
+            .isEqualTo(TaskStatus.NEW);
+    }
+
+    @Test
+    void adminCanSoftDeleteAnyTask() throws Exception {
+        UUID adminUserId = UUID.randomUUID();
+        TaskEntity task = saveTask("Admin delete", UUID.randomUUID(), UUID.randomUUID());
+
+        mockMvc.perform(delete("/api/v1/tasks/{taskId}", task.getTaskId())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken(adminUserId, "ADMIN")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.message").value("Task deleted successfully."));
+
+        TaskEntity deleted = taskRepository.findByTaskId(task.getTaskId()).orElseThrow();
+        assertThat(deleted.getDeletedAt()).isNotNull();
+        assertThat(deleted.getDeletedByUserId()).isEqualTo(adminUserId);
+    }
+
+    @Test
+    void creatorCanSoftDeleteOwnTask() throws Exception {
+        UUID creatorUserId = UUID.randomUUID();
+        TaskEntity task = saveTask("Creator delete", UUID.randomUUID(), creatorUserId);
+
+        mockMvc.perform(delete("/api/v1/tasks/{taskId}", task.getTaskId())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken(creatorUserId, "USER")))
+            .andExpect(status().isOk());
+
+        TaskEntity deleted = taskRepository.findByTaskId(task.getTaskId()).orElseThrow();
+        assertThat(deleted.getDeletedAt()).isNotNull();
+        assertThat(deleted.getDeletedByUserId()).isEqualTo(creatorUserId);
+    }
+
+    @Test
+    void assigneeCannotDeleteTaskCreatedByAnotherUser() throws Exception {
+        UUID assigneeUserId = UUID.randomUUID();
+        TaskEntity task = saveTask("Assignee cannot delete", assigneeUserId, UUID.randomUUID());
+
+        mockMvc.perform(delete("/api/v1/tasks/{taskId}", task.getTaskId())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken(assigneeUserId, "USER")))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.message").value("Task not found."));
+
+        assertThat(taskRepository.findByTaskId(task.getTaskId()).orElseThrow().getDeletedAt()).isNull();
+    }
+
+    @Test
+    void unrelatedUserCannotDeleteTask() throws Exception {
+        TaskEntity task = saveTask("Unrelated cannot delete", UUID.randomUUID(), UUID.randomUUID());
+
+        mockMvc.perform(delete("/api/v1/tasks/{taskId}", task.getTaskId())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken(UUID.randomUUID(), "USER")))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.message").value("Task not found."));
+    }
+
+    @Test
+    void softDeletedTaskIsExcludedFromGetAndList() throws Exception {
+        UUID creatorUserId = UUID.randomUUID();
+        TaskEntity task = saveTask("Hidden after delete", UUID.randomUUID(), creatorUserId);
+        String token = accessToken(creatorUserId, "USER");
+
+        mockMvc.perform(delete("/api/v1/tasks/{taskId}", task.getTaskId())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+            .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/v1/tasks/{taskId}", task.getTaskId())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+            .andExpect(status().isNotFound());
+
+        mockMvc.perform(get("/api/v1/tasks")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.items.length()").value(0));
+    }
+
+    @Test
+    void softDeletedTaskCannotBeUpdatedOrHaveStatusChanged() throws Exception {
+        UUID creatorUserId = UUID.randomUUID();
+        TaskEntity task = saveTask("Immutable after delete", UUID.randomUUID(), creatorUserId);
+        String token = accessToken(creatorUserId, "USER");
+
+        mockMvc.perform(delete("/api/v1/tasks/{taskId}", task.getTaskId())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+            .andExpect(status().isOk());
+
+        mockMvc.perform(patch("/api/v1/tasks/{taskId}", task.getTaskId())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"Denied update\"}"))
+            .andExpect(status().isNotFound());
+
+        mockMvc.perform(patch("/api/v1/tasks/{taskId}/status", task.getTaskId())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"DONE\"}"))
+            .andExpect(status().isNotFound());
+
+        TaskEntity deleted = taskRepository.findByTaskId(task.getTaskId()).orElseThrow();
+        assertThat(deleted.getTitle()).isEqualTo("Immutable after delete");
+        assertThat(deleted.getStatus()).isEqualTo(TaskStatus.NEW);
+    }
+
+    @Test
+    void deletingAlreadyDeletedTaskReturnsNotFound() throws Exception {
+        UUID creatorUserId = UUID.randomUUID();
+        TaskEntity task = saveTask("Delete once", UUID.randomUUID(), creatorUserId);
+        String token = accessToken(creatorUserId, "USER");
+
+        mockMvc.perform(delete("/api/v1/tasks/{taskId}", task.getTaskId())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+            .andExpect(status().isOk());
+
+        mockMvc.perform(delete("/api/v1/tasks/{taskId}", task.getTaskId())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.message").value("Task not found."));
+    }
+
+    @Test
+    void adminCanAssignAnyTask() throws Exception {
+        UUID assigneeUserId = UUID.randomUUID();
+        TaskEntity task = saveTask("Admin assignment", null, UUID.randomUUID());
+
+        mockMvc.perform(patch("/api/v1/tasks/{taskId}/assignee", task.getTaskId())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken(UUID.randomUUID(), "ADMIN"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"assigneeUserId\":\"%s\"}".formatted(assigneeUserId)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.task.assigneeUserId").value(assigneeUserId.toString()));
+    }
+
+    @Test
+    void creatorCanAssignAndUnassignOwnTask() throws Exception {
+        UUID creatorUserId = UUID.randomUUID();
+        UUID assigneeUserId = UUID.randomUUID();
+        TaskEntity task = saveTask("Creator assignment", null, creatorUserId);
+        String token = accessToken(creatorUserId, "USER");
+
+        mockMvc.perform(patch("/api/v1/tasks/{taskId}/assignee", task.getTaskId())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"assigneeUserId\":\"%s\"}".formatted(assigneeUserId)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.task.assigneeUserId").value(assigneeUserId.toString()));
+
+        mockMvc.perform(patch("/api/v1/tasks/{taskId}/assignee", task.getTaskId())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"assigneeUserId\":null}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.task.assigneeUserId").doesNotExist());
+    }
+
+    @Test
+    void assigneeCannotReassignTaskThroughAssignmentEndpoint() throws Exception {
+        UUID assigneeUserId = UUID.randomUUID();
+        TaskEntity task = saveTask("Assignee denied", assigneeUserId, UUID.randomUUID());
+
+        mockMvc.perform(patch("/api/v1/tasks/{taskId}/assignee", task.getTaskId())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken(assigneeUserId, "USER"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"assigneeUserId\":\"%s\"}".formatted(UUID.randomUUID())))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.message").value("Task not found."));
+    }
+
+    @Test
+    void assigneeCannotReassignTaskThroughGenericUpdate() throws Exception {
+        UUID assigneeUserId = UUID.randomUUID();
+        TaskEntity task = saveTask("Generic update denied", assigneeUserId, UUID.randomUUID());
+
+        mockMvc.perform(patch("/api/v1/tasks/{taskId}", task.getTaskId())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken(assigneeUserId, "USER"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"assigneeUserId\":\"%s\"}".formatted(UUID.randomUUID())))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.message").value("Task not found."));
+
+        assertThat(taskRepository.findByTaskId(task.getTaskId()).orElseThrow().getAssigneeUserId())
+            .isEqualTo(assigneeUserId);
+    }
+
+    @Test
+    void unrelatedUserCannotAssignTask() throws Exception {
+        TaskEntity task = saveTask("Unrelated denied", null, UUID.randomUUID());
+
+        mockMvc.perform(patch("/api/v1/tasks/{taskId}/assignee", task.getTaskId())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken(UUID.randomUUID(), "USER"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"assigneeUserId\":\"%s\"}".formatted(UUID.randomUUID())))
+            .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void softDeletedTaskCannotBeAssigned() throws Exception {
+        UUID creatorUserId = UUID.randomUUID();
+        TaskEntity task = saveTask("Deleted assignment", null, creatorUserId);
+        String token = accessToken(creatorUserId, "USER");
+
+        mockMvc.perform(delete("/api/v1/tasks/{taskId}", task.getTaskId())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+            .andExpect(status().isOk());
+
+        mockMvc.perform(patch("/api/v1/tasks/{taskId}/assignee", task.getTaskId())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"assigneeUserId\":\"%s\"}".formatted(UUID.randomUUID())))
+            .andExpect(status().isNotFound());
+    }
+
+    @Test
     void unauthenticatedListTasksReturnsUnauthorized() throws Exception {
         mockMvc.perform(get("/api/v1/tasks"))
             .andExpect(status().isUnauthorized());
     }
 
     private String accessToken(UUID userId) {
+        return accessToken(userId, "USER");
+    }
+
+    private String accessToken(UUID userId, String role) {
         return Jwts.builder()
             .subject(userId.toString())
             .claim("authorities", "document:create,document:read")
-            .claim("role", "USER")
+            .claim("role", role)
             .issuedAt(Date.from(Instant.now()))
             .notBefore(Date.from(Instant.now().minusSeconds(1)))
             .expiration(Date.from(Instant.now().plusSeconds(600)))
             .signWith(Keys.hmacShaKeyFor(Decoders.BASE64.decode(TEST_SECRET)), Jwts.SIG.HS512)
             .compact();
+    }
+
+    private TaskEntity saveTask(String title, UUID assigneeUserId, UUID createdByUserId) {
+        return taskRepository.saveAndFlush(new TaskEntity(
+            UUID.randomUUID(),
+            title,
+            null,
+            TaskStatus.NEW,
+            TaskPriority.MEDIUM,
+            assigneeUserId,
+            createdByUserId
+        ));
     }
 }

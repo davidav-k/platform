@@ -6,14 +6,18 @@ import com.example.task_service.entity.TaskEntity;
 import com.example.task_service.enumeration.TaskPriority;
 import com.example.task_service.enumeration.TaskStatus;
 import com.example.task_service.repository.TaskRepository;
+import com.example.task_service.security.CurrentUserAccessProvider;
+import com.example.task_service.security.CurrentUserAccessProvider.CurrentUserAccess;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.when;
 
 @SpringBootTest(properties = {
     "spring.cloud.config.enabled=false",
@@ -35,6 +39,9 @@ class ListTasksUseCaseTest {
     @Autowired
     private TaskRepository taskRepository;
 
+    @MockitoBean
+    private CurrentUserAccessProvider currentUserAccessProvider;
+
     private UUID assigneeUserId;
     private UUID createdByUserId;
 
@@ -43,9 +50,62 @@ class ListTasksUseCaseTest {
         taskRepository.deleteAll();
         assigneeUserId = UUID.randomUUID();
         createdByUserId = UUID.randomUUID();
+        when(currentUserAccessProvider.currentUserAccess())
+            .thenReturn(new CurrentUserAccess(UUID.randomUUID(), true));
         saveTask("New high", TaskStatus.NEW, TaskPriority.HIGH, assigneeUserId, createdByUserId);
         saveTask("Done low", TaskStatus.DONE, TaskPriority.LOW, UUID.randomUUID(), createdByUserId);
         saveTask("Progress medium", TaskStatus.IN_PROGRESS, TaskPriority.MEDIUM, assigneeUserId, UUID.randomUUID());
+    }
+
+    @Test
+    void regularUserSeesTasksTheyCreated() {
+        when(currentUserAccessProvider.currentUserAccess())
+            .thenReturn(new CurrentUserAccess(createdByUserId, false));
+
+        TaskListResponse response = listTasksUseCase.list(query(null, null, null, null, 0, 20));
+
+        assertThat(response.getItems()).hasSize(2);
+        assertThat(response.getItems()).allMatch(task -> createdByUserId.equals(task.getCreatedByUserId()));
+    }
+
+    @Test
+    void regularUserSeesTasksAssignedToThem() {
+        when(currentUserAccessProvider.currentUserAccess())
+            .thenReturn(new CurrentUserAccess(assigneeUserId, false));
+
+        TaskListResponse response = listTasksUseCase.list(query(null, null, null, null, 0, 20));
+
+        assertThat(response.getItems()).hasSize(2);
+        assertThat(response.getItems()).allMatch(task -> assigneeUserId.equals(task.getAssigneeUserId()));
+    }
+
+    @Test
+    void regularUserDoesNotSeeUnrelatedTasks() {
+        UUID unrelatedUserId = UUID.randomUUID();
+        when(currentUserAccessProvider.currentUserAccess())
+            .thenReturn(new CurrentUserAccess(unrelatedUserId, false));
+
+        TaskListResponse response = listTasksUseCase.list(query(null, null, null, null, 0, 20));
+
+        assertThat(response.getItems()).isEmpty();
+        assertThat(response.getPage().getTotalElements()).isZero();
+    }
+
+    @Test
+    void ownershipRestrictionPreservesFilteringAndPagination() {
+        when(currentUserAccessProvider.currentUserAccess())
+            .thenReturn(new CurrentUserAccess(createdByUserId, false));
+
+        TaskListResponse filtered = listTasksUseCase.list(
+            query(TaskStatus.DONE, TaskPriority.LOW, null, null, 0, 20)
+        );
+        TaskListResponse paged = listTasksUseCase.list(query(null, null, null, null, 1, 1));
+
+        assertThat(filtered.getItems()).hasSize(1);
+        assertThat(filtered.getItems().get(0).getTitle()).isEqualTo("Done low");
+        assertThat(paged.getItems()).hasSize(1);
+        assertThat(paged.getPage().getTotalElements()).isEqualTo(2);
+        assertThat(paged.getPage().getTotalPages()).isEqualTo(2);
     }
 
     @Test

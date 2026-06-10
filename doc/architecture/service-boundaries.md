@@ -78,6 +78,11 @@ and delivery data needed for notification processing.
 - A notification stores recipient `userId`, channel, content, and delivery
   state but does not duplicate task ownership.
 
+User lifecycle termination does not cascade across databases. The approved MVP
+policy retains stable user identifiers and historical task and notification
+records; see
+[User deletion and deactivation policy](user-deletion-policy.md).
+
 ## Allowed Dependencies
 
 During the synchronous REST phase:
@@ -133,18 +138,11 @@ administrative access explicitly.
 ### Future: event-driven
 
 Future versions may replace selected synchronous calls with broker-delivered
-events. Event names reserved for design work include:
-
-| Event | Producer | Typical consumers |
-| --- | --- | --- |
-| `TaskCreatedEvent` | `task-service` | `notification-service`, future audit service |
-| `TaskAssignedEvent` | `task-service` | `notification-service`, future audit service |
-| `TaskStatusChangedEvent` | `task-service` | `notification-service`, future audit service |
-| `TaskCommentAddedEvent` | `task-service` | `notification-service`, future audit service |
-| `NotificationRequestedEvent` | platform services | `notification-service` |
-
-These names do not define payload schemas or introduce Kafka. Event payload
-contracts, delivery guarantees, and versioning require a separate design.
+events recorded through service-owned transactional outboxes. Candidate event
+purposes, payload guidelines, delivery semantics, broker options, and migration
+phases are defined in
+[Outbox pattern design](outbox-pattern-design.md). The design is not implemented
+and does not select a broker.
 
 ## API Gateway Routing Contract
 
@@ -160,6 +158,7 @@ The current gateway configuration serves `/api/users/**`, `/api/tasks/**`, and
 
 Task assignment notification requests use synchronous internal REST from
 `task-service` to `notification-service`; each service retains ownership of its
-own data. This integration is disabled by default until service-to-service
-authentication is implemented. A future Kafka/outbox design can replace the
-synchronous call without changing aggregate ownership.
+own data. For the MVP, task-service delegates the initiating user's validated
+JWT to the internal notification endpoint. The proposed outbox design can
+replace this synchronous call without changing aggregate ownership or public
+HTTP contracts.

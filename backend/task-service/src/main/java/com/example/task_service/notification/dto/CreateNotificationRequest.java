@@ -6,17 +6,22 @@ public class CreateNotificationRequest {
 
     private final UUID recipientUserId;
     private final String type;
-    private final String channel;
-    private final String subject;
-    private final String body;
+    private final String title;
+    private final String message;
+    private final String sourceService;
+    private final String sourceEntityType;
+    private final UUID sourceEntityId;
 
-    public CreateNotificationRequest(UUID recipientUserId, String type, String channel,
-                                     String subject, String body) {
+    public CreateNotificationRequest(UUID recipientUserId, String type, String title,
+                                     String message, String sourceService,
+                                     String sourceEntityType, UUID sourceEntityId) {
         this.recipientUserId = recipientUserId;
         this.type = type;
-        this.channel = channel;
-        this.subject = subject;
-        this.body = body;
+        this.title = title;
+        this.message = message;
+        this.sourceService = sourceService;
+        this.sourceEntityType = sourceEntityType;
+        this.sourceEntityId = sourceEntityId;
     }
 
     public UUID getRecipientUserId() {
@@ -27,15 +32,23 @@ public class CreateNotificationRequest {
         return type;
     }
 
-    public String getChannel() {
-        return channel;
+    public String getTitle() {
+        return title;
     }
 
-    public String getSubject() {
-        return subject;
+    public String getMessage() {
+        return message;
     }
 
-    public String getBody() {
-        return body;
+    public String getSourceService() {
+        return sourceService;
+    }
+
+    public String getSourceEntityType() {
+        return sourceEntityType;
+    }
+
+    public UUID getSourceEntityId() {
+        return sourceEntityId;
     }
 }

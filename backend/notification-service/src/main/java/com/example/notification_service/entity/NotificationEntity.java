@@ -73,6 +73,15 @@ public class NotificationEntity {
     @Column(name = "failure_reason", columnDefinition = "text")
     private String failureReason;
 
+    @Column(name = "source_service", length = 100)
+    private String sourceService;
+
+    @Column(name = "source_entity_type", length = 100)
+    private String sourceEntityType;
+
+    @Column(name = "source_entity_id")
+    private UUID sourceEntityId;
+
     @Version
     @Column(name = "version", nullable = false)
     private Long version;
@@ -83,6 +92,13 @@ public class NotificationEntity {
     public NotificationEntity(UUID notificationId, UUID recipientUserId, NotificationType type,
                               NotificationChannel channel, String subject, String body,
                               NotificationStatus status) {
+        this(notificationId, recipientUserId, type, channel, subject, body, status, null, null, null);
+    }
+
+    public NotificationEntity(UUID notificationId, UUID recipientUserId, NotificationType type,
+                              NotificationChannel channel, String subject, String body,
+                              NotificationStatus status, String sourceService,
+                              String sourceEntityType, UUID sourceEntityId) {
         this.notificationId = notificationId;
         this.recipientUserId = recipientUserId;
         this.type = type;
@@ -90,6 +106,9 @@ public class NotificationEntity {
         this.subject = subject;
         this.body = body;
         this.status = status;
+        this.sourceService = sourceService;
+        this.sourceEntityType = sourceEntityType;
+        this.sourceEntityId = sourceEntityId;
     }
 
     @PrePersist
@@ -173,6 +192,18 @@ public class NotificationEntity {
 
     public String getFailureReason() {
         return failureReason;
+    }
+
+    public String getSourceService() {
+        return sourceService;
+    }
+
+    public String getSourceEntityType() {
+        return sourceEntityType;
+    }
+
+    public UUID getSourceEntityId() {
+        return sourceEntityId;
     }
 
     public void setFailureReason(String failureReason) {

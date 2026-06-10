@@ -2,7 +2,7 @@
 
 ## Status
 
-MVP task persistence, create, get, and list endpoints are implemented. The
+MVP task persistence, create, get, list, and partial update endpoints are implemented. The
 service starts, registers in Eureka, and loads configuration from Config Server.
 
 ## Purpose
@@ -38,13 +38,22 @@ Runtime database settings are served by Config Server from
 
 ## Authentication
 
-`POST /api/v1/tasks`, `GET /api/v1/tasks`, and `GET /api/v1/tasks/{taskId}`
+`POST /api/v1/tasks`, `GET /api/v1/tasks`, `GET /api/v1/tasks/{taskId}`,
+`PATCH /api/v1/tasks/{taskId}`, `PATCH /api/v1/tasks/{taskId}/status`,
+`PATCH /api/v1/tasks/{taskId}/assignee`, and `DELETE /api/v1/tasks/{taskId}`
 require a valid access JWT. The service accepts the same `Authorization: Bearer`
 header and `access-token` cookie used by the Gateway and validates the JWT
 independently.
 
 Task ownership is server controlled. `createdByUserId` is derived from the JWT
 subject and ignored if a client includes it in the request payload.
+
+For task reads, updates, and status changes, `ROLE_ADMIN` and `ROLE_SUPER_ADMIN`
+can access all tasks. Other authenticated users can access only tasks they
+created or are assigned to. Deletion is restricted to administrators and the
+task creator. Assignment changes are also restricted to administrators and the
+task creator; assignment alone grants neither reassign nor delete permission. Inaccessible
+task identifiers return the same `404 NOT_FOUND` response as missing tasks.
 
 Use a real access token issued by `user-service`; do not commit or log tokens.
 
@@ -88,17 +97,18 @@ Example error body:
 Creating a task with an `assigneeUserId` prepares an internal synchronous REST
 request to notification-service. The request creates an `IN_APP`
 `TASK_ASSIGNED` notification after the task has been persisted. Unassigned
-tasks do not trigger the integration.
+and self-assigned tasks do not trigger the integration. The notification
+records `task-service`, `TASK`, and the task UUID as source metadata.
 
 Notification failures are logged using task and recipient identifiers and do
-not fail or roll back task creation. The integration is disabled by default
-because notification-service requires JWT authentication and service-to-service
-credentials are not implemented yet. Do not enable it until that authentication
-boundary is configured.
+not fail or roll back task creation. For the MVP, task-service forwards the
+initiating request's validated access JWT to the authenticated internal
+notification endpoint. Dedicated service credentials and durable delivery are
+not implemented yet.
 
 Configuration variables:
 
-- `NOTIFICATION_SERVICE_ENABLED` (default `false`)
+- `NOTIFICATION_SERVICE_ENABLED` (default `true` in the development Config Server profile)
 - `NOTIFICATION_SERVICE_BASE_URL` (default `http://notification-service:8087`)
 - `NOTIFICATION_SERVICE_CONNECT_TIMEOUT` (default `2s`)
 - `NOTIFICATION_SERVICE_READ_TIMEOUT` (default `2s`)
@@ -179,6 +189,7 @@ Returns one task by public task UUID through `GetTaskUseCase`.
 
 - Response DTO: `TaskResponse` in the standard `data.task` envelope
 - Authentication: required
+- Authorization: admin roles can read any task; other users must be the creator or assignee
 - Missing tasks return `404 NOT_FOUND`
 - Gateway route: `GET /api/tasks/{taskId}`
 
@@ -224,6 +235,7 @@ Returns a paginated task list through `ListTasksUseCase`.
 - Sorting: `sort` defaults to `createdAt,desc`
 - Response shape: standard envelope with `data.items` and `data.page`
 - Authentication: required
+- Authorization: admin roles see all tasks; other users see only tasks they created or are assigned to
 - Gateway route: `GET /api/tasks`
 
 Gateway examples:
@@ -269,6 +281,92 @@ Response body shape:
     }
   }
 }
+```
+
+### `PATCH /api/v1/tasks/{taskId}`
+
+Partially updates a task through `UpdateTaskUseCase`.
+
+- Editable fields: `title`, `description`, `priority`, `assigneeUserId`
+- Omitted fields remain unchanged
+- `description` and `assigneeUserId` may be cleared with `null`
+- Status changes are handled separately and are not accepted
+- Admin roles can update any task; other users must be the creator or assignee
+- Changing `assigneeUserId` requires an admin role or task creator permission
+- Missing or inaccessible tasks return `404 NOT_FOUND`
+- Gateway route: `PATCH /api/tasks/{taskId}`
+
+Gateway example:
+
+```bash
+curl -i -X PATCH "http://localhost:8080/api/tasks/${TASK_ID}" \
+  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Updated task title",
+    "priority": "HIGH"
+  }'
+```
+
+### `PATCH /api/v1/tasks/{taskId}/status`
+
+Changes a task status through `ChangeTaskStatusUseCase`.
+
+- Request field: required `status` with one of `NEW`, `IN_PROGRESS`, `DONE`, `CANCELLED`
+- All valid enum-to-enum changes are allowed for the MVP; no transition state machine is applied
+- Admin roles can change any task; other users must be the creator or assignee
+- Missing or inaccessible tasks return `404 NOT_FOUND`
+- Other task fields remain unchanged; `updatedAt` is managed by the service
+- Gateway route: `PATCH /api/tasks/{taskId}/status`
+
+Gateway example:
+
+```bash
+curl -i -X PATCH "http://localhost:8080/api/tasks/${TASK_ID}/status" \
+  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{"status":"IN_PROGRESS"}'
+```
+
+### `DELETE /api/v1/tasks/{taskId}`
+
+Soft-deletes a task through `DeleteTaskUseCase`.
+
+- Admin roles can delete any task; other users must be the creator
+- Assignees cannot delete tasks they did not create
+- Response: `200 OK` with the standard response metadata and no data payload
+- Missing, inaccessible, or already deleted tasks return `404 NOT_FOUND`
+- Deleted tasks are excluded from normal get and list operations and cannot be updated
+- Deletion timestamps and actor identifiers remain internal and are not exposed in task DTOs
+- Gateway route: `DELETE /api/tasks/{taskId}`
+
+Gateway example:
+
+```bash
+curl -i -X DELETE "http://localhost:8080/api/tasks/${TASK_ID}" \
+  -H "Authorization: Bearer ${ACCESS_TOKEN}"
+```
+
+### `PATCH /api/v1/tasks/{taskId}/assignee`
+
+Assigns, reassigns, or unassigns a task through `AssignTaskUseCase`.
+
+- Request field: `assigneeUserId` as a UUID, or explicit `null` to unassign
+- The field must be present; an empty object is rejected
+- Admin roles can assign any active task; other users must be the creator
+- Assignees cannot reassign tasks they did not create
+- Missing, inaccessible, or deleted tasks return `404 NOT_FOUND`
+- User existence is not verified through `user-service` in this MVP endpoint
+- Other task fields remain unchanged; `updatedAt` is managed by the service
+- Gateway route: `PATCH /api/tasks/{taskId}/assignee`
+
+Gateway example:
+
+```bash
+curl -i -X PATCH "http://localhost:8080/api/tasks/${TASK_ID}/assignee" \
+  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{"assigneeUserId":"11111111-1111-1111-1111-111111111111"}'
 ```
 
 ## Local Startup
