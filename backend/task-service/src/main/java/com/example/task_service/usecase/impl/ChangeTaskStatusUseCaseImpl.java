@@ -30,7 +30,7 @@ public class ChangeTaskStatusUseCaseImpl implements ChangeTaskStatusUseCase {
     public TaskResponse changeStatus(UUID taskId, UpdateTaskStatusRequest request) {
         validate(taskId, request);
 
-        TaskEntity task = taskRepository.findByTaskId(taskId)
+        TaskEntity task = taskRepository.findByTaskIdAndDeletedAtIsNull(taskId)
             .orElseThrow(() -> new TaskNotFoundException(taskId));
         CurrentUserAccess access = currentUserAccessProvider.currentUserAccess();
         if (!access.canAccess(task.getCreatedByUserId(), task.getAssigneeUserId())) {

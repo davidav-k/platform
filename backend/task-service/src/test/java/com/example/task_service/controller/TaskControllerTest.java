@@ -17,6 +17,7 @@ import com.example.task_service.security.JwtTokenService;
 import com.example.task_service.security.SecurityConfig;
 import com.example.task_service.usecase.ChangeTaskStatusUseCase;
 import com.example.task_service.usecase.CreateTaskUseCase;
+import com.example.task_service.usecase.DeleteTaskUseCase;
 import com.example.task_service.usecase.GetTaskUseCase;
 import com.example.task_service.usecase.ListTasksUseCase;
 import com.example.task_service.usecase.UpdateTaskUseCase;
@@ -43,6 +44,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -72,6 +74,9 @@ class TaskControllerTest {
 
     @MockitoBean
     private ChangeTaskStatusUseCase changeTaskStatusUseCase;
+
+    @MockitoBean
+    private DeleteTaskUseCase deleteTaskUseCase;
 
     @MockitoBean
     private JwtTokenService jwtTokenService;
@@ -453,6 +458,20 @@ class TaskControllerTest {
                 .content("{\"status\":\"UNKNOWN\"}"))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.message").value("Request payload is not valid"));
+    }
+
+    @Test
+    void deletesTask() throws Exception {
+        UUID taskId = UUID.randomUUID();
+
+        mockMvc.perform(delete("/api/v1/tasks/{taskId}", taskId)
+                .with(authentication(authenticated(UUID.randomUUID()))))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.code").value(200))
+            .andExpect(jsonPath("$.message").value("Task deleted successfully."))
+            .andExpect(jsonPath("$.data").doesNotExist());
+
+        verify(deleteTaskUseCase).delete(taskId);
     }
 
     @Test

@@ -12,4 +12,6 @@ import java.util.UUID;
 public interface TaskRepository extends JpaRepository<TaskEntity, Long>, JpaSpecificationExecutor<TaskEntity> {
 
     Optional<TaskEntity> findByTaskId(UUID taskId);
+
+    Optional<TaskEntity> findByTaskIdAndDeletedAtIsNull(UUID taskId);
 }
