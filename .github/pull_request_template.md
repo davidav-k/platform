@@ -14,7 +14,9 @@
 - [ ] DTOs are used for API contracts; entities are not exposed directly
 - [ ] No API contract changes unless explicitly documented
 - [ ] No runtime dependency or platform version changes
-- [ ] No secrets, tokens, passwords, or private keys are committed
+- [ ] No `.env` file is committed
+- [ ] No secrets, JWT tokens, passwords, private keys, API keys, or real credentials are committed
+- [ ] `detect-private-key` and GitGuardian `ggshield` checks were run; any secret-scanning findings were resolved
 - [ ] Security-sensitive behavior was reviewed if JWT, cookies, auth filters, or permissions changed
 
 ## Validation

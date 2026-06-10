@@ -85,7 +85,9 @@ current Testcontainers 1.x dependency. Do not override
 - Keep secrets in local `.env`, environment variables, or external secret managers.
 - Do not commit `.env`, generated credentials, private keys, JWT tokens, passwords, or API keys.
 - Treat values in `.env.example` as local placeholders only. Replace them before running anything outside local development.
-- GitGuardian `ggshield` is configured as a pre-commit hook. GitHub secret scanning and push protection should also be enabled in repository settings.
+- Run the configured `detect-private-key` and GitGuardian `ggshield` pre-commit hooks before pushing changes.
+- Follow the GitHub secret scanning, push protection, and branch protection expectations in [Repository Settings](repository-settings.md).
+- GitHub-level settings must be verified manually by a repository administrator; repository files do not prove that they are enabled.
 
 ## CI
 
