@@ -1,6 +1,7 @@
 package com.example.task_service.controller;
 
 import com.example.task_service.dto.CreateTaskRequest;
+import com.example.task_service.dto.AssignTaskRequest;
 import com.example.task_service.dto.CreateTaskResponse;
 import com.example.task_service.dto.PageResponse;
 import com.example.task_service.dto.TaskListQuery;
@@ -16,6 +17,7 @@ import com.example.task_service.security.JwtAuthenticationFilter;
 import com.example.task_service.security.JwtTokenService;
 import com.example.task_service.security.SecurityConfig;
 import com.example.task_service.usecase.ChangeTaskStatusUseCase;
+import com.example.task_service.usecase.AssignTaskUseCase;
 import com.example.task_service.usecase.CreateTaskUseCase;
 import com.example.task_service.usecase.DeleteTaskUseCase;
 import com.example.task_service.usecase.GetTaskUseCase;
@@ -77,6 +79,9 @@ class TaskControllerTest {
 
     @MockitoBean
     private DeleteTaskUseCase deleteTaskUseCase;
+
+    @MockitoBean
+    private AssignTaskUseCase assignTaskUseCase;
 
     @MockitoBean
     private JwtTokenService jwtTokenService;
@@ -472,6 +477,49 @@ class TaskControllerTest {
             .andExpect(jsonPath("$.data").doesNotExist());
 
         verify(deleteTaskUseCase).delete(taskId);
+    }
+
+    @Test
+    void assignsTask() throws Exception {
+        UUID taskId = UUID.randomUUID();
+        UUID creatorUserId = UUID.randomUUID();
+        UUID assigneeUserId = UUID.randomUUID();
+
+        when(assignTaskUseCase.assign(eq(taskId), any(AssignTaskRequest.class)))
+            .thenReturn(new TaskResponse(
+                taskId,
+                "Assigned task",
+                null,
+                TaskStatus.NEW,
+                TaskPriority.MEDIUM,
+                assigneeUserId,
+                creatorUserId,
+                OffsetDateTime.parse("2026-06-03T04:00:00Z"),
+                OffsetDateTime.parse("2026-06-04T05:00:00Z")
+            ));
+
+        mockMvc.perform(patch("/api/v1/tasks/{taskId}/assignee", taskId)
+                .with(authentication(authenticated(creatorUserId)))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"assigneeUserId\":\"%s\"}".formatted(assigneeUserId)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.message").value("Task assignee updated successfully."))
+            .andExpect(jsonPath("$.data.task.assigneeUserId").value(assigneeUserId.toString()));
+
+        verify(assignTaskUseCase).assign(eq(taskId), argThat(request ->
+            request.isAssigneeUserIdPresent()
+                && assigneeUserId.equals(request.getAssigneeUserId())
+        ));
+    }
+
+    @Test
+    void invalidAssigneeUserIdReturnsBadRequest() throws Exception {
+        mockMvc.perform(patch("/api/v1/tasks/{taskId}/assignee", UUID.randomUUID())
+                .with(authentication(authenticated(UUID.randomUUID())))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"assigneeUserId\":\"not-a-uuid\"}"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("Request payload is not valid"));
     }
 
     @Test

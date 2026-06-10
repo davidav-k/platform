@@ -32,7 +32,7 @@ public class CurrentUserAccessProvider {
             return admin || userId.equals(createdByUserId) || userId.equals(assigneeUserId);
         }
 
-        public boolean canDelete(UUID createdByUserId) {
+        public boolean canManage(UUID createdByUserId) {
             return admin || userId.equals(createdByUserId);
         }
     }

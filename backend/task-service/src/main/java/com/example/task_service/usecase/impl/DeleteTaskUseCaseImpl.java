@@ -35,7 +35,7 @@ public class DeleteTaskUseCaseImpl implements DeleteTaskUseCase {
         TaskEntity task = taskRepository.findByTaskIdAndDeletedAtIsNull(taskId)
             .orElseThrow(() -> new TaskNotFoundException(taskId));
         CurrentUserAccess access = currentUserAccessProvider.currentUserAccess();
-        if (!access.canDelete(task.getCreatedByUserId())) {
+        if (!access.canManage(task.getCreatedByUserId())) {
             throw new TaskNotFoundException(taskId);
         }
 

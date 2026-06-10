@@ -62,6 +62,7 @@ Partially updates editable task fields.
 - Missing or inaccessible task: `404 NOT_FOUND`
 - At least one editable field must be provided
 - Omitted fields remain unchanged; `description` and `assigneeUserId` may be cleared with `null`
+- Changing `assigneeUserId` requires `ROLE_ADMIN`, `ROLE_SUPER_ADMIN`, or task creator permission
 - Status changes are not supported by this endpoint
 
 ### `PATCH /api/v1/tasks/{taskId}/status`
@@ -91,6 +92,21 @@ Soft-deletes an active task without removing its database row.
 - Missing, inaccessible, or already deleted task: `404 NOT_FOUND`
 - Deleted tasks are excluded from normal get and list operations and cannot be updated or have their status changed
 - `deletedAt` and `deletedByUserId` are internal persistence fields and are not exposed by `TaskResponse`
+
+### `PATCH /api/v1/tasks/{taskId}/assignee`
+
+Assigns, reassigns, or unassigns an active task.
+
+- Gateway route: `PATCH /api/tasks/{taskId}/assignee`
+- Request DTO: `AssignTaskRequest`
+- Response: `200 OK`, `data.task` contains `TaskResponse`
+- Authentication: required
+- Authorization: `ROLE_ADMIN` and `ROLE_SUPER_ADMIN` can assign any task; other users can assign only tasks they created
+- Assignment alone does not grant reassignment permission
+- Missing, inaccessible, or deleted task: `404 NOT_FOUND`
+- `assigneeUserId` must be present and contain a UUID or explicit `null` to unassign
+- The service does not synchronously verify user existence in this endpoint
+- Other task fields remain unchanged; `updatedAt` is managed by the service
 
 ## Implemented DTOs
 
@@ -145,6 +161,12 @@ Soft-deletes an active task without removing its database row.
 | --- | --- | --- | --- |
 | `status` | enum | yes | `NEW`, `IN_PROGRESS`, `DONE`, `CANCELLED` |
 
+### AssignTaskRequest
+
+| Field | Type | Required | Validation |
+| --- | --- | --- | --- |
+| `assigneeUserId` | UUID string or null | yes | UUID assigns or reassigns; explicit `null` unassigns |
+
 ## Enumerations
 
 ### TaskStatus
@@ -169,19 +191,6 @@ Soft-deletes an active task without removing its database row.
 The following endpoints are not yet implemented. Their contracts are defined
 here as targets for future MVP work.
 
-### `POST /api/v1/tasks/{taskId}/assign`
-
-Assigns a task to a user.
-
-- Request DTO: `AssignTaskRequest`
-- Response: `201 CREATED`, `data.assignment` contains `TaskAssignmentResponse`
-
-### `DELETE /api/v1/tasks/{taskId}/assign/{userId}`
-
-Removes an active task assignment.
-
-- Response: `200 OK`, `data` is empty
-
 ### `POST /api/v1/tasks/{taskId}/comments`
 
 Adds a comment to a task.
@@ -198,27 +207,11 @@ Returns comments for a task.
 
 ## Planned DTOs
 
-### AssignTaskRequest
-
-| Field | Type | Required | Validation |
-| --- | --- | --- | --- |
-| `userId` | UUID string | yes | Existing active `user-service` public user identifier |
-
 ### CreateTaskCommentRequest
 
 | Field | Type | Required | Validation |
 | --- | --- | --- | --- |
 | `text` | string | yes | Not blank; maximum 5000 characters |
-
-### TaskAssignmentResponse
-
-| Field | Type | Description |
-| --- | --- | --- |
-| `assignmentId` | UUID string | Assignment identifier |
-| `taskId` | UUID string | Task identifier |
-| `userId` | UUID string | Assigned public user identifier |
-| `assignedAt` | string | ISO-8601 timestamp |
-| `assignedByUserId` | UUID string | Public identifier of assigning actor |
 
 ### TaskCommentResponse
 
