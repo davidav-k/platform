@@ -61,7 +61,7 @@ services:
     env_file:
       - .env
     volumes:
-      - ./config:/config  # Add this line
+      - ./config:/config
     environment:
       - SPRING_CLOUD_CONFIG_SERVER_NATIVE_SEARCH_LOCATIONS=file:/config/
     depends_on:
