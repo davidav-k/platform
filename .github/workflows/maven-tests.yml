@@ -23,6 +23,10 @@ jobs:
         module:
           - name: user-service
             pom: backend/user-service/pom.xml
+          - name: task-service
+            pom: backend/task-service/pom.xml
+          - name: notification-service
+            pom: backend/notification-service/pom.xml
           - name: api-gateway
             pom: infrastructure/api-gateway/pom.xml
           - name: config-server

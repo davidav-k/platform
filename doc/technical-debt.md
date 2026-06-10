@@ -2,7 +2,8 @@
 
 | Issue | Impact | Priority | Planned Fix | Status |
 | --- | --- | --- | --- | --- |
-| No root Maven aggregator POM and incomplete CI matrix | CI does not currently execute every buildable backend module | High | Add task-service and notification-service to the CI matrix; consider an aggregator POM when the build layout stabilizes | Open |
+| No root Maven aggregator POM | Maven modules must be invoked independently and CI coverage must be maintained explicitly | Low | Consider an aggregator POM only when the build layout stabilizes | Open |
+| Incomplete CI matrix | CI did not execute task-service or notification-service tests | High | Added every currently buildable Maven module to the CI matrix | Resolved |
 | Testcontainers 1.x requires Docker API compatibility override with Docker Engine 29 | Backend integration tests depend on `api.version=1.44` in Maven Surefire | Medium | Upgrade Testcontainers when the Spring Boot dependency baseline supports a compatible release, then remove the override after verification | Open |
 | GitHub secret scanning and push protection not confirmed | Secrets may be exposed without detection | High | Enable GitHub secret scanning, push protection, and GitGuardian GitHub integration in repository settings | Open |
 | Branch protection rules not configured | Unreviewed merges to `main` and `dev` are possible | Medium | Configure GitHub branch protection and document the expected target branch for MVP work | Open |
