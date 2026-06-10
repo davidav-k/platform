@@ -1,11 +1,14 @@
 package com.example.task_service.security;
 
 import com.example.task_service.entity.TaskEntity;
+import com.example.task_service.enumeration.TaskPriority;
+import com.example.task_service.enumeration.TaskStatus;
 import com.example.task_service.repository.TaskRepository;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -18,6 +21,7 @@ import java.util.Date;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -47,6 +51,11 @@ class TaskSecurityIntegrationTest {
 
     @Autowired
     private TaskRepository taskRepository;
+
+    @BeforeEach
+    void setUp() {
+        taskRepository.deleteAll();
+    }
 
     @Test
     void authenticatedCreateStoresTokenSubjectAsCreator() throws Exception {
@@ -84,20 +93,80 @@ class TaskSecurityIntegrationTest {
     }
 
     @Test
+    void regularUserListIncludesOwnedAndAssignedTasksOnly() throws Exception {
+        UUID userId = UUID.randomUUID();
+        TaskEntity created = saveTask("Created", UUID.randomUUID(), userId);
+        TaskEntity assigned = saveTask("Assigned", userId, UUID.randomUUID());
+        saveTask("Unrelated", UUID.randomUUID(), UUID.randomUUID());
+
+        mockMvc.perform(get("/api/v1/tasks")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken(userId, "USER")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.items.length()").value(2))
+            .andExpect(jsonPath("$.data.items[*].taskId").value(containsInAnyOrder(
+                created.getTaskId().toString(),
+                assigned.getTaskId().toString()
+            )));
+    }
+
+    @Test
+    void regularUserCannotReadUnrelatedTask() throws Exception {
+        TaskEntity unrelated = saveTask("Unrelated", UUID.randomUUID(), UUID.randomUUID());
+
+        mockMvc.perform(get("/api/v1/tasks/{taskId}", unrelated.getTaskId())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken(UUID.randomUUID(), "USER")))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.message").value("Task not found."));
+    }
+
+    @Test
+    void adminCanListAndReadAllTasks() throws Exception {
+        TaskEntity first = saveTask("First", UUID.randomUUID(), UUID.randomUUID());
+        saveTask("Second", UUID.randomUUID(), UUID.randomUUID());
+        UUID adminUserId = UUID.randomUUID();
+
+        mockMvc.perform(get("/api/v1/tasks")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken(adminUserId, "ADMIN")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.items.length()").value(2));
+
+        mockMvc.perform(get("/api/v1/tasks/{taskId}", first.getTaskId())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken(adminUserId, "ADMIN")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.task.taskId").value(first.getTaskId().toString()));
+    }
+
+    @Test
     void unauthenticatedListTasksReturnsUnauthorized() throws Exception {
         mockMvc.perform(get("/api/v1/tasks"))
             .andExpect(status().isUnauthorized());
     }
 
     private String accessToken(UUID userId) {
+        return accessToken(userId, "USER");
+    }
+
+    private String accessToken(UUID userId, String role) {
         return Jwts.builder()
             .subject(userId.toString())
             .claim("authorities", "document:create,document:read")
-            .claim("role", "USER")
+            .claim("role", role)
             .issuedAt(Date.from(Instant.now()))
             .notBefore(Date.from(Instant.now().minusSeconds(1)))
             .expiration(Date.from(Instant.now().plusSeconds(600)))
             .signWith(Keys.hmacShaKeyFor(Decoders.BASE64.decode(TEST_SECRET)), Jwts.SIG.HS512)
             .compact();
+    }
+
+    private TaskEntity saveTask(String title, UUID assigneeUserId, UUID createdByUserId) {
+        return taskRepository.saveAndFlush(new TaskEntity(
+            UUID.randomUUID(),
+            title,
+            null,
+            TaskStatus.NEW,
+            TaskPriority.MEDIUM,
+            assigneeUserId,
+            createdByUserId
+        ));
     }
 }
