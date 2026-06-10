@@ -7,9 +7,11 @@ import com.example.task_service.dto.TaskListQuery;
 import com.example.task_service.dto.TaskListResponse;
 import com.example.task_service.dto.TaskResponse;
 import com.example.task_service.dto.UpdateTaskRequest;
+import com.example.task_service.dto.UpdateTaskStatusRequest;
 import com.example.task_service.enumeration.TaskPriority;
 import com.example.task_service.enumeration.TaskStatus;
 import com.example.task_service.security.AuthenticatedUser;
+import com.example.task_service.usecase.ChangeTaskStatusUseCase;
 import com.example.task_service.usecase.CreateTaskUseCase;
 import com.example.task_service.usecase.GetTaskUseCase;
 import com.example.task_service.usecase.ListTasksUseCase;
@@ -45,13 +47,16 @@ public class TaskController {
     private final GetTaskUseCase getTaskUseCase;
     private final ListTasksUseCase listTasksUseCase;
     private final UpdateTaskUseCase updateTaskUseCase;
+    private final ChangeTaskStatusUseCase changeTaskStatusUseCase;
 
     public TaskController(CreateTaskUseCase createTaskUseCase, GetTaskUseCase getTaskUseCase,
-                          ListTasksUseCase listTasksUseCase, UpdateTaskUseCase updateTaskUseCase) {
+                          ListTasksUseCase listTasksUseCase, UpdateTaskUseCase updateTaskUseCase,
+                          ChangeTaskStatusUseCase changeTaskStatusUseCase) {
         this.createTaskUseCase = createTaskUseCase;
         this.getTaskUseCase = getTaskUseCase;
         this.listTasksUseCase = listTasksUseCase;
         this.updateTaskUseCase = updateTaskUseCase;
+        this.changeTaskStatusUseCase = changeTaskStatusUseCase;
     }
 
 @PostMapping
@@ -88,6 +93,19 @@ public ResponseEntity<Response> createTask(@RequestBody @Valid CreateTaskRequest
             request,
             Map.of("task", task),
             "Task updated successfully.",
+            HttpStatus.OK
+        ));
+    }
+
+    @PatchMapping("/{taskId}/status")
+    public ResponseEntity<Response> changeTaskStatus(@PathVariable UUID taskId,
+                                                     @RequestBody @Valid UpdateTaskStatusRequest requestBody,
+                                                     HttpServletRequest request) {
+        TaskResponse task = changeTaskStatusUseCase.changeStatus(taskId, requestBody);
+        return ResponseEntity.ok(RequestUtils.getResponse(
+            request,
+            Map.of("task", task),
+            "Task status changed successfully.",
             HttpStatus.OK
         ));
     }

@@ -64,6 +64,20 @@ Partially updates editable task fields.
 - Omitted fields remain unchanged; `description` and `assigneeUserId` may be cleared with `null`
 - Status changes are not supported by this endpoint
 
+### `PATCH /api/v1/tasks/{taskId}/status`
+
+Changes the task status independently from generic task updates.
+
+- Gateway route: `PATCH /api/tasks/{taskId}/status`
+- Request DTO: `UpdateTaskStatusRequest`
+- Response: `200 OK`, `data.task` contains `TaskResponse`
+- Authentication: required
+- Authorization: `ROLE_ADMIN` and `ROLE_SUPER_ADMIN` can change any task; other users can change tasks they created or are assigned to
+- Missing or inaccessible task: `404 NOT_FOUND`
+- All valid `TaskStatus` enum-to-enum changes are allowed for the MVP
+- Other task fields remain unchanged; `updatedAt` is managed by the service
+- Task history and workflow transition rules are not implemented yet
+
 ## Implemented DTOs
 
 ### CreateTaskRequest
@@ -111,6 +125,12 @@ Partially updates editable task fields.
 | `priority` | enum | no | When provided, not null; `LOW`, `MEDIUM`, `HIGH` |
 | `assigneeUserId` | UUID string or null | no | `null` clears the assignee |
 
+### UpdateTaskStatusRequest
+
+| Field | Type | Required | Validation |
+| --- | --- | --- | --- |
+| `status` | enum | yes | `NEW`, `IN_PROGRESS`, `DONE`, `CANCELLED` |
+
 ## Enumerations
 
 ### TaskStatus
@@ -143,14 +163,6 @@ Soft-deletes a task.
 - Authorization: creator, `ROLE_ADMIN`, or `ROLE_SUPER_ADMIN`
 - Whether deletion is soft or hard must be decided before implementation.
 
-### `PATCH /api/v1/tasks/{taskId}/status`
-
-Changes the task status and records task history.
-
-- Request DTO: `UpdateTaskStatusRequest`
-- Response: `200 OK`, `data.task` contains `TaskResponse`
-- Transition rules are a task-domain decision and must be finalized before implementation.
-
 ### `POST /api/v1/tasks/{taskId}/assign`
 
 Assigns a task to a user.
@@ -179,12 +191,6 @@ Returns comments for a task.
 - Default sort: `createdAt,asc`
 
 ## Planned DTOs
-
-### UpdateTaskStatusRequest
-
-| Field | Type | Required | Validation |
-| --- | --- | --- | --- |
-| `status` | enum | yes | `NEW`, `IN_PROGRESS`, `DONE`, `CANCELLED` |
 
 ### AssignTaskRequest
 

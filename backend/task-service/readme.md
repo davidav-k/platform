@@ -39,7 +39,7 @@ Runtime database settings are served by Config Server from
 ## Authentication
 
 `POST /api/v1/tasks`, `GET /api/v1/tasks`, `GET /api/v1/tasks/{taskId}`, and
-`PATCH /api/v1/tasks/{taskId}`
+`PATCH /api/v1/tasks/{taskId}`, and `PATCH /api/v1/tasks/{taskId}/status`
 require a valid access JWT. The service accepts the same `Authorization: Bearer`
 header and `access-token` cookie used by the Gateway and validates the JWT
 independently.
@@ -47,7 +47,7 @@ independently.
 Task ownership is server controlled. `createdByUserId` is derived from the JWT
 subject and ignored if a client includes it in the request payload.
 
-For task reads and updates, `ROLE_ADMIN` and `ROLE_SUPER_ADMIN` can access all
+For task reads, updates, and status changes, `ROLE_ADMIN` and `ROLE_SUPER_ADMIN` can access all
 tasks. Other authenticated users can access only tasks they created or are
 assigned to. Inaccessible task identifiers return the same `404 NOT_FOUND`
 response as missing tasks.
@@ -301,6 +301,26 @@ curl -i -X PATCH "http://localhost:8080/api/tasks/${TASK_ID}" \
     "title": "Updated task title",
     "priority": "HIGH"
   }'
+```
+
+### `PATCH /api/v1/tasks/{taskId}/status`
+
+Changes a task status through `ChangeTaskStatusUseCase`.
+
+- Request field: required `status` with one of `NEW`, `IN_PROGRESS`, `DONE`, `CANCELLED`
+- All valid enum-to-enum changes are allowed for the MVP; no transition state machine is applied
+- Admin roles can change any task; other users must be the creator or assignee
+- Missing or inaccessible tasks return `404 NOT_FOUND`
+- Other task fields remain unchanged; `updatedAt` is managed by the service
+- Gateway route: `PATCH /api/tasks/{taskId}/status`
+
+Gateway example:
+
+```bash
+curl -i -X PATCH "http://localhost:8080/api/tasks/${TASK_ID}/status" \
+  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{"status":"IN_PROGRESS"}'
 ```
 
 ## Local Startup
