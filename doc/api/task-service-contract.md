@@ -78,6 +78,20 @@ Changes the task status independently from generic task updates.
 - Other task fields remain unchanged; `updatedAt` is managed by the service
 - Task history and workflow transition rules are not implemented yet
 
+### `DELETE /api/v1/tasks/{taskId}`
+
+Soft-deletes an active task without removing its database row.
+
+- Gateway route: `DELETE /api/tasks/{taskId}`
+- Request DTO: none
+- Response: `200 OK` with the standard response metadata and no `data` field
+- Authentication: required
+- Authorization: `ROLE_ADMIN` and `ROLE_SUPER_ADMIN` can delete any task; other users can delete only tasks they created
+- Assignment alone does not grant delete permission
+- Missing, inaccessible, or already deleted task: `404 NOT_FOUND`
+- Deleted tasks are excluded from normal get and list operations and cannot be updated or have their status changed
+- `deletedAt` and `deletedByUserId` are internal persistence fields and are not exposed by `TaskResponse`
+
 ## Implemented DTOs
 
 ### CreateTaskRequest
@@ -154,14 +168,6 @@ Changes the task status independently from generic task updates.
 
 The following endpoints are not yet implemented. Their contracts are defined
 here as targets for future MVP work.
-
-### `DELETE /api/v1/tasks/{taskId}`
-
-Soft-deletes a task.
-
-- Response: `200 OK`, `data` is empty
-- Authorization: creator, `ROLE_ADMIN`, or `ROLE_SUPER_ADMIN`
-- Whether deletion is soft or hard must be decided before implementation.
 
 ### `POST /api/v1/tasks/{taskId}/assign`
 

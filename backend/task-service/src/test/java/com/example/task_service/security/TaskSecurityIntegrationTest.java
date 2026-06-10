@@ -22,6 +22,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -264,6 +265,121 @@ class TaskSecurityIntegrationTest {
 
         assertThat(taskRepository.findByTaskId(task.getTaskId()).orElseThrow().getStatus())
             .isEqualTo(TaskStatus.NEW);
+    }
+
+    @Test
+    void adminCanSoftDeleteAnyTask() throws Exception {
+        UUID adminUserId = UUID.randomUUID();
+        TaskEntity task = saveTask("Admin delete", UUID.randomUUID(), UUID.randomUUID());
+
+        mockMvc.perform(delete("/api/v1/tasks/{taskId}", task.getTaskId())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken(adminUserId, "ADMIN")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.message").value("Task deleted successfully."));
+
+        TaskEntity deleted = taskRepository.findByTaskId(task.getTaskId()).orElseThrow();
+        assertThat(deleted.getDeletedAt()).isNotNull();
+        assertThat(deleted.getDeletedByUserId()).isEqualTo(adminUserId);
+    }
+
+    @Test
+    void creatorCanSoftDeleteOwnTask() throws Exception {
+        UUID creatorUserId = UUID.randomUUID();
+        TaskEntity task = saveTask("Creator delete", UUID.randomUUID(), creatorUserId);
+
+        mockMvc.perform(delete("/api/v1/tasks/{taskId}", task.getTaskId())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken(creatorUserId, "USER")))
+            .andExpect(status().isOk());
+
+        TaskEntity deleted = taskRepository.findByTaskId(task.getTaskId()).orElseThrow();
+        assertThat(deleted.getDeletedAt()).isNotNull();
+        assertThat(deleted.getDeletedByUserId()).isEqualTo(creatorUserId);
+    }
+
+    @Test
+    void assigneeCannotDeleteTaskCreatedByAnotherUser() throws Exception {
+        UUID assigneeUserId = UUID.randomUUID();
+        TaskEntity task = saveTask("Assignee cannot delete", assigneeUserId, UUID.randomUUID());
+
+        mockMvc.perform(delete("/api/v1/tasks/{taskId}", task.getTaskId())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken(assigneeUserId, "USER")))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.message").value("Task not found."));
+
+        assertThat(taskRepository.findByTaskId(task.getTaskId()).orElseThrow().getDeletedAt()).isNull();
+    }
+
+    @Test
+    void unrelatedUserCannotDeleteTask() throws Exception {
+        TaskEntity task = saveTask("Unrelated cannot delete", UUID.randomUUID(), UUID.randomUUID());
+
+        mockMvc.perform(delete("/api/v1/tasks/{taskId}", task.getTaskId())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken(UUID.randomUUID(), "USER")))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.message").value("Task not found."));
+    }
+
+    @Test
+    void softDeletedTaskIsExcludedFromGetAndList() throws Exception {
+        UUID creatorUserId = UUID.randomUUID();
+        TaskEntity task = saveTask("Hidden after delete", UUID.randomUUID(), creatorUserId);
+        String token = accessToken(creatorUserId, "USER");
+
+        mockMvc.perform(delete("/api/v1/tasks/{taskId}", task.getTaskId())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+            .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/v1/tasks/{taskId}", task.getTaskId())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+            .andExpect(status().isNotFound());
+
+        mockMvc.perform(get("/api/v1/tasks")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.items.length()").value(0));
+    }
+
+    @Test
+    void softDeletedTaskCannotBeUpdatedOrHaveStatusChanged() throws Exception {
+        UUID creatorUserId = UUID.randomUUID();
+        TaskEntity task = saveTask("Immutable after delete", UUID.randomUUID(), creatorUserId);
+        String token = accessToken(creatorUserId, "USER");
+
+        mockMvc.perform(delete("/api/v1/tasks/{taskId}", task.getTaskId())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+            .andExpect(status().isOk());
+
+        mockMvc.perform(patch("/api/v1/tasks/{taskId}", task.getTaskId())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"Denied update\"}"))
+            .andExpect(status().isNotFound());
+
+        mockMvc.perform(patch("/api/v1/tasks/{taskId}/status", task.getTaskId())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"DONE\"}"))
+            .andExpect(status().isNotFound());
+
+        TaskEntity deleted = taskRepository.findByTaskId(task.getTaskId()).orElseThrow();
+        assertThat(deleted.getTitle()).isEqualTo("Immutable after delete");
+        assertThat(deleted.getStatus()).isEqualTo(TaskStatus.NEW);
+    }
+
+    @Test
+    void deletingAlreadyDeletedTaskReturnsNotFound() throws Exception {
+        UUID creatorUserId = UUID.randomUUID();
+        TaskEntity task = saveTask("Delete once", UUID.randomUUID(), creatorUserId);
+        String token = accessToken(creatorUserId, "USER");
+
+        mockMvc.perform(delete("/api/v1/tasks/{taskId}", task.getTaskId())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+            .andExpect(status().isOk());
+
+        mockMvc.perform(delete("/api/v1/tasks/{taskId}", task.getTaskId())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.message").value("Task not found."));
     }
 
     @Test

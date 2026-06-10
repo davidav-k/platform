@@ -31,5 +31,9 @@ public class CurrentUserAccessProvider {
         public boolean canAccess(UUID createdByUserId, UUID assigneeUserId) {
             return admin || userId.equals(createdByUserId) || userId.equals(assigneeUserId);
         }
+
+        public boolean canDelete(UUID createdByUserId) {
+            return admin || userId.equals(createdByUserId);
+        }
     }
 }

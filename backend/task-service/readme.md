@@ -38,8 +38,9 @@ Runtime database settings are served by Config Server from
 
 ## Authentication
 
-`POST /api/v1/tasks`, `GET /api/v1/tasks`, `GET /api/v1/tasks/{taskId}`, and
-`PATCH /api/v1/tasks/{taskId}`, and `PATCH /api/v1/tasks/{taskId}/status`
+`POST /api/v1/tasks`, `GET /api/v1/tasks`, `GET /api/v1/tasks/{taskId}`,
+`PATCH /api/v1/tasks/{taskId}`, `PATCH /api/v1/tasks/{taskId}/status`, and
+`DELETE /api/v1/tasks/{taskId}`
 require a valid access JWT. The service accepts the same `Authorization: Bearer`
 header and `access-token` cookie used by the Gateway and validates the JWT
 independently.
@@ -47,10 +48,11 @@ independently.
 Task ownership is server controlled. `createdByUserId` is derived from the JWT
 subject and ignored if a client includes it in the request payload.
 
-For task reads, updates, and status changes, `ROLE_ADMIN` and `ROLE_SUPER_ADMIN` can access all
-tasks. Other authenticated users can access only tasks they created or are
-assigned to. Inaccessible task identifiers return the same `404 NOT_FOUND`
-response as missing tasks.
+For task reads, updates, and status changes, `ROLE_ADMIN` and `ROLE_SUPER_ADMIN`
+can access all tasks. Other authenticated users can access only tasks they
+created or are assigned to. Deletion is restricted to administrators and the
+task creator; assignment alone does not grant delete permission. Inaccessible
+task identifiers return the same `404 NOT_FOUND` response as missing tasks.
 
 Use a real access token issued by `user-service`; do not commit or log tokens.
 
@@ -321,6 +323,25 @@ curl -i -X PATCH "http://localhost:8080/api/tasks/${TASK_ID}/status" \
   -H "Authorization: Bearer ${ACCESS_TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{"status":"IN_PROGRESS"}'
+```
+
+### `DELETE /api/v1/tasks/{taskId}`
+
+Soft-deletes a task through `DeleteTaskUseCase`.
+
+- Admin roles can delete any task; other users must be the creator
+- Assignees cannot delete tasks they did not create
+- Response: `200 OK` with the standard response metadata and no data payload
+- Missing, inaccessible, or already deleted tasks return `404 NOT_FOUND`
+- Deleted tasks are excluded from normal get and list operations and cannot be updated
+- Deletion timestamps and actor identifiers remain internal and are not exposed in task DTOs
+- Gateway route: `DELETE /api/tasks/{taskId}`
+
+Gateway example:
+
+```bash
+curl -i -X DELETE "http://localhost:8080/api/tasks/${TASK_ID}" \
+  -H "Authorization: Bearer ${ACCESS_TOKEN}"
 ```
 
 ## Local Startup

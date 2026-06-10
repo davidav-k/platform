@@ -103,6 +103,7 @@ public class ListTasksUseCaseImpl implements ListTasksUseCase {
     private Specification<TaskEntity> toSpecification(TaskListQuery query, CurrentUserAccess access) {
         return (root, criteriaQuery, criteriaBuilder) -> {
             List<Predicate> predicates = new ArrayList<>();
+            predicates.add(criteriaBuilder.isNull(root.get("deletedAt")));
             if (!access.admin()) {
                 predicates.add(visibleToUser(root, criteriaBuilder, access.userId()));
             }

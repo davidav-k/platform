@@ -30,7 +30,7 @@ public class UpdateTaskUseCaseImpl implements UpdateTaskUseCase {
     public TaskResponse update(UUID taskId, UpdateTaskRequest request) {
         validate(taskId, request);
 
-        TaskEntity task = taskRepository.findByTaskId(taskId)
+        TaskEntity task = taskRepository.findByTaskIdAndDeletedAtIsNull(taskId)
             .orElseThrow(() -> new TaskNotFoundException(taskId));
         CurrentUserAccess access = currentUserAccessProvider.currentUserAccess();
         if (!access.canAccess(task.getCreatedByUserId(), task.getAssigneeUserId())) {
