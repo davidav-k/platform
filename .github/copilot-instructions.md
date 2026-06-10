@@ -1,33 +1,44 @@
-Platform is a Spring Boot microservices project.
+# Copilot Instructions
 
-When generating code:
+Project: Platform
 
-- Follow existing project style.
-- Keep changes minimal.
-- Do not rewrite unrelated code.
-- Do not introduce new frameworks.
-- Do not add dependencies without justification.
-- Keep controllers thin.
-- Keep business logic in services.
-- Use DTOs for API contracts.
-- Add Javadoc to new classes.
-- Prefer constructor injection.
-- Prefer explicit code over clever code.
+Follow AGENTS.md first.
 
-For every task:
+Additional rules:
 
-1. Analyze current implementation.
-2. Explain issue.
-3. Implement smallest possible solution.
-4. List changed files.
-5. Suggest tests.
+* Keep changes small and atomic.
+* One branch = one concern.
+* Preserve existing API contracts unless explicitly requested.
+* Do not introduce new dependencies without justification.
+* Do not change Spring Boot, Spring Cloud, Java, PostgreSQL, Redis, or Docker versions without compatibility verification.
+* Do not generate placeholder implementations that are not used.
+* Do not add abstractions for future requirements.
 
-Security-sensitive areas:
+Always:
 
-- JWT
-- Cookies
-- Authentication
-- Authorization
-- Gateway filters
+1. Analyze before coding.
+2. Explain planned changes.
+3. Modify only necessary files.
+4. Keep controllers thin.
+5. Keep business logic in services.
+6. Preserve DTO boundaries.
+7. Verify security impact.
+8. Suggest tests.
 
-Verify security implications before making changes.
+When finished provide:
+
+## Summary
+
+## Modified Files
+
+## Validation
+
+## Recommended Tests
+
+## Documentation Changes
+
+If information is missing:
+
+* stop
+* explain assumptions
+* request clarification instead of guessing

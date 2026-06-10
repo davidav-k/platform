@@ -2,19 +2,22 @@
 
 You are working on Platform — a microservice-based Task Management Platform.
 
-## Primary Goal
+## Goal
 
 Current goal is MVP stabilization.
 
 Priorities:
 
-1. Fix startup issues.
-2. Fix security issues.
-3. Stabilize user-service.
-4. Align gateway and security architecture.
-5. Implement task-service.
-6. Implement notification-service.
-7. Improve frontend integration.
+1. Startup stability
+2. Security hardening
+3. user-service stabilization
+4. task-service stabilization
+5. notification-service stabilization
+6. Gateway and contract alignment
+7. Frontend integration
+8. Event-driven architecture preparation
+
+Prefer small, reviewable, incremental changes.
 
 Do not introduce large-scale refactoring unless explicitly requested.
 
@@ -22,100 +25,139 @@ Do not introduce large-scale refactoring unless explicitly requested.
 
 ## Technology Stack
 
-- Java 17
-- Spring Boot 3.4.x
-- Spring Cloud 2024.x
-- Spring Security
-- Spring Cloud Gateway
-- Eureka
-- Config Server
-- PostgreSQL
-- Redis
-- Docker Compose
-- Maven
-- JUnit 5
-- Mockito
-- Testcontainers
-- Vue 3
+* Java 17
+* Spring Boot 3.4.x
+* Spring Cloud 2024.x
+* Spring Security
+* Spring Cloud Gateway
+* Eureka
+* Config Server
+* PostgreSQL 16.x
+* Redis
+* Docker Compose
+* Maven
+* JUnit 5
+* Mockito
+* Testcontainers
+* Vue 3
+
+Always verify version compatibility before upgrades.
 
 ---
 
 ## Architecture Rules
 
+### Service Ownership
+
+user-service:
+
+* authentication
+* authorization
+* MFA
+* user lifecycle
+
+task-service:
+
+* task lifecycle
+* ownership
+* assignment
+* status transitions
+
+notification-service:
+
+* notifications
+* preferences
+* delivery
+
+api-gateway:
+
+* routing
+* JWT validation
+* gateway filters
+
+Do not move responsibilities between services without explicit justification.
+
 ### Controllers
 
-Controllers must remain thin.
+Controllers must:
 
-Controllers:
-- validate input
-- call service layer
-- return DTOs
+* validate requests
+* call use cases
+* return DTOs
 
 Controllers must not contain business logic.
-
----
 
 ### Service Layer
 
 Service layer owns:
 
-- use cases
-- transactions
-- business rules
+* business rules
+* use cases
+* transactions
+
+### DTO Rules
+
+Keep separation between:
+
+* Entity
+* DTO
+* Security Principal
+
+Never expose entities directly.
+
+### Database Rules
+
+Each service owns its own schema/database.
+
+Never create:
+
+* cross-service foreign keys
+* cross-service repository access
 
 ---
 
-### DTOs
-
-Do not expose entities directly.
-
-Use DTOs for API contracts.
-
-Avoid mixing:
-
-- Entity
-- DTO
-- Security Principal
-
----
-
-### Security
-
-Security code must be explicit.
+## Security Rules
 
 Always verify:
 
-- JWT validation
-- expiration handling
-- refresh token flow
-- cookie settings
-- security filters order
+* JWT validation
+* expiration handling
+* refresh flow
+* authorization rules
+* MFA flow
+* security filter ordering
+
+Special attention:
+
+* JWT expiration units
+* HttpOnly cookies
+* Secure cookies
+* SameSite
+* MaxAge
+* RequestContext cleanup
 
 Never log:
 
-- JWT tokens
-- passwords
-- secrets
+* passwords
+* JWT tokens
+* refresh tokens
+* secrets
 
 ---
 
-### Configuration
+## Configuration Rules
 
 Prefer:
 
-- application.yml
-- Config Server
-- Environment Variables
+* application.yml
+* Config Server
+* Environment Variables
 
-Do not hardcode secrets.
+Never hardcode:
 
----
-
-### Database
-
-Each microservice must own its data.
-
-Do not create cross-service database dependencies.
+* credentials
+* secrets
+* environment-specific values
 
 ---
 
@@ -123,42 +165,103 @@ Do not create cross-service database dependencies.
 
 Prefer:
 
-- simple code
-- readable code
-- explicit names
+* simple code
+* readable code
+* explicit names
 
 Avoid:
 
-- unnecessary abstractions
-- speculative design
-- premature optimization
+* premature optimization
+* speculative design
+* unnecessary abstractions
+
+---
+
+## Workflow
+
+Before implementation:
+
+1. Analyze existing code.
+2. Identify affected modules.
+3. Identify affected files.
+4. Identify risks.
+5. Propose minimal solution.
+
+Do not start implementation before analysis.
+
+After implementation:
+
+1. List modified files.
+2. Review architecture impact.
+3. Review security impact.
+4. Suggest tests.
+5. Suggest documentation updates.
+
+---
+
+## Testing
+
+Provide required tests for every change:
+
+* Unit Tests
+* Integration Tests
+* MockMvc Tests
+* Security Tests
+* Testcontainers Tests
 
 ---
 
 ## Documentation
 
-When changing:
+Update documentation when changing:
 
-- architecture
-- API contracts
-- startup process
+* API contracts
+* Architecture
+* Security
+* Configuration
+* Startup process
 
-Update:
+Relevant documents:
 
-- README
-- docs
+* README.md
+* doc/architecture.md
+* doc/development-workflow.md
+* doc/security/*
+* doc/configuration/*
+* doc/technical-debt.md
 
 ---
 
-## Before Making Changes
+## Technical Debt
 
-Always:
+Do not introduce new technical debt without documenting it.
 
-1. Analyze existing code.
-2. Explain findings.
-3. Propose minimal change.
-4. Implement change.
-5. List modified files.
-6. Suggest tests.
+Prefer reducing nearby technical debt when touching existing code.
 
-Never start with implementation before analysis.
+---
+
+## Required Response Format
+
+Before implementation:
+
+## Analysis
+
+## Affected Modules
+
+## Affected Files
+
+## Risks
+
+## Proposed Solution
+
+After implementation:
+
+## Summary
+
+## Modified Files
+
+## Tests
+
+## Documentation Updates
+
+## Remaining Technical Debt
