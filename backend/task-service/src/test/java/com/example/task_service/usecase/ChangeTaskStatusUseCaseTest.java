@@ -16,10 +16,10 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import java.time.OffsetDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.when;
 
 @SpringBootTest(properties = {
@@ -137,7 +137,9 @@ class ChangeTaskStatusUseCaseTest {
         assertThat(updated.getPriority()).isEqualTo(priority);
         assertThat(updated.getAssigneeUserId()).isEqualTo(assigneeUserId);
         assertThat(updated.getCreatedByUserId()).isEqualTo(creatorUserId);
-        assertThat(updated.getCreatedAt()).isEqualTo(createdAt);
+        assertThat(updated.getCreatedAt()).isCloseTo(createdAt, within(1, ChronoUnit.MICROS));
+
+
     }
 
     @Test

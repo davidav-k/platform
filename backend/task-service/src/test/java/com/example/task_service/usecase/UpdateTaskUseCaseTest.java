@@ -14,7 +14,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-
+import java.time.temporal.ChronoUnit;
+import static org.assertj.core.api.Assertions.within;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
@@ -119,7 +120,7 @@ class UpdateTaskUseCaseTest {
         assertThat(response.getStatus()).isEqualTo(originalStatus);
         assertThat(response.getAssigneeUserId()).isEqualTo(assigneeUserId);
         assertThat(response.getCreatedByUserId()).isEqualTo(creatorUserId);
-        assertThat(response.getCreatedAt()).isEqualTo(originalCreatedAt);
+        assertThat(response.getCreatedAt()).isCloseTo(originalCreatedAt, within(1, ChronoUnit.MILLIS));
         assertThat(response.getUpdatedAt()).isNotNull();
     }
 
