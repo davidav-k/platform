@@ -52,7 +52,7 @@ public class CreateTaskUseCaseImpl implements CreateTaskUseCase {
             createdByUserId
         );
 
-        TaskEntity saved = taskRepository.save(task);
+        TaskEntity saved = taskRepository.saveAndFlush(task);
         CreateTaskResponse response = toResponse(saved);
         publishAssignmentNotification(response);
         return response;

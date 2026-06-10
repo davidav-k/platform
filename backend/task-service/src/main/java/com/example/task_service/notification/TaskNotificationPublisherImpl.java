@@ -22,16 +22,21 @@ public class TaskNotificationPublisherImpl implements TaskNotificationPublisher 
 
     @Override
     public void notifyTaskAssigned(TaskNotificationContext context) {
-        if (!properties.isEnabled() || context == null || context.assigneeUserId() == null) {
+        if (!properties.isEnabled()
+            || context == null
+            || context.assigneeUserId() == null
+            || context.assigneeUserId().equals(context.createdByUserId())) {
             return;
         }
 
         CreateNotificationRequest request = new CreateNotificationRequest(
             context.assigneeUserId(),
             "TASK_ASSIGNED",
-            "IN_APP",
             "New task assigned",
-            "You have been assigned task: " + context.title()
+            "Task \"" + context.title() + "\" was assigned to you",
+            "task-service",
+            "TASK",
+            context.taskId()
         );
 
         try {

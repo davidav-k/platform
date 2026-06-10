@@ -54,9 +54,23 @@ class TaskNotificationPublisherTest {
         CreateNotificationRequest request = captor.getValue();
         assertThat(request.getRecipientUserId()).isEqualTo(assigneeUserId);
         assertThat(request.getType()).isEqualTo("TASK_ASSIGNED");
-        assertThat(request.getChannel()).isEqualTo("IN_APP");
-        assertThat(request.getSubject()).isEqualTo("New task assigned");
-        assertThat(request.getBody()).isEqualTo("You have been assigned task: Task title");
+        assertThat(request.getTitle()).isEqualTo("New task assigned");
+        assertThat(request.getMessage()).isEqualTo("Task \"Task title\" was assigned to you");
+        assertThat(request.getSourceService()).isEqualTo("task-service");
+        assertThat(request.getSourceEntityType()).isEqualTo("TASK");
+        assertThat(request.getSourceEntityId()).isNotNull();
+    }
+
+    @Test
+    void selfAssignedTaskDoesNotCallClient() {
+        properties.setEnabled(true);
+        UUID userId = UUID.randomUUID();
+
+        publisher.notifyTaskAssigned(new TaskNotificationContext(
+            UUID.randomUUID(), "Task title", userId, userId
+        ));
+
+        verify(notificationClient, never()).createNotification(any());
     }
 
     @Test

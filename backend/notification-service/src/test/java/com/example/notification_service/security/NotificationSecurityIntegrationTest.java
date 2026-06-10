@@ -100,6 +100,46 @@ class NotificationSecurityIntegrationTest {
     }
 
     @Test
+    void authenticatedInternalSystemCreatePersistsSourceMetadata() throws Exception {
+        UUID recipientUserId = UUID.randomUUID();
+        UUID taskId = UUID.randomUUID();
+
+        mockMvc.perform(post("/internal/api/v1/notifications/system")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken(UUID.randomUUID()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "recipientUserId": "%s",
+                                  "type": "TASK_ASSIGNED",
+                                  "title": "New task assigned",
+                                  "message": "Task \\\"Implement login\\\" was assigned to you",
+                                  "sourceService": "task-service",
+                                  "sourceEntityType": "TASK",
+                                  "sourceEntityId": "%s"
+                                }
+                                """.formatted(recipientUserId, taskId)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.notification.recipientUserId").value(recipientUserId.toString()))
+                .andExpect(jsonPath("$.data.notification.type").value("TASK_ASSIGNED"));
+
+        NotificationEntity persisted = notificationRepository.findAll().stream()
+                .filter(notification -> taskId.equals(notification.getSourceEntityId()))
+                .findFirst()
+                .orElseThrow();
+        assertThat(persisted.getSourceService()).isEqualTo("task-service");
+        assertThat(persisted.getSourceEntityType()).isEqualTo("TASK");
+        assertThat(persisted.getChannel().name()).isEqualTo("IN_APP");
+    }
+
+    @Test
+    void unauthenticatedInternalSystemCreateReturnsUnauthorized() throws Exception {
+        mockMvc.perform(post("/internal/api/v1/notifications/system")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
     void authenticatedListSucceeds() throws Exception {
         mockMvc.perform(get("/api/v1/notifications")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken(UUID.randomUUID())))
