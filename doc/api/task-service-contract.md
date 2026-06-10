@@ -34,7 +34,8 @@ Returns one task by its public UUID.
 - Request DTO: none
 - Response: `200 OK`, `data.task` contains `TaskResponse`
 - Authentication: required
-- Missing task: `404 NOT_FOUND`
+- Authorization: `ROLE_ADMIN` and `ROLE_SUPER_ADMIN` can read any task; other users can read tasks they created or are assigned to
+- Missing or inaccessible task: `404 NOT_FOUND`
 
 ### `GET /api/v1/tasks`
 
@@ -44,6 +45,7 @@ Returns a filtered, paginated task list.
 - Request DTO: none
 - Response: `200 OK`, `data.items` contains `TaskResponse` entries and `data.page` contains pagination metadata
 - Authentication: required
+- Authorization: `ROLE_ADMIN` and `ROLE_SUPER_ADMIN` can list all tasks; other users see only tasks they created or are assigned to
 - Optional filters: `status`, `priority`, `assigneeUserId`, `createdByUserId`
 - Pagination: `page` (default `0`), `size` (default `20`, max `100`)
 - Sorting: `sort` (default `createdAt,desc`)

@@ -46,6 +46,11 @@ independently.
 Task ownership is server controlled. `createdByUserId` is derived from the JWT
 subject and ignored if a client includes it in the request payload.
 
+For task reads, `ROLE_ADMIN` and `ROLE_SUPER_ADMIN` can access all tasks.
+Other authenticated users can access only tasks they created or are assigned
+to. Inaccessible task identifiers return the same `404 NOT_FOUND` response as
+missing tasks.
+
 Use a real access token issued by `user-service`; do not commit or log tokens.
 
 ```bash
@@ -179,6 +184,7 @@ Returns one task by public task UUID through `GetTaskUseCase`.
 
 - Response DTO: `TaskResponse` in the standard `data.task` envelope
 - Authentication: required
+- Authorization: admin roles can read any task; other users must be the creator or assignee
 - Missing tasks return `404 NOT_FOUND`
 - Gateway route: `GET /api/tasks/{taskId}`
 
@@ -224,6 +230,7 @@ Returns a paginated task list through `ListTasksUseCase`.
 - Sorting: `sort` defaults to `createdAt,desc`
 - Response shape: standard envelope with `data.items` and `data.page`
 - Authentication: required
+- Authorization: admin roles see all tasks; other users see only tasks they created or are assigned to
 - Gateway route: `GET /api/tasks`
 
 Gateway examples:

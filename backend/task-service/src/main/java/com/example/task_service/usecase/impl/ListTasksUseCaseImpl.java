@@ -6,8 +6,12 @@ import com.example.task_service.dto.TaskListResponse;
 import com.example.task_service.dto.TaskResponse;
 import com.example.task_service.entity.TaskEntity;
 import com.example.task_service.repository.TaskRepository;
+import com.example.task_service.security.CurrentUserAccessProvider;
+import com.example.task_service.security.CurrentUserAccessProvider.CurrentUserAccess;
 import com.example.task_service.usecase.ListTasksUseCase;
+import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -19,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 @Service
 @Transactional(readOnly = true)
@@ -34,16 +39,19 @@ public class ListTasksUseCaseImpl implements ListTasksUseCase {
     );
 
     private final TaskRepository taskRepository;
+    private final CurrentUserAccessProvider currentUserAccessProvider;
 
-    public ListTasksUseCaseImpl(TaskRepository taskRepository) {
+    public ListTasksUseCaseImpl(TaskRepository taskRepository, CurrentUserAccessProvider currentUserAccessProvider) {
         this.taskRepository = taskRepository;
+        this.currentUserAccessProvider = currentUserAccessProvider;
     }
 
     @Override
     public TaskListResponse list(TaskListQuery query) {
         validate(query);
 
-        Page<TaskEntity> page = taskRepository.findAll(toSpecification(query), toPageable(query));
+        CurrentUserAccess access = currentUserAccessProvider.currentUserAccess();
+        Page<TaskEntity> page = taskRepository.findAll(toSpecification(query, access), toPageable(query));
         List<TaskResponse> items = page.getContent().stream()
             .map(this::toResponse)
             .toList();
@@ -92,9 +100,12 @@ public class ListTasksUseCaseImpl implements ListTasksUseCase {
         return Sort.by(direction, field);
     }
 
-    private Specification<TaskEntity> toSpecification(TaskListQuery query) {
+    private Specification<TaskEntity> toSpecification(TaskListQuery query, CurrentUserAccess access) {
         return (root, criteriaQuery, criteriaBuilder) -> {
             List<Predicate> predicates = new ArrayList<>();
+            if (!access.admin()) {
+                predicates.add(visibleToUser(root, criteriaBuilder, access.userId()));
+            }
             if (query.getStatus() != null) {
                 predicates.add(criteriaBuilder.equal(root.get("status"), query.getStatus()));
             }
@@ -109,6 +120,15 @@ public class ListTasksUseCaseImpl implements ListTasksUseCase {
             }
             return criteriaBuilder.and(predicates.toArray(Predicate[]::new));
         };
+    }
+
+    private Predicate visibleToUser(Root<TaskEntity> root,
+                                    CriteriaBuilder criteriaBuilder,
+                                    UUID userId) {
+        return criteriaBuilder.or(
+            criteriaBuilder.equal(root.get("createdByUserId"), userId),
+            criteriaBuilder.equal(root.get("assigneeUserId"), userId)
+        );
     }
 
     private TaskResponse toResponse(TaskEntity task) {
