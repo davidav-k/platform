@@ -32,14 +32,10 @@ public class GetTaskUseCaseImpl implements GetTaskUseCase {
         TaskEntity task = taskRepository.findByTaskId(taskId)
             .orElseThrow(() -> new TaskNotFoundException(taskId));
         CurrentUserAccess access = currentUserAccessProvider.currentUserAccess();
-        if (!access.admin() && !isVisibleTo(task, access.userId())) {
+        if (!access.canAccess(task.getCreatedByUserId(), task.getAssigneeUserId())) {
             throw new TaskNotFoundException(taskId);
         }
         return toResponse(task);
-    }
-
-    private boolean isVisibleTo(TaskEntity task, UUID userId) {
-        return userId.equals(task.getCreatedByUserId()) || userId.equals(task.getAssigneeUserId());
     }
 
     private TaskResponse toResponse(TaskEntity task) {

@@ -50,6 +50,20 @@ Returns a filtered, paginated task list.
 - Pagination: `page` (default `0`), `size` (default `20`, max `100`)
 - Sorting: `sort` (default `createdAt,desc`)
 
+### `PATCH /api/v1/tasks/{taskId}`
+
+Partially updates editable task fields.
+
+- Gateway route: `PATCH /api/tasks/{taskId}`
+- Request DTO: `UpdateTaskRequest`
+- Response: `200 OK`, `data.task` contains `TaskResponse`
+- Authentication: required
+- Authorization: `ROLE_ADMIN` and `ROLE_SUPER_ADMIN` can update any task; other users can update tasks they created or are assigned to
+- Missing or inaccessible task: `404 NOT_FOUND`
+- At least one editable field must be provided
+- Omitted fields remain unchanged; `description` and `assigneeUserId` may be cleared with `null`
+- Status changes are not supported by this endpoint
+
 ## Implemented DTOs
 
 ### CreateTaskRequest
@@ -88,6 +102,15 @@ Returns a filtered, paginated task list.
 | `createdAt` | string | ISO-8601 timestamp with offset |
 | `updatedAt` | string | ISO-8601 timestamp with offset |
 
+### UpdateTaskRequest
+
+| Field | Type | Required | Validation |
+| --- | --- | --- | --- |
+| `title` | string | no | When provided, not null or blank; maximum 200 characters |
+| `description` | string or null | no | Maximum 5000 characters; `null` clears the description |
+| `priority` | enum | no | When provided, not null; `LOW`, `MEDIUM`, `HIGH` |
+| `assigneeUserId` | UUID string or null | no | `null` clears the assignee |
+
 ## Enumerations
 
 ### TaskStatus
@@ -111,14 +134,6 @@ Returns a filtered, paginated task list.
 
 The following endpoints are not yet implemented. Their contracts are defined
 here as targets for future MVP work.
-
-### `PUT /api/v1/tasks/{taskId}`
-
-Replaces editable task fields.
-
-- Request DTO: `UpdateTaskRequest`
-- Response: `200 OK`, `data.task` contains `TaskResponse`
-- Authorization: creator, `ROLE_ADMIN`, or `ROLE_SUPER_ADMIN`
 
 ### `DELETE /api/v1/tasks/{taskId}`
 
@@ -164,14 +179,6 @@ Returns comments for a task.
 - Default sort: `createdAt,asc`
 
 ## Planned DTOs
-
-### UpdateTaskRequest
-
-| Field | Type | Required | Validation |
-| --- | --- | --- | --- |
-| `title` | string | yes | Not blank; maximum 200 characters |
-| `description` | string | no | Maximum 5000 characters |
-| `priority` | enum | yes | `LOW`, `MEDIUM`, `HIGH` |
 
 ### UpdateTaskStatusRequest
 
