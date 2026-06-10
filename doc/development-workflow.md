@@ -9,15 +9,45 @@ This repository is being stabilized for the MVP. Keep changes small, explicit, a
 - Feature and fix branches should branch from the intended target branch and use short descriptive names, for example `fix/user-service-startup` or `docs/ci-workflow`.
 - Open pull requests into `dev` during MVP development unless the change is an urgent repository maintenance fix for `main`.
 
+### Expected Branch Protection
+
+Branch protection is configured in GitHub and cannot be verified from
+repository files. A repository administrator should configure and periodically
+verify the following rules.
+
+For `main`:
+
+- Require a pull request before merge.
+- Disable direct pushes.
+- Require all checks produced by the `Maven Tests` workflow to pass.
+- Require the branch to be up to date before merge.
+- Require all review conversations to be resolved.
+- Require at least one approving review.
+- Enable repository-level secret scanning and push protection.
+
+For `dev`:
+
+- Require a pull request before merge.
+- Require all checks produced by the `Maven Tests` workflow to pass.
+- Disable direct pushes when practical; otherwise, direct pushes are strongly discouraged.
+- Recommend at least one approving review.
+- Recommend resolving all review conversations before merge.
+
+These rules are expected repository settings, not claims about current GitHub
+configuration. See [Repository Settings](repository-settings.md) for the
+related secret-protection expectations.
+
 ## Pull Requests
 
 Every pull request should:
 
 - Use the repository pull request template.
+- Target `dev` by default, or identify why `main` is the correct target.
 - Describe the scope and validation performed.
 - Keep unrelated refactoring out of MVP stabilization changes.
 - Call out API contract, security, configuration, startup, or documentation impact.
 - Include tests or a clear reason why tests are not applicable.
+- Pass all required CI checks before merge.
 
 ## Local Setup
 
