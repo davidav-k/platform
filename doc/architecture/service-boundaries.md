@@ -78,6 +78,11 @@ and delivery data needed for notification processing.
 - A notification stores recipient `userId`, channel, content, and delivery
   state but does not duplicate task ownership.
 
+User lifecycle termination does not cascade across databases. The approved MVP
+policy retains stable user identifiers and historical task and notification
+records; see
+[User deletion and deactivation policy](user-deletion-policy.md).
+
 ## Allowed Dependencies
 
 During the synchronous REST phase:
