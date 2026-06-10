@@ -206,6 +206,67 @@ class TaskSecurityIntegrationTest {
     }
 
     @Test
+    void adminCanChangeStatusOfAnyTask() throws Exception {
+        TaskEntity task = saveTask("Original", UUID.randomUUID(), UUID.randomUUID());
+
+        mockMvc.perform(patch("/api/v1/tasks/{taskId}/status", task.getTaskId())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken(UUID.randomUUID(), "ADMIN"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"DONE\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.task.status").value("DONE"));
+    }
+
+    @Test
+    void creatorCanChangeStatusOfOwnTask() throws Exception {
+        UUID creatorUserId = UUID.randomUUID();
+        TaskEntity task = saveTask("Original", UUID.randomUUID(), creatorUserId);
+        Instant originalUpdatedAt = task.getUpdatedAt().toInstant();
+
+        mockMvc.perform(patch("/api/v1/tasks/{taskId}/status", task.getTaskId())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken(creatorUserId, "USER"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"IN_PROGRESS\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.task.status").value("IN_PROGRESS"))
+            .andExpect(jsonPath("$.data.task.title").value("Original"));
+
+        TaskEntity updated = taskRepository.findByTaskId(task.getTaskId()).orElseThrow();
+        assertThat(updated.getStatus()).isEqualTo(TaskStatus.IN_PROGRESS);
+        assertThat(updated.getUpdatedAt().toInstant()).isAfter(originalUpdatedAt);
+        assertThat(updated.getTitle()).isEqualTo("Original");
+        assertThat(updated.getCreatedByUserId()).isEqualTo(creatorUserId);
+    }
+
+    @Test
+    void assigneeCanChangeStatusOfAssignedTask() throws Exception {
+        UUID assigneeUserId = UUID.randomUUID();
+        TaskEntity task = saveTask("Original", assigneeUserId, UUID.randomUUID());
+
+        mockMvc.perform(patch("/api/v1/tasks/{taskId}/status", task.getTaskId())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken(assigneeUserId, "USER"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"CANCELLED\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.task.status").value("CANCELLED"));
+    }
+
+    @Test
+    void unrelatedUserCannotChangeTaskStatus() throws Exception {
+        TaskEntity task = saveTask("Original", UUID.randomUUID(), UUID.randomUUID());
+
+        mockMvc.perform(patch("/api/v1/tasks/{taskId}/status", task.getTaskId())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken(UUID.randomUUID(), "USER"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"DONE\"}"))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.message").value("Task not found."));
+
+        assertThat(taskRepository.findByTaskId(task.getTaskId()).orElseThrow().getStatus())
+            .isEqualTo(TaskStatus.NEW);
+    }
+
+    @Test
     void unauthenticatedListTasksReturnsUnauthorized() throws Exception {
         mockMvc.perform(get("/api/v1/tasks"))
             .andExpect(status().isUnauthorized());

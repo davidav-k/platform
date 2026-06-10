@@ -7,6 +7,7 @@ import com.example.task_service.dto.TaskListQuery;
 import com.example.task_service.dto.TaskListResponse;
 import com.example.task_service.dto.TaskResponse;
 import com.example.task_service.dto.UpdateTaskRequest;
+import com.example.task_service.dto.UpdateTaskStatusRequest;
 import com.example.task_service.enumeration.TaskPriority;
 import com.example.task_service.enumeration.TaskStatus;
 import com.example.task_service.exception.TaskNotFoundException;
@@ -14,6 +15,7 @@ import com.example.task_service.security.AuthenticatedUser;
 import com.example.task_service.security.JwtAuthenticationFilter;
 import com.example.task_service.security.JwtTokenService;
 import com.example.task_service.security.SecurityConfig;
+import com.example.task_service.usecase.ChangeTaskStatusUseCase;
 import com.example.task_service.usecase.CreateTaskUseCase;
 import com.example.task_service.usecase.GetTaskUseCase;
 import com.example.task_service.usecase.ListTasksUseCase;
@@ -67,6 +69,9 @@ class TaskControllerTest {
 
     @MockitoBean
     private UpdateTaskUseCase updateTaskUseCase;
+
+    @MockitoBean
+    private ChangeTaskStatusUseCase changeTaskStatusUseCase;
 
     @MockitoBean
     private JwtTokenService jwtTokenService;
@@ -392,6 +397,60 @@ class TaskControllerTest {
                 .with(authentication(authenticated(UUID.randomUUID())))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"priority\":\"CRITICAL\"}"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("Request payload is not valid"));
+    }
+
+    @Test
+    void changesTaskStatus() throws Exception {
+        UUID taskId = UUID.randomUUID();
+        UUID creatorUserId = UUID.randomUUID();
+
+        when(changeTaskStatusUseCase.changeStatus(eq(taskId), any(UpdateTaskStatusRequest.class)))
+            .thenReturn(new TaskResponse(
+                taskId,
+                "Implement login",
+                null,
+                TaskStatus.IN_PROGRESS,
+                TaskPriority.MEDIUM,
+                null,
+                creatorUserId,
+                OffsetDateTime.parse("2026-06-03T04:00:00Z"),
+                OffsetDateTime.parse("2026-06-04T05:00:00Z")
+            ));
+
+        mockMvc.perform(patch("/api/v1/tasks/{taskId}/status", taskId)
+                .with(authentication(authenticated(creatorUserId)))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"IN_PROGRESS\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.message").value("Task status changed successfully."))
+            .andExpect(jsonPath("$.data.task.taskId").value(taskId.toString()))
+            .andExpect(jsonPath("$.data.task.status").value("IN_PROGRESS"))
+            .andExpect(jsonPath("$.data.task.updatedAt").value("2026-06-04T05:00:00Z"));
+
+        verify(changeTaskStatusUseCase).changeStatus(eq(taskId), argThat(request ->
+            request.getStatus() == TaskStatus.IN_PROGRESS
+        ));
+    }
+
+    @Test
+    void missingTaskStatusReturnsBadRequest() throws Exception {
+        mockMvc.perform(patch("/api/v1/tasks/{taskId}/status", UUID.randomUUID())
+                .with(authentication(authenticated(UUID.randomUUID())))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("Provided arguments are not valid"))
+            .andExpect(jsonPath("$.data.status").value("Status is required"));
+    }
+
+    @Test
+    void invalidTaskStatusReturnsBadRequest() throws Exception {
+        mockMvc.perform(patch("/api/v1/tasks/{taskId}/status", UUID.randomUUID())
+                .with(authentication(authenticated(UUID.randomUUID())))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"UNKNOWN\"}"))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.message").value("Request payload is not valid"));
     }
