@@ -2,10 +2,10 @@
 
 | Issue | Impact | Priority | Planned Fix | Status |
 | --- | --- | --- | --- | --- |
-| No root Maven aggregator POM and incomplete CI matrix | CI does not currently execute every buildable backend module | High | Add task-service and notification-service to the CI matrix; consider an aggregator POM when the build layout stabilizes | Open |
+| No root Maven aggregator POM | Maven modules must be invoked independently and CI coverage must be maintained explicitly | Low | Consider an aggregator POM only when the build layout stabilizes | Open |
 | Testcontainers 1.x requires Docker API compatibility override with Docker Engine 29 | Backend integration tests depend on `api.version=1.44` in Maven Surefire | Medium | Upgrade Testcontainers when the Spring Boot dependency baseline supports a compatible release, then remove the override after verification | Open |
-| GitHub secret scanning and push protection not confirmed | Secrets may be exposed without detection | High | Enable GitHub secret scanning, push protection, and GitGuardian GitHub integration in repository settings | Open |
-| Branch protection rules not configured | Unreviewed merges to `main` and `dev` are possible | Medium | Configure GitHub branch protection and document the expected target branch for MVP work | Open |
+| GitHub secret scanning and push protection not confirmed | Repository hooks reduce local risk, but GitHub may still accept exposed secrets if repository protections are disabled | High | Required settings and local controls are documented; a repository administrator must verify secret scanning and push protection in GitHub | Partially completed|
+| Branch protection rules not confirmed | Unreviewed merges, direct pushes, or merges without passing CI may be possible | Medium | Rules for `main` and `dev`, including required Maven checks, reviews, conversation resolution, and update requirements, are documented; a repository administrator must configure and verify them in GitHub | Partially completed |
 | User deletion is a hard delete with no cross-service cleanup | Dependent data in future services will not be cleaned up | Medium | Define retention and cross-service deletion behavior before adding dependent services | Open |
 | task-service MVP scope: no update, delete, assign, status-change, or comment endpoints | Task lifecycle management is incomplete | Medium | Implement remaining task endpoints as next MVP milestone | Open |
 | task-service has no role-based authorization | All authenticated users can create and read all tasks regardless of role | Medium | Add role and ownership checks to task endpoints before any user-facing release | Open |
