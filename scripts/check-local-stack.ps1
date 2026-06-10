@@ -1,5 +1,38 @@
 $ErrorActionPreference = "Stop"
 
+function Test-ExpectedStatus {
+    param(
+        [string]$Name,
+        [string]$Url,
+        [int]$ExpectedStatus
+    )
+
+    $actualStatus = 0
+    for ($attempt = 1; $attempt -le 30; $attempt++) {
+        try {
+            $response = Invoke-WebRequest -Uri $Url -Method Get -UseBasicParsing -TimeoutSec 5
+            $actualStatus = [int]$response.StatusCode
+        }
+        catch {
+            if ($null -ne $_.Exception.Response) {
+                $actualStatus = [int]$_.Exception.Response.StatusCode
+            }
+            else {
+                $actualStatus = 0
+            }
+        }
+
+        if ($actualStatus -eq $ExpectedStatus) {
+            Write-Host "[OK] $Name returned HTTP $ExpectedStatus."
+            return
+        }
+
+        Start-Sleep -Seconds 2
+    }
+
+    throw "[FAIL] $Name returned HTTP $actualStatus; expected $ExpectedStatus."
+}
+
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 $ComposeFile = Join-Path $RepoRoot "compose.yml"
 $EnvFile = Join-Path $RepoRoot ".env"
@@ -63,6 +96,8 @@ $RequiredServices = @(
     "config-server",
     "eureka-server",
     "user-service",
+    "task-service",
+    "notification-service",
     "gateway"
 )
 
@@ -81,6 +116,8 @@ $HealthyContainers = @(
     "tsp_config",
     "tsp_eureka",
     "tsp_user_service",
+    "tsp_task_service",
+    "tsp_notification_service",
     "tsp_gateway"
 )
 
@@ -113,7 +150,10 @@ Test-Http "Config Server repository" "http://localhost:8888/user-service/dev"
 Test-Http "Eureka Server" "http://localhost:8761/actuator/health"
 Test-Http "Eureka registry" "http://localhost:8761/eureka/apps"
 Test-Http "User Service" "http://localhost:8085/actuator/health"
+Test-Http "Task Service" "http://localhost:8086/actuator/health"
+Test-Http "Notification Service" "http://localhost:8087/actuator/health"
 Test-Http "API Gateway" "http://localhost:8080/actuator/health"
+Test-ExpectedStatus -Name "Gateway notification route" -Url "http://localhost:8080/api/notifications" -ExpectedStatus 401
 
 try {
     $RouteResponse = Invoke-WebRequest `

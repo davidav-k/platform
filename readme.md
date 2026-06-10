@@ -2,7 +2,7 @@
 
 Microservice-based Task Management Platform built with Spring Boot.
 
-> Current focus: MVP stabilization — user-service and task-service are operational.
+> Current focus: MVP stabilization. User, task, and notification services are operational.
 
 ## Implemented
 
@@ -13,21 +13,21 @@ Microservice-based Task Management Platform built with Spring Boot.
   - Authentication
   - JWT access/refresh flow
   - MFA
-  - Profile management
-  - User lifecycle management
-
+  - Profile and account lifecycle management
 - task-service
-  - Create task
-  - Get task by ID
-  - List tasks with filters and pagination
+  - Create, get, and list tasks
+  - Filtering and pagination
   - JWT-based authentication
   - Flyway-managed PostgreSQL schema
-
+- notification-service
+  - Create, get, and list notifications
+  - JWT-based authentication
+  - Flyway-managed PostgreSQL schema
+  - Docker Compose and API Gateway integration
 - api-gateway
   - Routing
   - JWT validation
   - Service discovery integration
-
 - config-server
 - eureka-server
 
@@ -41,8 +41,7 @@ Microservice-based Task Management Platform built with Spring Boot.
 
 ## Planned
 
-- notification-service
-- Kafka integration
+- Kafka and outbox integration
 - Audit service
 - Vue 3 frontend
 - Kubernetes deployment
@@ -53,29 +52,26 @@ Microservice-based Task Management Platform built with Spring Boot.
 - Spring Boot 3.4.x
 - Spring Cloud 2024.x
 - Spring Security
-- PostgreSQL
-- Flyway
+- PostgreSQL and Flyway
 - Redis
 - Docker Compose
-- JUnit 5
-- Mockito
-- Testcontainers
+- JUnit 5, Mockito, H2, and Testcontainers
 
 ## Project Structure
 
 ```text
 backend/
-├── user-service
-├── task-service
-└── notification-service
+|-- user-service
+|-- task-service
+`-- notification-service
 
 infrastructure/
-├── api-gateway
-├── config-server
-└── eureka-server
+|-- api-gateway
+|-- config-server
+`-- eureka-server
 
 frontend/
-└── vue-frontend
+`-- vue-frontend
 
 config/
 doc/
@@ -85,15 +81,10 @@ doc/
 
 ```bash
 cp .env.example .env
-
 docker compose --env-file .env -f compose.yml up -d --build
 ```
 
-API Gateway:
-
-```text
-http://localhost:8080
-```
+API Gateway: `http://localhost:8080`
 
 Verify startup:
 
@@ -109,13 +100,13 @@ Windows:
 
 ## Documentation
 
-- Architecture — `doc/architecture.md`
-- Development Workflow — `doc/development-workflow.md`
-- Authentication Flow — `doc/security/auth-flow.md`
-- Database Migration Strategy — `doc/database/migration-strategy.md`
-- Service Boundaries — `doc/architecture/service-boundaries.md`
-- Environment Variables — `doc/configuration/env-variables.md`
-- Technical Debt — `doc/technical-debt.md`
+- Architecture - `doc/architecture.md`
+- Development workflow - `doc/development-workflow.md`
+- Authentication flow - `doc/security/auth-flow.md`
+- Database migration strategy - `doc/database/migration-strategy.md`
+- Service boundaries - `doc/architecture/service-boundaries.md`
+- Environment variables - `doc/configuration/env-variables.md`
+- Technical debt - `doc/technical-debt.md`
 
 ## Status
 

@@ -19,10 +19,12 @@
 - [ ] Maven tests pass for affected services:
   - [ ] `mvn -B -f backend/user-service/pom.xml test`
   - [ ] `mvn -B -f backend/task-service/pom.xml test`
+  - [ ] `mvn -B -f backend/notification-service/pom.xml test`
   - [ ] `mvn -B -f infrastructure/api-gateway/pom.xml test`
   - [ ] `mvn -B -f infrastructure/config-server/pom.xml test`
   - [ ] `mvn -B -f infrastructure/eureka-server/pom.xml test`
 - [ ] `./scripts/check-local-stack.sh` passes when startup behavior is affected.
+- [ ] Docker is running when PostgreSQL Testcontainers tests are in scope.
 
 ## Before Merge
 

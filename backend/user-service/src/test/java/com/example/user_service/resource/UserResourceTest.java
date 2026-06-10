@@ -1,9 +1,5 @@
 package com.example.user_service.resource;
 
-import com.example.user_service.UserServiceApplication;
-import com.example.user_service.config.TestContainersConfig;
-import com.example.user_service.config.TestEmailConfig;
-import com.example.user_service.config.TestSecurityConfig;
 import com.example.user_service.domain.Response;
 import com.example.user_service.dto.User;
 import com.example.user_service.dto.UserRequest;
@@ -16,15 +12,14 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.ContextConfiguration;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
@@ -39,10 +34,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
-@ActiveProfiles("test")
-@ContextConfiguration(initializers = TestContainersConfig.Initializer.class,
-        classes = {UserServiceApplication.class, TestSecurityConfig.class, TestEmailConfig.class})
+@ExtendWith(MockitoExtension.class)
 public class UserResourceTest {
     @Mock
     private UserService userService;
@@ -81,7 +73,6 @@ public class UserResourceTest {
         userRequest.setPassword("Password123");
 
         doNothing().when(userService).createUser(anyString(), anyString(), anyString(), anyString());
-        when(request.getRequestURI()).thenReturn("/api/v1/user/register");
 
         mockMvc.perform(post("/api/v1/user/register")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -94,7 +85,6 @@ public class UserResourceTest {
     void verifyNewUserAccountSuccessfully() throws Exception {
         String key = "verification-key";
         doNothing().when(userService).verifyAccountKey(key);
-        when(request.getRequestURI()).thenReturn("/api/v1/user/verify/account");
 
         mockMvc.perform(get("/api/v1/user/verify/account")
                 .param("key", key))
@@ -110,7 +100,6 @@ public class UserResourceTest {
 
         when(authentication.getPrincipal()).thenReturn(mockUser);
         doNothing().when(userService).enableMfa(email);
-        when(request.getRequestURI()).thenReturn("/api/v1/user/enable-mfa");
 
         mockMvc.perform(post("/api/v1/user/enable-mfa")
                 .principal(authentication))

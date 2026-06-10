@@ -1,7 +1,6 @@
 package com.example.user_service.integration;
 
 import com.example.user_service.UserServiceApplication;
-import com.example.user_service.config.TestContainersConfig;
 import com.example.user_service.config.TestEmailConfig;
 import com.example.user_service.config.TestSecurityConfig;
 import com.example.user_service.dto.User;
@@ -18,17 +17,45 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.transaction.annotation.Transactional;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.utility.DockerImageName;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SpringBootTest
+@SpringBootTest(properties = {
+    "spring.cloud.config.enabled=false",
+    "spring.config.import=optional:configserver:",
+    "eureka.client.enabled=false",
+    "eureka.client.register-with-eureka=false",
+    "eureka.client.fetch-registry=false"
+})
 @ActiveProfiles("test")
-@ContextConfiguration(
-    initializers = {TestContainersConfig.Initializer.class},
-        classes = {UserServiceApplication.class, TestContainersConfig.class, TestEmailConfig.class, TestSecurityConfig.class}
-)
-public class UserServiceIntegrationTest {
+@ContextConfiguration(classes = {
+    UserServiceApplication.class,
+    TestEmailConfig.class,
+    TestSecurityConfig.class
+})
+@Testcontainers
+class UserServiceIntegrationTest {
+
+    @Container
+    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>(DockerImageName.parse("postgres:16.1"))
+        .withDatabaseName("testdb")
+        .withUsername("testuser")
+        .withPassword("testpass");
+
+    @DynamicPropertySource
+    static void configureDatabase(DynamicPropertyRegistry registry) {
+        registry.add("spring.datasource.url", postgres::getJdbcUrl);
+        registry.add("spring.datasource.username", postgres::getUsername);
+        registry.add("spring.datasource.password", postgres::getPassword);
+        registry.add("spring.jpa.hibernate.ddl-auto", () -> "validate");
+    }
 
     @MockBean
     private SecurityConfig securityConfig;
@@ -50,7 +77,7 @@ public class UserServiceIntegrationTest {
 
     @Test
     void contextLoads() {
-        assertThat(true).isTrue();
+        assertThat(userService).isNotNull();
     }
 
     @Test

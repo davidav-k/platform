@@ -5,6 +5,8 @@ import com.example.task_service.dto.CreateTaskResponse;
 import com.example.task_service.entity.TaskEntity;
 import com.example.task_service.enumeration.TaskPriority;
 import com.example.task_service.enumeration.TaskStatus;
+import com.example.task_service.notification.TaskNotificationContext;
+import com.example.task_service.notification.TaskNotificationPublisher;
 import com.example.task_service.repository.TaskRepository;
 import com.example.task_service.usecase.CreateTaskUseCase;
 
@@ -13,6 +15,8 @@ import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Validator;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Set;
 import java.util.UUID;
@@ -21,12 +25,17 @@ import java.util.UUID;
 @Transactional
 public class CreateTaskUseCaseImpl implements CreateTaskUseCase {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(CreateTaskUseCaseImpl.class);
+
     private final TaskRepository taskRepository;
     private final Validator validator;
+    private final TaskNotificationPublisher taskNotificationPublisher;
 
-    public CreateTaskUseCaseImpl(TaskRepository taskRepository, Validator validator) {
+    public CreateTaskUseCaseImpl(TaskRepository taskRepository, Validator validator,
+                                 TaskNotificationPublisher taskNotificationPublisher) {
         this.taskRepository = taskRepository;
         this.validator = validator;
+        this.taskNotificationPublisher = taskNotificationPublisher;
     }
 
     @Override
@@ -44,7 +53,26 @@ public class CreateTaskUseCaseImpl implements CreateTaskUseCase {
         );
 
         TaskEntity saved = taskRepository.save(task);
-        return toResponse(saved);
+        CreateTaskResponse response = toResponse(saved);
+        publishAssignmentNotification(response);
+        return response;
+    }
+
+    private void publishAssignmentNotification(CreateTaskResponse task) {
+        if (task.getAssigneeUserId() == null) {
+            return;
+        }
+        try {
+            taskNotificationPublisher.notifyTaskAssigned(new TaskNotificationContext(
+                task.getTaskId(),
+                task.getTitle(),
+                task.getAssigneeUserId(),
+                task.getCreatedByUserId()
+            ));
+        } catch (RuntimeException exception) {
+            LOGGER.warn("Task assignment notification failed for taskId={} and assigneeUserId={}",
+                task.getTaskId(), task.getAssigneeUserId(), exception);
+        }
     }
 
     private void validate(CreateTaskRequest request, UUID createdByUserId) {

@@ -11,13 +11,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
 
 import java.time.Instant;
 import java.util.Date;
@@ -33,28 +27,20 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
     "spring.cloud.config.enabled=false",
     "spring.config.import=optional:configserver:",
     "eureka.client.enabled=false",
-    "spring.jpa.hibernate.ddl-auto=validate",
+    "spring.flyway.enabled=false",
+    "spring.datasource.url=jdbc:h2:mem:task_security_integration_test;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH",
+    "spring.datasource.driver-class-name=org.h2.Driver",
+    "spring.datasource.username=sa",
+    "spring.datasource.password=",
+    "spring.jpa.hibernate.ddl-auto=create-drop",
+    "spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.H2Dialect",
     "jwt.secret=" + TaskSecurityIntegrationTest.TEST_SECRET
 })
 @AutoConfigureMockMvc
-@Testcontainers
 class TaskSecurityIntegrationTest {
 
     static final String TEST_SECRET =
         "QUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQQ==";
-
-    @Container
-    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>(DockerImageName.parse("postgres:16.1"))
-        .withDatabaseName("task_service_security_test")
-        .withUsername("testuser")
-        .withPassword("testpass");
-
-    @DynamicPropertySource
-    static void configureDatabase(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", postgres::getJdbcUrl);
-        registry.add("spring.datasource.username", postgres::getUsername);
-        registry.add("spring.datasource.password", postgres::getPassword);
-    }
 
     @Autowired
     private MockMvc mockMvc;

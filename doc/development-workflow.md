@@ -63,10 +63,22 @@ Run Maven tests for each Java service:
 
 ```bash
 mvn -B -f backend/user-service/pom.xml test
+mvn -B -f backend/task-service/pom.xml test
+mvn -B -f backend/notification-service/pom.xml test
 mvn -B -f infrastructure/api-gateway/pom.xml test
 mvn -B -f infrastructure/config-server/pom.xml test
 mvn -B -f infrastructure/eureka-server/pom.xml test
 ```
+
+Docker Desktop or another compatible Docker daemon must be running for the
+PostgreSQL integration tests. Most controller, security, and use-case tests
+use Mockito or H2 and remain fast; repository, migration, and selected
+integration tests use PostgreSQL 16.1 through Testcontainers.
+
+All three backend services configure docker-java API version `1.44` through
+Maven Surefire. Docker Engine 29 rejects the older API version used by the
+current Testcontainers 1.x dependency. Do not override
+`~/.testcontainers.properties` unless the local Docker transport requires it.
 
 ## Secret Handling
 
@@ -77,6 +89,9 @@ mvn -B -f infrastructure/eureka-server/pom.xml test
 
 ## CI
 
-GitHub Actions runs Maven tests for each existing Maven module on pull requests and pushes to `main` and `dev`.
+GitHub Actions runs the modules listed in `.github/workflows/maven-tests.yml`
+on pull requests and pushes to `main` and `dev`. The current matrix does not
+yet include every buildable backend module; this is tracked in
+`doc/technical-debt.md`.
 
 The repository does not currently have a root Maven aggregator. Add new Maven services to `.github/workflows/maven-tests.yml` when they become buildable modules.

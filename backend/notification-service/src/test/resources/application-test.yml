@@ -1,0 +1,16 @@
+spring:
+  cloud:
+    config:
+      enabled: false
+  config:
+    import: "optional:configserver:"
+
+eureka:
+  client:
+    enabled: false
+
+server:
+  port: 0
+
+jwt:
+  secret: QUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQQ==
