@@ -39,8 +39,8 @@ Runtime database settings are served by Config Server from
 ## Authentication
 
 `POST /api/v1/tasks`, `GET /api/v1/tasks`, `GET /api/v1/tasks/{taskId}`,
-`PATCH /api/v1/tasks/{taskId}`, `PATCH /api/v1/tasks/{taskId}/status`, and
-`DELETE /api/v1/tasks/{taskId}`
+`PATCH /api/v1/tasks/{taskId}`, `PATCH /api/v1/tasks/{taskId}/status`,
+`PATCH /api/v1/tasks/{taskId}/assignee`, and `DELETE /api/v1/tasks/{taskId}`
 require a valid access JWT. The service accepts the same `Authorization: Bearer`
 header and `access-token` cookie used by the Gateway and validates the JWT
 independently.
@@ -51,7 +51,8 @@ subject and ignored if a client includes it in the request payload.
 For task reads, updates, and status changes, `ROLE_ADMIN` and `ROLE_SUPER_ADMIN`
 can access all tasks. Other authenticated users can access only tasks they
 created or are assigned to. Deletion is restricted to administrators and the
-task creator; assignment alone does not grant delete permission. Inaccessible
+task creator. Assignment changes are also restricted to administrators and the
+task creator; assignment alone grants neither reassign nor delete permission. Inaccessible
 task identifiers return the same `404 NOT_FOUND` response as missing tasks.
 
 Use a real access token issued by `user-service`; do not commit or log tokens.
@@ -290,6 +291,7 @@ Partially updates a task through `UpdateTaskUseCase`.
 - `description` and `assigneeUserId` may be cleared with `null`
 - Status changes are handled separately and are not accepted
 - Admin roles can update any task; other users must be the creator or assignee
+- Changing `assigneeUserId` requires an admin role or task creator permission
 - Missing or inaccessible tasks return `404 NOT_FOUND`
 - Gateway route: `PATCH /api/tasks/{taskId}`
 
@@ -342,6 +344,28 @@ Gateway example:
 ```bash
 curl -i -X DELETE "http://localhost:8080/api/tasks/${TASK_ID}" \
   -H "Authorization: Bearer ${ACCESS_TOKEN}"
+```
+
+### `PATCH /api/v1/tasks/{taskId}/assignee`
+
+Assigns, reassigns, or unassigns a task through `AssignTaskUseCase`.
+
+- Request field: `assigneeUserId` as a UUID, or explicit `null` to unassign
+- The field must be present; an empty object is rejected
+- Admin roles can assign any active task; other users must be the creator
+- Assignees cannot reassign tasks they did not create
+- Missing, inaccessible, or deleted tasks return `404 NOT_FOUND`
+- User existence is not verified through `user-service` in this MVP endpoint
+- Other task fields remain unchanged; `updatedAt` is managed by the service
+- Gateway route: `PATCH /api/tasks/{taskId}/assignee`
+
+Gateway example:
+
+```bash
+curl -i -X PATCH "http://localhost:8080/api/tasks/${TASK_ID}/assignee" \
+  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{"assigneeUserId":"11111111-1111-1111-1111-111111111111"}'
 ```
 
 ## Local Startup

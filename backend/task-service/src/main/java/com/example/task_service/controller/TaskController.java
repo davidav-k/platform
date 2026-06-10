@@ -1,6 +1,7 @@
 package com.example.task_service.controller;
 
 import com.example.task_service.domain.Response;
+import com.example.task_service.dto.AssignTaskRequest;
 import com.example.task_service.dto.CreateTaskRequest;
 import com.example.task_service.dto.CreateTaskResponse;
 import com.example.task_service.dto.TaskListQuery;
@@ -11,6 +12,7 @@ import com.example.task_service.dto.UpdateTaskStatusRequest;
 import com.example.task_service.enumeration.TaskPriority;
 import com.example.task_service.enumeration.TaskStatus;
 import com.example.task_service.security.AuthenticatedUser;
+import com.example.task_service.usecase.AssignTaskUseCase;
 import com.example.task_service.usecase.ChangeTaskStatusUseCase;
 import com.example.task_service.usecase.CreateTaskUseCase;
 import com.example.task_service.usecase.DeleteTaskUseCase;
@@ -51,17 +53,20 @@ public class TaskController {
     private final UpdateTaskUseCase updateTaskUseCase;
     private final ChangeTaskStatusUseCase changeTaskStatusUseCase;
     private final DeleteTaskUseCase deleteTaskUseCase;
+    private final AssignTaskUseCase assignTaskUseCase;
 
     public TaskController(CreateTaskUseCase createTaskUseCase, GetTaskUseCase getTaskUseCase,
                           ListTasksUseCase listTasksUseCase, UpdateTaskUseCase updateTaskUseCase,
                           ChangeTaskStatusUseCase changeTaskStatusUseCase,
-                          DeleteTaskUseCase deleteTaskUseCase) {
+                          DeleteTaskUseCase deleteTaskUseCase,
+                          AssignTaskUseCase assignTaskUseCase) {
         this.createTaskUseCase = createTaskUseCase;
         this.getTaskUseCase = getTaskUseCase;
         this.listTasksUseCase = listTasksUseCase;
         this.updateTaskUseCase = updateTaskUseCase;
         this.changeTaskStatusUseCase = changeTaskStatusUseCase;
         this.deleteTaskUseCase = deleteTaskUseCase;
+        this.assignTaskUseCase = assignTaskUseCase;
     }
 
 @PostMapping
@@ -122,6 +127,19 @@ public ResponseEntity<Response> createTask(@RequestBody @Valid CreateTaskRequest
             request,
             Map.of(),
             "Task deleted successfully.",
+            HttpStatus.OK
+        ));
+    }
+
+    @PatchMapping("/{taskId}/assignee")
+    public ResponseEntity<Response> assignTask(@PathVariable UUID taskId,
+                                               @RequestBody @Valid AssignTaskRequest requestBody,
+                                               HttpServletRequest request) {
+        TaskResponse task = assignTaskUseCase.assign(taskId, requestBody);
+        return ResponseEntity.ok(RequestUtils.getResponse(
+            request,
+            Map.of("task", task),
+            "Task assignee updated successfully.",
             HttpStatus.OK
         ));
     }
