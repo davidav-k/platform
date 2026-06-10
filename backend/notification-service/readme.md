@@ -29,6 +29,11 @@ public UUID.
 `page` and `size`; sorting uses `sort=field,direction` and defaults to
 `createdAt,desc`.
 
+`POST /internal/api/v1/notifications/system` creates an authenticated internal
+in-application notification for another platform service. It accepts source
+service, source entity type, and source entity UUID metadata. The API Gateway
+does not route this endpoint.
+
 Example request:
 
 ```json

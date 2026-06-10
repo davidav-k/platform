@@ -25,6 +25,9 @@ the JWT subject and is ignored if supplied in the request payload.
 - Request DTO: `CreateTaskRequest`
 - Response: `201 CREATED`, `data.task` contains `CreateTaskResponse`
 - Authentication: required
+- Notification side effect: an assigned, non-self-assigned task triggers a
+  best-effort `TASK_ASSIGNED` notification after persistence; notification
+  delivery failure does not change the task response
 
 ### `GET /api/v1/tasks/{taskId}`
 

@@ -160,6 +160,7 @@ The current gateway configuration serves `/api/users/**`, `/api/tasks/**`, and
 
 Task assignment notification requests use synchronous internal REST from
 `task-service` to `notification-service`; each service retains ownership of its
-own data. This integration is disabled by default until service-to-service
-authentication is implemented. A future Kafka/outbox design can replace the
-synchronous call without changing aggregate ownership.
+own data. For the MVP, task-service delegates the initiating user's validated
+JWT to the internal notification endpoint. A future service identity and
+Kafka/outbox design can replace the synchronous call without changing aggregate
+ownership.

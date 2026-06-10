@@ -97,17 +97,18 @@ Example error body:
 Creating a task with an `assigneeUserId` prepares an internal synchronous REST
 request to notification-service. The request creates an `IN_APP`
 `TASK_ASSIGNED` notification after the task has been persisted. Unassigned
-tasks do not trigger the integration.
+and self-assigned tasks do not trigger the integration. The notification
+records `task-service`, `TASK`, and the task UUID as source metadata.
 
 Notification failures are logged using task and recipient identifiers and do
-not fail or roll back task creation. The integration is disabled by default
-because notification-service requires JWT authentication and service-to-service
-credentials are not implemented yet. Do not enable it until that authentication
-boundary is configured.
+not fail or roll back task creation. For the MVP, task-service forwards the
+initiating request's validated access JWT to the authenticated internal
+notification endpoint. Dedicated service credentials and durable delivery are
+not implemented yet.
 
 Configuration variables:
 
-- `NOTIFICATION_SERVICE_ENABLED` (default `false`)
+- `NOTIFICATION_SERVICE_ENABLED` (default `true` in the development Config Server profile)
 - `NOTIFICATION_SERVICE_BASE_URL` (default `http://notification-service:8087`)
 - `NOTIFICATION_SERVICE_CONNECT_TIMEOUT` (default `2s`)
 - `NOTIFICATION_SERVICE_READ_TIMEOUT` (default `2s`)
