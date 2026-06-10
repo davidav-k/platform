@@ -9,6 +9,10 @@ infrastructure.
 For aggregate ownership and future service rules, see
 [Service boundaries](architecture/service-boundaries.md).
 
+For the MVP decision on account deactivation, retained cross-service user
+references, and future lifecycle propagation, see
+[User deletion and deactivation policy](architecture/user-deletion-policy.md).
+
 ## Implemented Runtime
 
 The Docker Compose stack currently runs:
