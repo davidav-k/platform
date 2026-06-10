@@ -23,6 +23,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -134,6 +135,74 @@ class TaskSecurityIntegrationTest {
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken(adminUserId, "ADMIN")))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.data.task.taskId").value(first.getTaskId().toString()));
+    }
+
+    @Test
+    void adminCanUpdateAnyTask() throws Exception {
+        TaskEntity task = saveTask("Original", UUID.randomUUID(), UUID.randomUUID());
+
+        mockMvc.perform(patch("/api/v1/tasks/{taskId}", task.getTaskId())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken(UUID.randomUUID(), "ADMIN"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"Admin update\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.task.title").value("Admin update"));
+    }
+
+    @Test
+    void creatorCanUpdateOwnTask() throws Exception {
+        UUID creatorUserId = UUID.randomUUID();
+        TaskEntity task = saveTask("Original", UUID.randomUUID(), creatorUserId);
+        UUID originalTaskId = task.getTaskId();
+
+        mockMvc.perform(patch("/api/v1/tasks/{taskId}", task.getTaskId())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken(creatorUserId, "USER"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "priority": "HIGH",
+                      "taskId": "%s",
+                      "createdByUserId": "%s",
+                      "createdAt": "2030-01-01T00:00:00Z",
+                      "updatedAt": "2030-01-01T00:00:00Z",
+                      "status": "DONE"
+                    }
+                    """.formatted(UUID.randomUUID(), UUID.randomUUID())))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.task.priority").value("HIGH"))
+            .andExpect(jsonPath("$.data.task.taskId").value(originalTaskId.toString()))
+            .andExpect(jsonPath("$.data.task.createdByUserId").value(creatorUserId.toString()))
+            .andExpect(jsonPath("$.data.task.status").value("NEW"));
+
+        TaskEntity updated = taskRepository.findByTaskId(originalTaskId).orElseThrow();
+        assertThat(updated.getTaskId()).isEqualTo(originalTaskId);
+        assertThat(updated.getCreatedByUserId()).isEqualTo(creatorUserId);
+        assertThat(updated.getStatus()).isEqualTo(TaskStatus.NEW);
+    }
+
+    @Test
+    void assigneeCanUpdateAssignedTask() throws Exception {
+        UUID assigneeUserId = UUID.randomUUID();
+        TaskEntity task = saveTask("Original", assigneeUserId, UUID.randomUUID());
+
+        mockMvc.perform(patch("/api/v1/tasks/{taskId}", task.getTaskId())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken(assigneeUserId, "USER"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"description\":\"Assignee update\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.task.description").value("Assignee update"));
+    }
+
+    @Test
+    void unrelatedUserCannotUpdateTask() throws Exception {
+        TaskEntity task = saveTask("Original", UUID.randomUUID(), UUID.randomUUID());
+
+        mockMvc.perform(patch("/api/v1/tasks/{taskId}", task.getTaskId())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken(UUID.randomUUID(), "USER"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"Denied update\"}"))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.message").value("Task not found."));
     }
 
     @Test

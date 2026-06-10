@@ -6,12 +6,14 @@ import com.example.task_service.dto.CreateTaskResponse;
 import com.example.task_service.dto.TaskListQuery;
 import com.example.task_service.dto.TaskListResponse;
 import com.example.task_service.dto.TaskResponse;
+import com.example.task_service.dto.UpdateTaskRequest;
 import com.example.task_service.enumeration.TaskPriority;
 import com.example.task_service.enumeration.TaskStatus;
 import com.example.task_service.security.AuthenticatedUser;
 import com.example.task_service.usecase.CreateTaskUseCase;
 import com.example.task_service.usecase.GetTaskUseCase;
 import com.example.task_service.usecase.ListTasksUseCase;
+import com.example.task_service.usecase.UpdateTaskUseCase;
 import com.example.task_service.utils.RequestUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -23,6 +25,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -41,12 +44,14 @@ public class TaskController {
     private final CreateTaskUseCase createTaskUseCase;
     private final GetTaskUseCase getTaskUseCase;
     private final ListTasksUseCase listTasksUseCase;
+    private final UpdateTaskUseCase updateTaskUseCase;
 
     public TaskController(CreateTaskUseCase createTaskUseCase, GetTaskUseCase getTaskUseCase,
-                          ListTasksUseCase listTasksUseCase) {
+                          ListTasksUseCase listTasksUseCase, UpdateTaskUseCase updateTaskUseCase) {
         this.createTaskUseCase = createTaskUseCase;
         this.getTaskUseCase = getTaskUseCase;
         this.listTasksUseCase = listTasksUseCase;
+        this.updateTaskUseCase = updateTaskUseCase;
     }
 
 @PostMapping
@@ -70,6 +75,19 @@ public ResponseEntity<Response> createTask(@RequestBody @Valid CreateTaskRequest
             request,
             Map.of("task", task),
             "Task retrieved successfully.",
+            HttpStatus.OK
+        ));
+    }
+
+    @PatchMapping("/{taskId}")
+    public ResponseEntity<Response> updateTask(@PathVariable UUID taskId,
+                                               @RequestBody @Valid UpdateTaskRequest updateTaskRequest,
+                                               HttpServletRequest request) {
+        TaskResponse task = updateTaskUseCase.update(taskId, updateTaskRequest);
+        return ResponseEntity.ok(RequestUtils.getResponse(
+            request,
+            Map.of("task", task),
+            "Task updated successfully.",
             HttpStatus.OK
         ));
     }

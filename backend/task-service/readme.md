@@ -2,7 +2,7 @@
 
 ## Status
 
-MVP task persistence, create, get, and list endpoints are implemented. The
+MVP task persistence, create, get, list, and partial update endpoints are implemented. The
 service starts, registers in Eureka, and loads configuration from Config Server.
 
 ## Purpose
@@ -38,7 +38,8 @@ Runtime database settings are served by Config Server from
 
 ## Authentication
 
-`POST /api/v1/tasks`, `GET /api/v1/tasks`, and `GET /api/v1/tasks/{taskId}`
+`POST /api/v1/tasks`, `GET /api/v1/tasks`, `GET /api/v1/tasks/{taskId}`, and
+`PATCH /api/v1/tasks/{taskId}`
 require a valid access JWT. The service accepts the same `Authorization: Bearer`
 header and `access-token` cookie used by the Gateway and validates the JWT
 independently.
@@ -46,10 +47,10 @@ independently.
 Task ownership is server controlled. `createdByUserId` is derived from the JWT
 subject and ignored if a client includes it in the request payload.
 
-For task reads, `ROLE_ADMIN` and `ROLE_SUPER_ADMIN` can access all tasks.
-Other authenticated users can access only tasks they created or are assigned
-to. Inaccessible task identifiers return the same `404 NOT_FOUND` response as
-missing tasks.
+For task reads and updates, `ROLE_ADMIN` and `ROLE_SUPER_ADMIN` can access all
+tasks. Other authenticated users can access only tasks they created or are
+assigned to. Inaccessible task identifiers return the same `404 NOT_FOUND`
+response as missing tasks.
 
 Use a real access token issued by `user-service`; do not commit or log tokens.
 
@@ -276,6 +277,30 @@ Response body shape:
     }
   }
 }
+```
+
+### `PATCH /api/v1/tasks/{taskId}`
+
+Partially updates a task through `UpdateTaskUseCase`.
+
+- Editable fields: `title`, `description`, `priority`, `assigneeUserId`
+- Omitted fields remain unchanged
+- `description` and `assigneeUserId` may be cleared with `null`
+- Status changes are handled separately and are not accepted
+- Admin roles can update any task; other users must be the creator or assignee
+- Missing or inaccessible tasks return `404 NOT_FOUND`
+- Gateway route: `PATCH /api/tasks/{taskId}`
+
+Gateway example:
+
+```bash
+curl -i -X PATCH "http://localhost:8080/api/tasks/${TASK_ID}" \
+  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Updated task title",
+    "priority": "HIGH"
+  }'
 ```
 
 ## Local Startup

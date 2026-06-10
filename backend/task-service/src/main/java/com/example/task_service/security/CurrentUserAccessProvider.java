@@ -27,5 +27,9 @@ public class CurrentUserAccessProvider {
     }
 
     public record CurrentUserAccess(UUID userId, boolean admin) {
+
+        public boolean canAccess(UUID createdByUserId, UUID assigneeUserId) {
+            return admin || userId.equals(createdByUserId) || userId.equals(assigneeUserId);
+        }
     }
 }
