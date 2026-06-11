@@ -23,7 +23,7 @@ The MVP does not use Axios, Pinia, Vuex, a UI framework, or a form library.
 
 - Node.js 18 or later
 - npm 9 or later
-- The backend environment running from the repository root
+- The backend environment running from the repository root for local Vite mode
 - API Gateway available at `http://localhost:8080` by default
 
 Start and verify the backend before running authenticated frontend flows:
@@ -34,8 +34,8 @@ docker compose --env-file .env -f compose.yml up -d --build
 ./scripts/check-local-stack.sh
 ```
 
-The Vue application is not a Docker Compose service and runs separately with
-Vite.
+Docker Compose can run the complete MVP, including the production-style
+frontend container. Vite remains available for frontend development.
 
 ## Configuration
 
@@ -51,6 +51,11 @@ Default configuration:
 ```dotenv
 VITE_API_BASE_URL=http://localhost:8080
 ```
+
+`VITE_*` variables are embedded into the JavaScript bundle at build time. They
+are not runtime container environment variables. In Docker Compose mode,
+`VITE_API_BASE_URL` from the root `.env` file is passed as an image build
+argument; changing it requires rebuilding the frontend image.
 
 All browser API requests go through API Gateway. The shared native Fetch client
 sets `credentials: "include"` so backend-issued HttpOnly access and refresh
@@ -68,13 +73,38 @@ npm run dev
 
 Open the local URL printed by Vite.
 
+## Running With Docker Compose
+
+From the repository root, start the complete MVP:
+
+```bash
+cp .env.example .env
+docker compose --env-file .env -f compose.yml up -d --build
+./scripts/check-local-stack.sh
+```
+
+URLs:
+
+- Frontend: `http://localhost:5173`
+- API Gateway: `http://localhost:8080`
+
+The frontend image is built with Node and served by nginx. Nginx falls back to
+`index.html` for Vue Router paths, so browser refreshes work on task,
+notification, and unknown frontend routes.
+
+To build only the frontend image:
+
+```bash
+docker compose --env-file .env -f compose.yml build frontend
+```
+
 ## Production Build
 
 ```bash
 npm run build
 ```
 
-The generated bundle is written to `dist/`. Production hosting must serve
+The generated bundle is written to `dist/`. Non-nginx production hosting must serve
 `index.html` for unknown paths so Vue Router history-mode URLs work after a
 browser refresh.
 

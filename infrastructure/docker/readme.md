@@ -17,9 +17,10 @@ Application Dockerfiles live next to each implemented Java module.
 | `task-service` | Task lifecycle, ownership, assignment, and status changes |
 | `notification-service` | Notification persistence and delivery state |
 | `gateway` | External API entry point |
+| `frontend` | Vue production build served by nginx on host port `5173` |
 
-The Vue frontend is implemented under `frontend/vue-frontend`, but it is not a
-Compose service. Run it separately with Vite after the backend stack is ready.
+The frontend image uses a Node build stage and an nginx runtime stage. Its API
+Gateway URL is injected at image build time through `VITE_API_BASE_URL`.
 
 ## Running The Project
 
@@ -31,7 +32,10 @@ docker compose --env-file .env -f compose.yml up -d --build
 ./scripts/check-local-stack.sh
 ```
 
-Then start the frontend:
+The complete stack exposes the frontend at `http://localhost:5173` and API
+Gateway at `http://localhost:8080`.
+
+For frontend development with Vite instead of the container:
 
 ```bash
 cd frontend/vue-frontend

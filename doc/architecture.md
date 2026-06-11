@@ -27,6 +27,7 @@ The Docker Compose stack currently runs:
 | `task-service` | Task lifecycle, ownership, assignment, status changes, filtering, pagination, and soft delete | `8086` |
 | `notification-service` | Notification persistence, create, get, list, filtering, pagination, and task-created integration | `8087` |
 | `api-gateway` | External entry point, JWT early rejection, routing, CORS, and circuit breaker fallback | `8080` |
+| `frontend` | Vue 3 production bundle served by nginx with SPA route fallback | `5173` |
 | `config-server` | Spring Cloud Config native repository mounted from `./config` | `8888` |
 | `eureka-server` | Service registration and discovery | `8761` |
 | PostgreSQL 16.1 | User, task, and notification persistence in separate databases | `5432` |
@@ -42,10 +43,11 @@ client -> api-gateway /api/tasks/**  -> task-service  /api/v1/tasks/**
 client -> api-gateway /api/notifications/** -> notification-service /api/v1/notifications/**
 ```
 
-The Vue 3 frontend runs as a separate Vite process during local development. It
-uses only the external API Gateway routes and never connects directly to a
-backend service. See the [frontend README](../frontend/vue-frontend/README.md)
-for implemented pages and local startup instructions.
+The Vue 3 frontend runs through nginx in Docker Compose or through Vite during
+frontend development. It uses only external API Gateway routes and never
+connects directly to a backend service. See the
+[frontend README](../frontend/vue-frontend/README.md) for implemented pages and
+startup instructions.
 
 The gateway validates access JWTs as an early rejection layer. Downstream services
 validate JWTs again and own authorization decisions. See
@@ -55,8 +57,6 @@ validate JWTs again and own authorization decisions. See
 
 - Redis and Zipkin run locally, but user-service does not currently integrate
   with Redis and tracing integration is not documented as complete.
-- The frontend is implemented but is not currently included as a Docker Compose
-  service or production web-server image.
 
 The notification API contract is documented in
 [Notification service API contract](api/notification-service-contract.md).

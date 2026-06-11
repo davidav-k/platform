@@ -91,6 +91,7 @@ docker compose --env-file .env -f compose.yml up -d --build
 ```
 
 API Gateway: `http://localhost:8080`
+Frontend: `http://localhost:5173`
 
 Verify startup:
 
@@ -104,7 +105,7 @@ Windows:
 .\scripts\check-local-stack.ps1
 ```
 
-Run the frontend separately from Docker Compose:
+For frontend development with Vite instead of the nginx container:
 
 ```bash
 cd frontend/vue-frontend
