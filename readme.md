@@ -15,12 +15,13 @@ Microservice-based Task Management Platform built with Spring Boot.
   - MFA
   - Profile and account lifecycle management
 - task-service
-  - Create, get, and list tasks
-  - Filtering and pagination
+  - Create, get, list, update, status change, assignment, and soft delete
+  - Ownership/RBAC, filtering, and pagination
   - JWT-based authentication
   - Flyway-managed PostgreSQL schema
 - notification-service
-  - Create, get, and list notifications
+  - Create, get, and list notifications with filtering and pagination
+  - Task-created notification integration
   - JWT-based authentication
   - Flyway-managed PostgreSQL schema
   - Docker Compose and API Gateway integration
@@ -30,6 +31,11 @@ Microservice-based Task Management Platform built with Spring Boot.
   - Service discovery integration
 - config-server
 - eureka-server
+- Vue 3 frontend
+  - Cookie-based login, profile loading, and session restoration
+  - Guarded task list, details, create, edit, status, assignment, and soft-delete flows
+  - Guarded notification list and details flows
+  - Shared loading, empty, error, retry, and Not Found UX
 
 ### Infrastructure
 
@@ -43,7 +49,6 @@ Microservice-based Task Management Platform built with Spring Boot.
 
 - Kafka and outbox integration
 - Audit service
-- Vue 3 frontend
 - Kubernetes deployment
 
 ## Technology Stack
@@ -55,6 +60,7 @@ Microservice-based Task Management Platform built with Spring Boot.
 - PostgreSQL and Flyway
 - Redis
 - Docker Compose
+- Vue 3, Vite, Vue Router, and native Fetch API
 - JUnit 5, Mockito, H2, and Testcontainers
 
 ## Project Structure
@@ -98,6 +104,17 @@ Windows:
 .\scripts\check-local-stack.ps1
 ```
 
+Run the frontend separately from Docker Compose:
+
+```bash
+cd frontend/vue-frontend
+npm install
+npm run dev
+```
+
+See the [frontend README](frontend/vue-frontend/README.md) for routes, features,
+configuration, limitations, and the MVP verification checklist.
+
 ## Documentation
 
 - Architecture - `doc/architecture.md`
@@ -107,6 +124,7 @@ Windows:
 - Service boundaries - `doc/architecture/service-boundaries.md`
 - Environment variables - `doc/configuration/env-variables.md`
 - Technical debt - `doc/technical-debt.md`
+- Frontend MVP - `frontend/vue-frontend/README.md`
 
 ## Status
 
