@@ -86,9 +86,17 @@ watch(() => props.id, loadTask, { immediate: true })
         <RouterLink to="/tasks">Back to Tasks</RouterLink>
       </div>
 
-      <button type="button" :disabled="isLoading" @click="loadTask">
-        {{ isLoading ? 'Refreshing...' : 'Refresh task' }}
-      </button>
+      <div v-if="task" class="page-actions">
+        <RouterLink
+          class="button-link"
+          :to="{ name: 'task-edit', params: { id } }"
+        >
+          Edit
+        </RouterLink>
+        <button type="button" :disabled="isLoading" @click="loadTask">
+          {{ isLoading ? 'Refreshing...' : 'Refresh task' }}
+        </button>
+      </div>
     </div>
 
     <p v-if="isLoading && !task">Loading task...</p>

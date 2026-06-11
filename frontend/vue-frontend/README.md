@@ -115,6 +115,19 @@ show access denied, and `404` responses show that the task is missing or not
 available to the current account. The backend intentionally returns `404` for
 both missing and inaccessible tasks in normal ownership checks.
 
+## Update Task
+
+The protected `/tasks/:id/edit` page first loads the task through
+`GET /api/tasks/{id}`, then prefills the reusable task form. It updates title,
+description, and priority through `PATCH /api/tasks/{id}`. Status and assignment
+are intentionally excluded from this workflow because they have separate
+contracts and authorization behavior.
+
+Title is required and limited to 200 characters, description is limited to
+5,000 characters, and priority must be `LOW`, `MEDIUM`, or `HIGH`. An empty
+description is sent as `null` to clear it. On success, the frontend returns to
+`/tasks/:id`; Cancel returns there without sending an update.
+
 ## Route Access
 
 Public routes:
@@ -127,6 +140,7 @@ Protected routes:
 - `/profile`
 - `/tasks`
 - `/tasks/create`
+- `/tasks/:id/edit`
 - `/tasks/:id`
 - `/notifications`
 
@@ -180,6 +194,17 @@ redirect to `/login`. Authenticated users who open `/login` are redirected to
 4. Submit once and confirm controls remain disabled while the request runs.
 5. Confirm the task is created and navigation continues to `/tasks/{taskId}`.
 6. Submit backend-invalid values when applicable and confirm field errors appear.
+
+## Manual Update Task Check
+
+1. Sign in, open a task, and select Edit.
+2. Confirm title, description, and priority are prefilled.
+3. Change one or more fields and submit once.
+4. Confirm controls remain disabled while saving and navigation returns to task details.
+5. Confirm the updated values are displayed after navigation.
+6. Select Cancel and confirm no update request is sent.
+7. Verify blank/long title and long description validation messages.
+8. Verify missing or inaccessible task handling with an appropriate UUID.
 
 Every API request uses `credentials: "include"`. Authentication tokens remain
 in backend-issued HttpOnly cookies and are never stored in local storage or

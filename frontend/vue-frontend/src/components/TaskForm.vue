@@ -1,7 +1,16 @@
 <script setup>
-import { reactive, ref } from 'vue'
+import { reactive, ref, watch } from 'vue'
 
 const props = defineProps({
+  mode: {
+    type: String,
+    default: 'create',
+    validator: (value) => ['create', 'edit'].includes(value),
+  },
+  initialValues: {
+    type: Object,
+    default: () => ({}),
+  },
   isSubmitting: {
     type: Boolean,
     default: false,
@@ -10,9 +19,13 @@ const props = defineProps({
     type: Object,
     default: () => ({}),
   },
+  showAssignee: {
+    type: Boolean,
+    default: true,
+  },
 })
 
-const emit = defineEmits(['submit'])
+const emit = defineEmits(['cancel', 'submit'])
 
 const form = reactive({
   title: '',
@@ -21,6 +34,18 @@ const form = reactive({
   assigneeUserId: '',
 })
 const validationErrors = ref({})
+
+watch(
+  () => props.initialValues,
+  (values) => {
+    form.title = values.title ?? ''
+    form.description = values.description ?? ''
+    form.priority = values.priority ?? ''
+    form.assigneeUserId = values.assigneeUserId ?? ''
+    validationErrors.value = {}
+  },
+  { immediate: true },
+)
 
 function isUuid(value) {
   return /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(value)
@@ -41,6 +66,10 @@ function validate() {
     errors.description = 'Description must not exceed 5000 characters.'
   }
 
+  if (props.mode === 'edit' && !form.priority) {
+    errors.priority = 'Priority is required.'
+  }
+
   if (assigneeUserId && !isUuid(assigneeUserId)) {
     errors.assigneeUserId = 'Assignee user ID must be a valid UUID.'
   }
@@ -58,12 +87,17 @@ function handleSubmit() {
     return
   }
 
-  emit('submit', {
+  const task = {
     title: form.title.trim(),
-    description: form.description || undefined,
+    description: form.description || (props.mode === 'edit' ? null : undefined),
     priority: form.priority || undefined,
-    assigneeUserId: form.assigneeUserId.trim() || undefined,
-  })
+  }
+
+  if (props.showAssignee) {
+    task.assigneeUserId = form.assigneeUserId.trim() || undefined
+  }
+
+  emit('submit', task)
 }
 </script>
 
@@ -107,7 +141,9 @@ function handleSubmit() {
     <div class="form-field">
       <label for="task-priority">Priority</label>
       <select id="task-priority" v-model="form.priority" name="priority" :disabled="isSubmitting">
-        <option value="">Medium (default)</option>
+        <option value="" :disabled="mode === 'edit'">
+          {{ mode === 'edit' ? 'Select priority' : 'Medium (default)' }}
+        </option>
         <option value="LOW">Low</option>
         <option value="MEDIUM">Medium</option>
         <option value="HIGH">High</option>
@@ -115,7 +151,7 @@ function handleSubmit() {
       <p v-if="fieldError('priority')" class="field-error">{{ fieldError('priority') }}</p>
     </div>
 
-    <div class="form-field">
+    <div v-if="showAssignee" class="form-field">
       <label for="task-assignee">Assignee user ID</label>
       <input
         id="task-assignee"
@@ -132,8 +168,19 @@ function handleSubmit() {
       </p>
     </div>
 
-    <button type="submit" :disabled="isSubmitting">
-      {{ isSubmitting ? 'Creating task...' : 'Create task' }}
-    </button>
+    <div class="form-actions">
+      <button type="submit" :disabled="isSubmitting">
+        {{ isSubmitting ? (mode === 'edit' ? 'Saving changes...' : 'Creating task...') : (mode === 'edit' ? 'Save changes' : 'Create task') }}
+      </button>
+      <button
+        v-if="mode === 'edit'"
+        class="secondary-button"
+        type="button"
+        :disabled="isSubmitting"
+        @click="emit('cancel')"
+      >
+        Cancel
+      </button>
+    </div>
   </form>
 </template>

@@ -215,6 +215,19 @@ h1 {
   margin-bottom: 1.5rem;
 }
 
+.page-actions,
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.secondary-button {
+  color: #1f2937;
+  background: #e2e8f0;
+}
+
 .task-details-card {
   padding: 1.5rem;
   background: #ffffff;
@@ -284,7 +297,8 @@ h1 {
   font-size: 0.9rem;
 }
 
-.task-form button {
+.task-form > button,
+.task-form .form-actions {
   justify-self: start;
 }
 

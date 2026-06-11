@@ -6,6 +6,7 @@ import NotificationsView from '../views/NotificationsView.vue'
 import ProfileView from '../views/ProfileView.vue'
 import TaskCreateView from '../views/TaskCreateView.vue'
 import TaskDetailsView from '../views/TaskDetailsView.vue'
+import TaskEditView from '../views/TaskEditView.vue'
 import TaskListView from '../views/TaskListView.vue'
 import {
   hasTriedInitialProfileLoad,
@@ -24,6 +25,13 @@ const router = createRouter({
       path: '/tasks/create',
       name: 'task-create',
       component: TaskCreateView,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/tasks/:id/edit',
+      name: 'task-edit',
+      component: TaskEditView,
+      props: true,
       meta: { requiresAuth: true },
     },
     {
