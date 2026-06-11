@@ -8,6 +8,7 @@ const state = reactive({
   currentUser: null,
   isLoading: true,
   error: null,
+  hasTriedInitialProfileLoad: false,
 })
 
 let profileRequest = null
@@ -16,6 +17,7 @@ export const currentUser = computed(() => state.currentUser)
 export const isAuthenticated = computed(() => Boolean(state.currentUser))
 export const isLoading = computed(() => state.isLoading)
 export const authError = computed(() => state.error)
+export const hasTriedInitialProfileLoad = computed(() => state.hasTriedInitialProfileLoad)
 
 function responseUser(response) {
   return response?.data?.user || response?.user || null
@@ -130,5 +132,13 @@ export async function logout() {
 }
 
 export function initializeAuth() {
-  return loadCurrentUser({ silentUnauthorized: true }).catch(() => null)
+  if (state.hasTriedInitialProfileLoad) {
+    return Promise.resolve(state.currentUser)
+  }
+
+  return loadCurrentUser({ silentUnauthorized: true })
+    .catch(() => null)
+    .finally(() => {
+      state.hasTriedInitialProfileLoad = true
+    })
 }

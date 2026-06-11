@@ -9,7 +9,9 @@ import {
 } from '../services/authState'
 
 onMounted(() => {
-  loadCurrentUser().catch(() => null)
+  if (!currentUser.value) {
+    loadCurrentUser().catch(() => null)
+  }
 })
 </script>
 

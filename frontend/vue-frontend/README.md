@@ -68,6 +68,26 @@ only.
 Login and profile loading are wired into the frontend. Task and notification UI
 integration will be added in later steps.
 
+## Route Access
+
+Public routes:
+
+- `/`
+- `/login`
+
+Protected routes:
+
+- `/profile`
+- `/tasks`
+- `/tasks/:id`
+- `/notifications`
+
+Before the first navigation decision, the router tries to load `/api/users/profile`
+once. A valid HttpOnly access cookie restores the authenticated user without
+storing tokens in frontend storage. If restoration fails, protected routes
+redirect to `/login`. Authenticated users who open `/login` are redirected to
+`/profile`.
+
 ## Manual Authentication Check
 
 1. Start the backend environment with the repository `compose.yml` workflow.
@@ -76,6 +96,14 @@ integration will be added in later steps.
 4. Sign in with an existing enabled backend user.
 5. Confirm the profile fields and authenticated navigation are displayed.
 6. Select Logout and confirm the frontend redirects to `/login` and clears its local auth state.
+
+## Manual Route Guard Check
+
+1. Without signing in, open `/tasks` and confirm the router redirects to `/login`.
+2. Sign in and confirm navigation continues to `/profile`.
+3. Open `/tasks` directly and confirm it is available.
+4. Refresh `/tasks` and confirm the session is restored when auth cookies are valid.
+5. Select Logout, then open a protected route and confirm it redirects to `/login`.
 
 Every API request uses `credentials: "include"`. Authentication tokens remain
 in backend-issued HttpOnly cookies and are never stored in local storage or
