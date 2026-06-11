@@ -7,7 +7,7 @@ const router = useRouter()
 
 async function handleLogout() {
   await logout()
-  await router.push('/login')
+  await router.replace('/login')
 }
 </script>
 

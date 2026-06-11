@@ -276,6 +276,17 @@ h1 {
   margin-bottom: 0;
 }
 
+.not-found-page {
+  max-width: 36rem;
+}
+
+.not-found-code {
+  margin: 0 0 0.25rem;
+  color: #1d4ed8;
+  font-size: 2rem;
+  font-weight: 700;
+}
+
 @keyframes loading-spin {
   to {
     transform: rotate(360deg);

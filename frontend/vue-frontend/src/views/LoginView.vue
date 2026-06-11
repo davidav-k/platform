@@ -1,6 +1,6 @@
 <script setup>
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 import ErrorMessage from '../components/ErrorMessage.vue'
 import LoadingIndicator from '../components/LoadingIndicator.vue'
@@ -12,6 +12,7 @@ import {
 } from '../services/authState'
 
 const router = useRouter()
+const route = useRoute()
 const email = ref('')
 const password = ref('')
 
@@ -25,7 +26,14 @@ async function handleSubmit() {
     })
 
     if (user) {
-      await router.push('/profile')
+      const redirect = route.query.redirect
+      const destination = typeof redirect === 'string'
+        && redirect.startsWith('/')
+        && !redirect.startsWith('//')
+        ? redirect
+        : '/profile'
+
+      await router.replace(destination)
     }
   } catch {
     // authState exposes a user-safe message.

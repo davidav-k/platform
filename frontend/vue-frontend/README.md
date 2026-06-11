@@ -68,6 +68,24 @@ only.
 Login, profile loading, task management, and notification viewing are wired
 into the frontend.
 
+## Available Pages
+
+- Home provides the public application entry point.
+- Login authenticates an existing backend user and returns them to the protected page they requested.
+- Profile displays the authenticated user's current profile.
+- Tasks provides list, create, details, edit, status, assignment, and soft-delete flows.
+- Notifications provides paginated list and read-only details pages.
+- Page Not Found handles every URL that does not match a declared route.
+
+## Supported MVP User Flow
+
+1. Open the frontend and sign in through the API Gateway.
+2. Load the current profile and restore sessions from valid HttpOnly cookies after refresh.
+3. List, filter, create, inspect, edit, assign, change status, and soft-delete tasks.
+4. List notifications and inspect complete notification details.
+5. Use shared loading, empty, error, and retry states throughout the application.
+6. Clear the frontend authentication state through Logout.
+
 ## Shared Loading and Error UX
 
 The frontend uses three small shared presentation components:
@@ -213,6 +231,7 @@ Public routes:
 
 - `/`
 - `/login`
+- `/:pathMatch(.*)*` (Page Not Found fallback)
 
 Protected routes:
 
@@ -227,8 +246,19 @@ Protected routes:
 Before the first navigation decision, the router tries to load `/api/users/profile`
 once. A valid HttpOnly access cookie restores the authenticated user without
 storing tokens in frontend storage. If restoration fails, protected routes
-redirect to `/login`. Authenticated users who open `/login` are redirected to
-`/profile`.
+redirect to `/login` and retain the intended internal destination. After a
+successful login, the router returns to that destination. Authenticated users
+who open `/login` are redirected to `/profile`. Each route also sets a readable
+browser document title.
+
+## Known Limitations
+
+- The backend has no public logout endpoint, so Logout clears only in-memory frontend state. A valid HttpOnly cookie can restore the session after refresh.
+- MFA responses show a placeholder message; MFA verification UI is not implemented.
+- Assignment accepts a user UUID because no public assignment-candidate or user-search endpoint exists.
+- Notification mark-as-read, realtime updates, and polling are not exposed by current backend contracts.
+- Frontend automated component and browser tests are not configured yet.
+- Production hosting must serve `index.html` for unknown paths so Vue Router history-mode refreshes work.
 
 ## Manual Authentication Check
 
@@ -242,10 +272,11 @@ redirect to `/login`. Authenticated users who open `/login` are redirected to
 ## Manual Route Guard Check
 
 1. Without signing in, open `/tasks` and confirm the router redirects to `/login`.
-2. Sign in and confirm navigation continues to `/profile`.
+2. Sign in and confirm navigation returns to the originally requested protected page.
 3. Open `/tasks` directly and confirm it is available.
 4. Refresh `/tasks` and confirm the session is restored when auth cookies are valid.
 5. Select Logout, then open a protected route and confirm it redirects to `/login`.
+6. Open an unknown URL and confirm the Page Not Found view appears.
 
 ## Manual Task List Check
 
