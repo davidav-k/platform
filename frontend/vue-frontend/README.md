@@ -85,6 +85,19 @@ cookie authentication available. Authorization and task visibility remain
 owned by task-service; non-admin users receive only tasks they created or are
 assigned to.
 
+## Task Details
+
+The protected `/tasks/:id` page loads one task through `GET /api/tasks/{id}`.
+It displays the current `TaskResponse` fields: task ID, title, description,
+status, priority, assignee user ID, creator user ID, creation time, and update
+time. The page is read-only and provides Back to Tasks and Refresh task actions.
+
+The frontend expects the task at `data.task` in the standard API response
+envelope. Invalid UUIDs show an invalid-ID message, explicit `403` responses
+show access denied, and `404` responses show that the task is missing or not
+available to the current account. The backend intentionally returns `404` for
+both missing and inaccessible tasks in normal ownership checks.
+
 ## Route Access
 
 Public routes:
@@ -131,6 +144,15 @@ redirect to `/login`. Authenticated users who open `/login` are redirected to
 5. Select a task ID or title and confirm navigation to `/tasks/:id`.
 6. Verify an account with no visible tasks receives the `No tasks found` state.
 7. Stop task-service temporarily and confirm the retryable error state appears.
+
+## Manual Task Details Check
+
+1. Sign in, open `/tasks`, and select an existing task.
+2. Confirm all available task fields are displayed at `/tasks/:id`.
+3. Select Refresh task and confirm the task reloads.
+4. Open `/tasks/not-a-uuid` and confirm the invalid-ID state appears.
+5. Open a missing or inaccessible task UUID and confirm the not-available state.
+6. Select Back to Tasks and confirm navigation to `/tasks`.
 
 Every API request uses `credentials: "include"`. Authentication tokens remain
 in backend-issued HttpOnly cookies and are never stored in local storage or
