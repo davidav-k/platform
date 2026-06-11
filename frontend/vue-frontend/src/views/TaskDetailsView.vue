@@ -3,8 +3,9 @@ import { ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 
 import TaskDetailsCard from '../components/TaskDetailsCard.vue'
+import TaskStatusSelector from '../components/TaskStatusSelector.vue'
 import { ApiError } from '../services/apiClient'
-import { getTask } from '../services/taskService'
+import { getTask, updateTaskStatus } from '../services/taskService'
 
 const props = defineProps({
   id: {
@@ -15,7 +16,9 @@ const props = defineProps({
 
 const task = ref(null)
 const isLoading = ref(false)
+const isUpdatingStatus = ref(false)
 const error = ref(null)
+const statusError = ref(null)
 let requestId = 0
 
 function taskDetailsError(requestError) {
@@ -48,6 +51,7 @@ async function loadTask() {
   const activeRequestId = ++requestId
   isLoading.value = true
   error.value = null
+  statusError.value = null
 
   try {
     const response = await getTask(props.id)
@@ -72,6 +76,50 @@ async function loadTask() {
     if (activeRequestId === requestId) {
       isLoading.value = false
     }
+  }
+}
+
+function statusUpdateError(requestError) {
+  if (requestError instanceof ApiError) {
+    if (requestError.status === 400) {
+      return 'The selected status is invalid.'
+    }
+
+    if (requestError.status === 403) {
+      return 'You do not have permission to change this task status.'
+    }
+
+    if (requestError.status === 404) {
+      return 'Task not found or not available to your account.'
+    }
+
+    if (requestError.status >= 500) {
+      return 'The task service is unavailable. Please try again later.'
+    }
+  }
+
+  if (requestError instanceof TypeError) {
+    return 'Unable to reach the task service. Check that the backend is running.'
+  }
+
+  return 'Unable to update the task status. Please try again.'
+}
+
+async function handleStatusChange(status) {
+  if (isUpdatingStatus.value || status === task.value?.status) {
+    return
+  }
+
+  isUpdatingStatus.value = true
+  statusError.value = null
+
+  try {
+    await updateTaskStatus(props.id, { status })
+    await loadTask()
+  } catch (requestError) {
+    statusError.value = statusUpdateError(requestError)
+  } finally {
+    isUpdatingStatus.value = false
   }
 }
 
@@ -106,6 +154,18 @@ watch(() => props.id, loadTask, { immediate: true })
       <button type="button" @click="loadTask">Retry</button>
     </div>
 
-    <TaskDetailsCard v-else-if="task" :task="task" />
+    <template v-else-if="task">
+      <TaskDetailsCard :task="task" />
+
+      <section class="status-panel" aria-labelledby="task-status-heading">
+        <h2 id="task-status-heading">Task Status</h2>
+        <p v-if="statusError" class="error-message" role="alert">{{ statusError }}</p>
+        <TaskStatusSelector
+          :current-status="task.status"
+          :is-submitting="isUpdatingStatus"
+          @submit="handleStatusChange"
+        />
+      </section>
+    </template>
   </section>
 </template>

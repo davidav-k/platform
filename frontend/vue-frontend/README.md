@@ -128,6 +128,19 @@ Title is required and limited to 200 characters, description is limited to
 description is sent as `null` to clear it. On success, the frontend returns to
 `/tasks/:id`; Cancel returns there without sending an update.
 
+## Change Task Status
+
+Task details provides a simple status selector backed by
+`PATCH /api/tasks/{id}/status` with payload `{ "status": "<value>" }`. The
+implemented backend statuses are `NEW`, `IN_PROGRESS`, `DONE`, and `CANCELLED`.
+The current MVP allows every valid enum-to-enum transition.
+
+The Apply status action is disabled until a different status is selected and
+while an update is active. After a successful update, the page reloads the task
+from the backend. Invalid status and validation responses show a form-safe
+message; explicit `403`, `404`, service, and network errors have separate
+messages. Backend ownership and RBAC remain authoritative.
+
 ## Route Access
 
 Public routes:
@@ -205,6 +218,16 @@ redirect to `/login`. Authenticated users who open `/login` are redirected to
 6. Select Cancel and confirm no update request is sent.
 7. Verify blank/long title and long description validation messages.
 8. Verify missing or inaccessible task handling with an appropriate UUID.
+
+## Manual Task Status Check
+
+1. Sign in and open an existing task.
+2. Confirm the current status badge matches the saved task status.
+3. Select a different status and apply it once.
+4. Confirm controls are disabled while updating and the task reloads afterward.
+5. Refresh the page and confirm the new status persists.
+6. Verify the list page displays the updated status badge.
+7. Verify missing, inaccessible, and backend-rejected updates show friendly errors.
 
 Every API request uses `credentials: "include"`. Authentication tokens remain
 in backend-issued HttpOnly cookies and are never stored in local storage or

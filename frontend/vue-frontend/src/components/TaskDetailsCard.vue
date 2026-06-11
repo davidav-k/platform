@@ -1,4 +1,6 @@
 <script setup>
+import TaskStatusBadge from './TaskStatusBadge.vue'
+
 defineProps({
   task: {
     type: Object,
@@ -32,7 +34,7 @@ function formatDate(value) {
       <dd class="task-description">{{ task.description || 'No description' }}</dd>
 
       <dt>Status</dt>
-      <dd>{{ formatValue(task.status) }}</dd>
+      <dd><TaskStatusBadge :status="task.status" /></dd>
 
       <dt>Priority</dt>
       <dd>{{ formatValue(task.priority) }}</dd>

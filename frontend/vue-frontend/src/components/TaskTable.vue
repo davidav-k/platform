@@ -1,6 +1,8 @@
 <script setup>
 import { RouterLink, useRouter } from 'vue-router'
 
+import TaskStatusBadge from './TaskStatusBadge.vue'
+
 const router = useRouter()
 
 defineProps({
@@ -58,7 +60,7 @@ function openTask(taskId) {
           <td>
             <RouterLink :to="`/tasks/${task.taskId}`">{{ task.title }}</RouterLink>
           </td>
-          <td>{{ formatValue(task.status) }}</td>
+          <td><TaskStatusBadge :status="task.status" /></td>
           <td>{{ formatValue(task.priority) }}</td>
           <td class="task-id">{{ task.assigneeUserId || 'Unassigned' }}</td>
           <td>{{ formatDate(task.createdAt) }}</td>
