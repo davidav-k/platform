@@ -1,7 +1,7 @@
 # Vue Frontend
 
-Minimal Vue 3 frontend for the Task Management Platform MVP. Login and profile
-loading use the API Gateway; task and notification pages remain placeholders.
+Minimal Vue 3 frontend for the Task Management Platform MVP. Login, profile,
+task management, and notification viewing use the API Gateway.
 
 ## Prerequisites
 
@@ -58,15 +58,33 @@ Frontend API calls are grouped into small service modules:
 - `src/services/authService.js` maps login and token refresh endpoints.
 - `src/services/profileService.js` maps the current-user profile endpoint.
 - `src/services/taskService.js` maps task list, create, read, update, status, and delete endpoints.
-- `src/services/notificationService.js` maps notification list, read, and mark-as-read endpoints.
+- `src/services/notificationService.js` maps notification list and details endpoints.
 
 The service paths use the external API Gateway contracts (`/api/users`,
 `/api/tasks`, and `/api/notifications`). The current backend does not expose a
 public logout endpoint, so the logout service currently performs local cleanup
 only.
 
-Login, profile loading, and the task list are wired into the frontend.
-Notification UI integration will be added in later steps.
+Login, profile loading, task management, and notification viewing are wired
+into the frontend.
+
+## Notifications
+
+The protected `/notifications` page uses `GET /api/notifications` and displays
+notifications in pages of 20 sorted by `createdAt,desc`. Each item links to the
+protected `/notifications/:id` details page, which uses
+`GET /api/notifications/{id}`.
+
+The implemented `NotificationResponse` fields are `notificationId`,
+`recipientUserId`, `type`, `channel`, `subject`, `body`, `status`, `createdAt`,
+`updatedAt`, `sentAt`, and `failureReason`. Implemented types are
+`TASK_ASSIGNED`, `TASK_CREATED`, and `SYSTEM`; channels are `EMAIL` and
+`IN_APP`; statuses are `PENDING`, `SENT`, and `FAILED`.
+
+The running controller and Gateway do not expose mark-as-read, and the DTO has
+no read fields. The frontend therefore does not implement or simulate read
+state, realtime updates, or polling. This differs from the stale planned
+contract text in `doc/api/notification-service-contract.md`.
 
 ## Create Task
 
@@ -188,6 +206,7 @@ Protected routes:
 - `/tasks/:id/edit`
 - `/tasks/:id`
 - `/notifications`
+- `/notifications/:id`
 
 Before the first navigation decision, the router tries to load `/api/users/profile`
 once. A valid HttpOnly access cookie restores the authenticated user without
@@ -279,6 +298,16 @@ redirect to `/login`. Authenticated users who open `/login` are redirected to
 5. Refresh the page and confirm the assignee UUID persists.
 6. Select Unassign and confirm the task returns to the Unassigned state.
 7. Verify malformed UUID and unauthorized assignment errors are user-friendly.
+
+## Manual Notifications Check
+
+1. Start the backend environment and sign in.
+2. Open `/notifications` and verify loading, empty, and paginated list states.
+3. Select a notification and confirm navigation to `/notifications/:id`.
+4. Confirm all available response fields are displayed on details.
+5. Use Back to Notifications and Refresh notification.
+6. Verify invalid UUID, missing notification, and unavailable-service errors.
+7. Confirm unauthenticated users are redirected from both notification routes.
 
 Every API request uses `credentials: "include"`. Authentication tokens remain
 in backend-issued HttpOnly cookies and are never stored in local storage or

@@ -363,6 +363,73 @@ h1 {
   font-size: 0.9rem;
 }
 
+.notification-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.notification-card,
+.notification-details-card {
+  padding: 1.25rem;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+}
+
+.notification-card h2,
+.notification-details-card h2 {
+  margin: 0.75rem 0;
+}
+
+.notification-card-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  color: #475569;
+}
+
+.notification-type-badge {
+  display: inline-block;
+  padding: 0.25rem 0.55rem;
+  color: #1e3a8a;
+  background: #dbeafe;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.notification-type-task-assigned {
+  color: #6b21a8;
+  background: #f3e8ff;
+}
+
+.notification-type-task-created {
+  color: #166534;
+  background: #dcfce7;
+}
+
+.notification-summary {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.35rem 0.75rem;
+  margin-bottom: 0;
+}
+
+.notification-summary dt {
+  font-weight: 700;
+}
+
+.notification-summary dd {
+  margin: 0;
+}
+
+.notification-body {
+  white-space: pre-wrap;
+}
+
 .danger-panel {
   margin-top: 1.5rem;
   padding: 1.5rem;

@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 
 import HomeView from '../views/HomeView.vue'
 import LoginView from '../views/LoginView.vue'
+import NotificationDetailsView from '../views/NotificationDetailsView.vue'
 import NotificationsView from '../views/NotificationsView.vue'
 import ProfileView from '../views/ProfileView.vue'
 import TaskCreateView from '../views/TaskCreateView.vue'
@@ -45,6 +46,13 @@ const router = createRouter({
       path: '/notifications',
       name: 'notifications',
       component: NotificationsView,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/notifications/:id',
+      name: 'notification-details',
+      component: NotificationDetailsView,
+      props: true,
       meta: { requiresAuth: true },
     },
   ],
