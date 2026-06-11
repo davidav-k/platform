@@ -4,6 +4,7 @@ import HomeView from '../views/HomeView.vue'
 import LoginView from '../views/LoginView.vue'
 import NotificationsView from '../views/NotificationsView.vue'
 import ProfileView from '../views/ProfileView.vue'
+import TaskCreateView from '../views/TaskCreateView.vue'
 import TaskDetailsView from '../views/TaskDetailsView.vue'
 import TaskListView from '../views/TaskListView.vue'
 import {
@@ -19,6 +20,12 @@ const router = createRouter({
     { path: '/login', name: 'login', component: LoginView, meta: { guestOnly: true } },
     { path: '/profile', name: 'profile', component: ProfileView, meta: { requiresAuth: true } },
     { path: '/tasks', name: 'tasks', component: TaskListView, meta: { requiresAuth: true } },
+    {
+      path: '/tasks/create',
+      name: 'task-create',
+      component: TaskCreateView,
+      meta: { requiresAuth: true },
+    },
     {
       path: '/tasks/:id',
       name: 'task-details',

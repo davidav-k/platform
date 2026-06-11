@@ -68,6 +68,23 @@ only.
 Login, profile loading, and the task list are wired into the frontend.
 Notification UI integration will be added in later steps.
 
+## Create Task
+
+The protected `/tasks/create` page submits `POST /api/tasks` through
+`taskService`. The form uses the current `CreateTaskRequest` fields: required
+title, optional description, optional priority, and optional assignee user ID.
+
+Client validation matches the backend contract: title is required and limited
+to 200 characters, description is limited to 5,000 characters, priority is
+`LOW`, `MEDIUM`, or `HIGH`, and a supplied assignee user ID must be a UUID.
+When priority is omitted, task-service defaults it to `MEDIUM`.
+Submitting controls are disabled while the request is active to prevent
+duplicate creation.
+
+On success, the frontend expects the created task at `data.task` and navigates
+to `/tasks/{taskId}`. Backend field validation messages are displayed next to
+their matching fields when available.
+
 ## Task List
 
 The protected `/tasks` page loads tasks through the API Gateway and displays
@@ -109,6 +126,7 @@ Protected routes:
 
 - `/profile`
 - `/tasks`
+- `/tasks/create`
 - `/tasks/:id`
 - `/notifications`
 
@@ -153,6 +171,15 @@ redirect to `/login`. Authenticated users who open `/login` are redirected to
 4. Open `/tasks/not-a-uuid` and confirm the invalid-ID state appears.
 5. Open a missing or inaccessible task UUID and confirm the not-available state.
 6. Select Back to Tasks and confirm navigation to `/tasks`.
+
+## Manual Create Task Check
+
+1. Sign in, open `/tasks`, and select Create Task.
+2. Submit an empty title and confirm client validation appears.
+3. Enter valid title, description, priority, and optional assignee UUID values.
+4. Submit once and confirm controls remain disabled while the request runs.
+5. Confirm the task is created and navigation continues to `/tasks/{taskId}`.
+6. Submit backend-invalid values when applicable and confirm field errors appear.
 
 Every API request uses `credentials: "include"`. Authentication tokens remain
 in backend-issued HttpOnly cookies and are never stored in local storage or

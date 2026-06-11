@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { RouterLink } from 'vue-router'
 
 import TaskTable from '../components/TaskTable.vue'
 import { ApiError } from '../services/apiClient'
@@ -101,7 +102,10 @@ onMounted(() => loadTasks(0))
 
 <template>
   <section>
-    <h1>Tasks</h1>
+    <div class="page-heading">
+      <h1>Tasks</h1>
+      <RouterLink class="button-link" to="/tasks/create">Create Task</RouterLink>
+    </div>
 
     <form class="task-filters" @submit.prevent="applyFilters">
       <label for="task-status">Status</label>
