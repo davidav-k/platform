@@ -258,6 +258,10 @@ h1 {
   background: #e2e8f0;
 }
 
+.danger-button {
+  background: #b91c1c;
+}
+
 .task-details-card {
   padding: 1.5rem;
   background: #ffffff;
@@ -317,6 +321,31 @@ h1 {
 
 .status-form .field-error {
   flex-basis: 100%;
+}
+
+.danger-panel {
+  margin-top: 1.5rem;
+  padding: 1.5rem;
+  background: #fff7f7;
+  border: 1px solid #fecaca;
+  border-radius: 0.5rem;
+}
+
+.danger-panel h2 {
+  margin-top: 0;
+}
+
+.delete-confirmation {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.delete-confirmation p {
+  flex-basis: 100%;
+  margin: 0;
+  font-weight: 700;
 }
 
 .task-form-panel {

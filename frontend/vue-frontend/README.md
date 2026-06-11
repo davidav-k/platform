@@ -141,6 +141,19 @@ from the backend. Invalid status and validation responses show a form-safe
 message; explicit `403`, `404`, service, and network errors have separate
 messages. Backend ownership and RBAC remain authoritative.
 
+## Soft Delete Task
+
+Task details provides a two-step Delete task action. The first click reveals an
+inline confirmation block; only Confirm delete sends
+`DELETE /api/tasks/{id}`. Controls are disabled while deletion is active to
+prevent duplicate requests. Successful deletion redirects to `/tasks`.
+
+The backend does not physically remove the row. It records `deletedAt` and
+`deletedByUserId`, then excludes deleted tasks from list, get, update, status,
+and delete operations. These internal fields are not exposed in `TaskResponse`,
+so the frontend does not display them. Missing, inaccessible, and already
+deleted tasks can all produce `404`; the UI reports those cases together.
+
 ## Route Access
 
 Public routes:
@@ -228,6 +241,15 @@ redirect to `/login`. Authenticated users who open `/login` are redirected to
 5. Refresh the page and confirm the new status persists.
 6. Verify the list page displays the updated status badge.
 7. Verify missing, inaccessible, and backend-rejected updates show friendly errors.
+
+## Manual Soft Delete Check
+
+1. Sign in and open a task created by the current user, or use an administrator.
+2. Select Delete task and confirm no request is sent before the second confirmation.
+3. Select Confirm delete once and verify controls remain disabled during the request.
+4. Confirm successful deletion redirects to `/tasks`.
+5. Verify the deleted task is absent from the list and unavailable by direct URL.
+6. Verify assigned-only, missing, and already-deleted cases show a friendly error.
 
 Every API request uses `credentials: "include"`. Authentication tokens remain
 in backend-issued HttpOnly cookies and are never stored in local storage or

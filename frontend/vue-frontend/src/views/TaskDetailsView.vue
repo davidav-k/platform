@@ -1,11 +1,12 @@
 <script setup>
 import { ref, watch } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 
+import ConfirmDeleteButton from '../components/ConfirmDeleteButton.vue'
 import TaskDetailsCard from '../components/TaskDetailsCard.vue'
 import TaskStatusSelector from '../components/TaskStatusSelector.vue'
 import { ApiError } from '../services/apiClient'
-import { getTask, updateTaskStatus } from '../services/taskService'
+import { deleteTask, getTask, updateTaskStatus } from '../services/taskService'
 
 const props = defineProps({
   id: {
@@ -14,11 +15,14 @@ const props = defineProps({
   },
 })
 
+const router = useRouter()
 const task = ref(null)
 const isLoading = ref(false)
 const isUpdatingStatus = ref(false)
+const isDeleting = ref(false)
 const error = ref(null)
 const statusError = ref(null)
+const deleteError = ref(null)
 let requestId = 0
 
 function taskDetailsError(requestError) {
@@ -52,6 +56,7 @@ async function loadTask() {
   isLoading.value = true
   error.value = null
   statusError.value = null
+  deleteError.value = null
 
   try {
     const response = await getTask(props.id)
@@ -106,7 +111,7 @@ function statusUpdateError(requestError) {
 }
 
 async function handleStatusChange(status) {
-  if (isUpdatingStatus.value || status === task.value?.status) {
+  if (isUpdatingStatus.value || isDeleting.value || status === task.value?.status) {
     return
   }
 
@@ -123,6 +128,50 @@ async function handleStatusChange(status) {
   }
 }
 
+function deleteTaskError(requestError) {
+  if (requestError instanceof ApiError) {
+    if (requestError.status === 400) {
+      return 'The task ID is invalid.'
+    }
+
+    if (requestError.status === 403) {
+      return 'You do not have permission to delete this task.'
+    }
+
+    if (requestError.status === 404) {
+      return 'Task not found, already deleted, or not available to your account.'
+    }
+
+    if (requestError.status >= 500) {
+      return 'The task service is unavailable. Please try again later.'
+    }
+  }
+
+  if (requestError instanceof TypeError) {
+    return 'Unable to reach the task service. Check that the backend is running.'
+  }
+
+  return 'Unable to delete the task. Please try again.'
+}
+
+async function handleDelete() {
+  if (isDeleting.value) {
+    return
+  }
+
+  isDeleting.value = true
+  deleteError.value = null
+
+  try {
+    await deleteTask(props.id)
+    await router.push({ name: 'tasks' })
+  } catch (requestError) {
+    deleteError.value = deleteTaskError(requestError)
+  } finally {
+    isDeleting.value = false
+  }
+}
+
 watch(() => props.id, loadTask, { immediate: true })
 </script>
 
@@ -136,12 +185,13 @@ watch(() => props.id, loadTask, { immediate: true })
 
       <div v-if="task" class="page-actions">
         <RouterLink
+          v-if="!isDeleting"
           class="button-link"
           :to="{ name: 'task-edit', params: { id } }"
         >
           Edit
         </RouterLink>
-        <button type="button" :disabled="isLoading" @click="loadTask">
+        <button type="button" :disabled="isLoading || isDeleting" @click="loadTask">
           {{ isLoading ? 'Refreshing...' : 'Refresh task' }}
         </button>
       </div>
@@ -162,8 +212,19 @@ watch(() => props.id, loadTask, { immediate: true })
         <p v-if="statusError" class="error-message" role="alert">{{ statusError }}</p>
         <TaskStatusSelector
           :current-status="task.status"
-          :is-submitting="isUpdatingStatus"
+          :is-submitting="isUpdatingStatus || isDeleting"
           @submit="handleStatusChange"
+        />
+      </section>
+
+      <section class="danger-panel" aria-labelledby="delete-task-heading">
+        <h2 id="delete-task-heading">Delete Task</h2>
+        <p>The backend retains the task record but removes it from normal task operations.</p>
+        <p v-if="deleteError" class="error-message" role="alert">{{ deleteError }}</p>
+        <ConfirmDeleteButton
+          :is-deleting="isDeleting"
+          :disabled="isLoading || isUpdatingStatus"
+          @confirm="handleDelete"
         />
       </section>
     </template>
