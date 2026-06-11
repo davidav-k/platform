@@ -65,8 +65,25 @@ The service paths use the external API Gateway contracts (`/api/users`,
 public logout endpoint, so the logout service currently performs local cleanup
 only.
 
-Login and profile loading are wired into the frontend. Task and notification UI
-integration will be added in later steps.
+Login, profile loading, and the task list are wired into the frontend.
+Notification UI integration will be added in later steps.
+
+## Task List
+
+The protected `/tasks` page loads tasks through the API Gateway and displays
+task ID, title, status, priority, assignee user ID, and creation date. Task IDs
+and titles link to `/tasks/:id`; the full row is also clickable and keyboard
+accessible.
+
+The page supports the backend's `status` and `priority` filters. It requests 20
+tasks per page sorted by newest creation date and provides previous/next page
+controls using the backend's zero-based pagination metadata. Free-text search
+is not included because it is not part of the current task-service contract.
+
+The backend environment must have API Gateway, task-service, its database, and
+cookie authentication available. Authorization and task visibility remain
+owned by task-service; non-admin users receive only tasks they created or are
+assigned to.
 
 ## Route Access
 
@@ -104,6 +121,16 @@ redirect to `/login`. Authenticated users who open `/login` are redirected to
 3. Open `/tasks` directly and confirm it is available.
 4. Refresh `/tasks` and confirm the session is restored when auth cookies are valid.
 5. Select Logout, then open a protected route and confirm it redirects to `/login`.
+
+## Manual Task List Check
+
+1. Start the backend environment and sign in with an existing user.
+2. Open `/tasks` and confirm visible tasks load.
+3. Apply status and priority filters and confirm the list returns to page one.
+4. Use Previous and Next when enough tasks exist for multiple pages.
+5. Select a task ID or title and confirm navigation to `/tasks/:id`.
+6. Verify an account with no visible tasks receives the `No tasks found` state.
+7. Stop task-service temporarily and confirm the retryable error state appears.
 
 Every API request uses `credentials: "include"`. Authentication tokens remain
 in backend-issued HttpOnly cookies and are never stored in local storage or
