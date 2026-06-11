@@ -161,6 +161,21 @@ services:
     networks:
       - tsp-network
 
+  frontend:
+    container_name: tsp_frontend
+    build:
+      context: ./frontend/vue-frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8080}
+    ports:
+      - "5173:80"
+    depends_on:
+      gateway:
+        condition: service_healthy
+    networks:
+      - tsp-network
+
   user-service:
     container_name: tsp_user_service
     build:
@@ -177,6 +192,8 @@ services:
         condition: service_healthy
       eureka-server:
         condition: service_healthy
+      mailhog:
+        condition: service_started
 #    environment:
 #      - SPRING_CLOUD_CONFIG_ENABLED=false
 #      - SPRING_CONFIG_IMPORT=optional:classpath:/application.yml # using without config server

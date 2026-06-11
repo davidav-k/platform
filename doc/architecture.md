@@ -24,9 +24,10 @@ The Docker Compose stack currently runs:
 | Component | Responsibility | Port |
 | --- | --- | --- |
 | `user-service` | Users, roles, authentication, JWT issuance and validation, MFA, profiles, and account lifecycle | `8085` |
-| `task-service` | Task persistence, create, get, and list with JWT-based authentication | `8086` |
-| `notification-service` | Notification persistence, create, get, and list with JWT-based authentication | `8087` |
+| `task-service` | Task lifecycle, ownership, assignment, status changes, filtering, pagination, and soft delete | `8086` |
+| `notification-service` | Notification persistence, create, get, list, filtering, pagination, and task-created integration | `8087` |
 | `api-gateway` | External entry point, JWT early rejection, routing, CORS, and circuit breaker fallback | `8080` |
+| `frontend` | Vue 3 production bundle served by nginx with SPA route fallback | `5173` |
 | `config-server` | Spring Cloud Config native repository mounted from `./config` | `8888` |
 | `eureka-server` | Service registration and discovery | `8761` |
 | PostgreSQL 16.1 | User, task, and notification persistence in separate databases | `5432` |
@@ -42,6 +43,12 @@ client -> api-gateway /api/tasks/**  -> task-service  /api/v1/tasks/**
 client -> api-gateway /api/notifications/** -> notification-service /api/v1/notifications/**
 ```
 
+The Vue 3 frontend runs through nginx in Docker Compose or through Vite during
+frontend development. It uses only external API Gateway routes and never
+connects directly to a backend service. See the
+[frontend README](../frontend/vue-frontend/README.md) for implemented pages and
+startup instructions.
+
 The gateway validates access JWTs as an early rejection layer. Downstream services
 validate JWTs again and own authorization decisions. See
 [Authentication flow](security/auth-flow.md).
@@ -50,8 +57,6 @@ validate JWTs again and own authorization decisions. See
 
 - Redis and Zipkin run locally, but user-service does not currently integrate
   with Redis and tracing integration is not documented as complete.
-- `frontend/vue-frontend` contains documentation only. There is no frontend
-  application manifest or source tree in the repository.
 
 The notification API contract is documented in
 [Notification service API contract](api/notification-service-contract.md).
@@ -63,7 +68,6 @@ The following items are roadmap direction, not implemented functionality:
 - later event-driven communication using the proposed outbox pattern; broker selection remains open
 - audit service
 - OpenAI-backed task automation
-- Vue 3 frontend implementation
 - Kubernetes and Helm deployment configuration
 - Prometheus and Grafana monitoring stack
 
