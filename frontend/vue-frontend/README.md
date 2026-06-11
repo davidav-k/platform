@@ -68,6 +68,22 @@ only.
 Login, profile loading, task management, and notification viewing are wired
 into the frontend.
 
+## Shared Loading and Error UX
+
+The frontend uses three small shared presentation components:
+
+- `LoadingIndicator.vue` provides an accessible loading status and CSS spinner.
+- `ErrorMessage.vue` displays user-safe errors and an optional retry action.
+- `EmptyState.vue` provides consistent empty-result and unavailable-content states.
+
+The API client keeps structured `ApiError` values for service code and maps
+common HTTP statuses to safe UI messages. The shared defaults cover invalid
+requests (`400`), expired authentication (`401`), access denial (`403`), missing
+resources (`404`), conflicts (`409`), and server failures (`500` and above).
+Views can provide action-specific wording without rendering raw backend errors,
+stack traces, credentials, or cookie values. Task form field-validation errors
+remain next to their corresponding inputs.
+
 ## Notifications
 
 The protected `/notifications` page uses `GET /api/notifications` and displays
@@ -308,6 +324,16 @@ redirect to `/login`. Authenticated users who open `/login` are redirected to
 5. Use Back to Notifications and Refresh notification.
 6. Verify invalid UUID, missing notification, and unavailable-service errors.
 7. Confirm unauthenticated users are redirected from both notification routes.
+
+## Manual Loading and Error UX Check
+
+1. Submit incorrect login credentials and verify a user-friendly error appears.
+2. Open a protected route while signed out and verify the login redirect.
+3. Load task and notification lists and verify the shared loading indicators.
+4. Open invalid task and notification IDs and verify safe not-found or validation messages.
+5. Stop the backend temporarily and use the retry actions on profile and data pages.
+6. Confirm empty task and notification results use the shared empty state.
+7. Confirm no stack traces, JWT values, cookie values, or backend exception details appear.
 
 Every API request uses `credentials: "include"`. Authentication tokens remain
 in backend-issued HttpOnly cookies and are never stored in local storage or

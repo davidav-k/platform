@@ -3,10 +3,12 @@ import { ref, watch } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 
 import ConfirmDeleteButton from '../components/ConfirmDeleteButton.vue'
+import ErrorMessage from '../components/ErrorMessage.vue'
+import LoadingIndicator from '../components/LoadingIndicator.vue'
 import TaskAssignmentPanel from '../components/TaskAssignmentPanel.vue'
 import TaskDetailsCard from '../components/TaskDetailsCard.vue'
 import TaskStatusSelector from '../components/TaskStatusSelector.vue'
-import { ApiError } from '../services/apiClient'
+import { getUserFriendlyError } from '../services/apiClient'
 import { assignTask, deleteTask, getTask, updateTaskStatus } from '../services/taskService'
 
 const props = defineProps({
@@ -29,29 +31,22 @@ const deleteError = ref(null)
 let requestId = 0
 
 function taskDetailsError(requestError) {
-  if (requestError instanceof ApiError) {
-    if (requestError.status === 400) {
-      return 'The task ID is invalid.'
-    }
+  return taskRequestError(requestError, 'Unable to load the task. Please try again.', {
+    400: 'The task ID is invalid.',
+    403: 'You do not have permission to view this task.',
+    404: 'Task not found or not available to your account.',
+  })
+}
 
-    if (requestError.status === 403) {
-      return 'You do not have permission to view this task.'
-    }
-
-    if (requestError.status === 404) {
-      return 'Task not found or not available to your account.'
-    }
-
-    if (requestError.status >= 500) {
-      return 'The task service is unavailable. Please try again later.'
-    }
-  }
-
-  if (requestError instanceof TypeError) {
-    return 'Unable to reach the task service. Check that the backend is running.'
-  }
-
-  return 'Unable to load the task. Please try again.'
+function taskRequestError(requestError, fallback, statusMessages = {}) {
+  return getUserFriendlyError(requestError, {
+    fallback,
+    networkMessage: 'Unable to reach the task service. Check that the backend is running.',
+    statusMessages: {
+      ...statusMessages,
+      500: 'The task service is unavailable. Please try again later.',
+    },
+  })
 }
 
 async function loadTask() {
@@ -89,29 +84,12 @@ async function loadTask() {
 }
 
 function statusUpdateError(requestError) {
-  if (requestError instanceof ApiError) {
-    if (requestError.status === 400) {
-      return 'The selected status is invalid.'
-    }
-
-    if (requestError.status === 403) {
-      return 'You do not have permission to change this task status.'
-    }
-
-    if (requestError.status === 404) {
-      return 'Task not found or not available to your account.'
-    }
-
-    if (requestError.status >= 500) {
-      return 'The task service is unavailable. Please try again later.'
-    }
-  }
-
-  if (requestError instanceof TypeError) {
-    return 'Unable to reach the task service. Check that the backend is running.'
-  }
-
-  return 'Unable to update the task status. Please try again.'
+  return taskRequestError(requestError, 'Unable to update the task status. Please try again.', {
+    400: 'The selected status is invalid.',
+    403: 'You do not have permission to change this task status.',
+    404: 'Task not found or not available to your account.',
+    409: 'This status change conflicts with the current task state.',
+  })
 }
 
 async function handleStatusChange(status) {
@@ -138,29 +116,12 @@ async function handleStatusChange(status) {
 }
 
 function assignmentUpdateError(requestError) {
-  if (requestError instanceof ApiError) {
-    if (requestError.status === 400) {
-      return 'The assignee user ID is invalid.'
-    }
-
-    if (requestError.status === 403) {
-      return 'You do not have permission to assign this task.'
-    }
-
-    if (requestError.status === 404) {
-      return 'Task not found or assignment is not available to your account.'
-    }
-
-    if (requestError.status >= 500) {
-      return 'The task service is unavailable. Please try again later.'
-    }
-  }
-
-  if (requestError instanceof TypeError) {
-    return 'Unable to reach the task service. Check that the backend is running.'
-  }
-
-  return 'Unable to update the task assignee. Please try again.'
+  return taskRequestError(requestError, 'Unable to update the task assignee. Please try again.', {
+    400: 'The assignee user ID is invalid.',
+    403: 'You do not have permission to assign this task.',
+    404: 'Task not found or assignment is not available to your account.',
+    409: 'This assignment conflicts with the current task state.',
+  })
 }
 
 async function handleAssignmentChange(assigneeUserId) {
@@ -182,29 +143,12 @@ async function handleAssignmentChange(assigneeUserId) {
 }
 
 function deleteTaskError(requestError) {
-  if (requestError instanceof ApiError) {
-    if (requestError.status === 400) {
-      return 'The task ID is invalid.'
-    }
-
-    if (requestError.status === 403) {
-      return 'You do not have permission to delete this task.'
-    }
-
-    if (requestError.status === 404) {
-      return 'Task not found, already deleted, or not available to your account.'
-    }
-
-    if (requestError.status >= 500) {
-      return 'The task service is unavailable. Please try again later.'
-    }
-  }
-
-  if (requestError instanceof TypeError) {
-    return 'Unable to reach the task service. Check that the backend is running.'
-  }
-
-  return 'Unable to delete the task. Please try again.'
+  return taskRequestError(requestError, 'Unable to delete the task. Please try again.', {
+    400: 'The task ID is invalid.',
+    403: 'You do not have permission to delete this task.',
+    404: 'Task not found, already deleted, or not available to your account.',
+    409: 'The task cannot be deleted in its current state.',
+  })
 }
 
 async function handleDelete() {
@@ -254,19 +198,21 @@ watch(() => props.id, loadTask, { immediate: true })
       </div>
     </div>
 
-    <p v-if="isLoading && !task">Loading task...</p>
+    <LoadingIndicator v-if="isLoading && !task" message="Loading task..." />
 
-    <div v-else-if="error" class="error-panel" role="alert">
-      <p class="error-message">{{ error }}</p>
-      <button type="button" @click="loadTask">Retry</button>
-    </div>
+    <ErrorMessage
+      v-else-if="error"
+      :message="error"
+      retry-label="Retry"
+      @retry="loadTask"
+    />
 
     <template v-else-if="task">
       <TaskDetailsCard :task="task" />
 
       <section class="status-panel" aria-labelledby="task-status-heading">
         <h2 id="task-status-heading">Task Status</h2>
-        <p v-if="statusError" class="error-message" role="alert">{{ statusError }}</p>
+        <ErrorMessage v-if="statusError" :message="statusError" />
         <TaskStatusSelector
           :current-status="task.status"
           :is-submitting="isUpdatingStatus || isUpdatingAssignment || isDeleting"
@@ -275,9 +221,7 @@ watch(() => props.id, loadTask, { immediate: true })
       </section>
 
       <div>
-        <p v-if="assignmentError" class="error-message" role="alert">
-          {{ assignmentError }}
-        </p>
+        <ErrorMessage v-if="assignmentError" :message="assignmentError" />
         <TaskAssignmentPanel
           :current-assignee-user-id="task.assigneeUserId"
           :is-submitting="isUpdatingAssignment"
@@ -289,7 +233,7 @@ watch(() => props.id, loadTask, { immediate: true })
       <section class="danger-panel" aria-labelledby="delete-task-heading">
         <h2 id="delete-task-heading">Delete Task</h2>
         <p>The backend retains the task record but removes it from normal task operations.</p>
-        <p v-if="deleteError" class="error-message" role="alert">{{ deleteError }}</p>
+        <ErrorMessage v-if="deleteError" :message="deleteError" />
         <ConfirmDeleteButton
           :is-deleting="isDeleting"
           :disabled="isLoading || isUpdatingStatus || isUpdatingAssignment"

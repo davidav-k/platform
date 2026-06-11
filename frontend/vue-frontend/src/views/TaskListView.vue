@@ -2,8 +2,11 @@
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 
+import EmptyState from '../components/EmptyState.vue'
+import ErrorMessage from '../components/ErrorMessage.vue'
+import LoadingIndicator from '../components/LoadingIndicator.vue'
 import TaskTable from '../components/TaskTable.vue'
-import { ApiError } from '../services/apiClient'
+import { getUserFriendlyError } from '../services/apiClient'
 import { getTasks } from '../services/taskService'
 
 const PAGE_SIZE = 20
@@ -27,21 +30,14 @@ const hasPreviousPage = computed(() => page.value.number > 0)
 const hasNextPage = computed(() => page.value.number + 1 < page.value.totalPages)
 
 function taskListError(requestError) {
-  if (requestError instanceof ApiError) {
-    if (requestError.status === 403) {
-      return 'You do not have permission to view tasks.'
-    }
-
-    if (requestError.status >= 500) {
-      return 'The task service is unavailable. Please try again later.'
-    }
-  }
-
-  if (requestError instanceof TypeError) {
-    return 'Unable to reach the task service. Check that the backend is running.'
-  }
-
-  return 'Unable to load tasks. Please try again.'
+  return getUserFriendlyError(requestError, {
+    fallback: 'Unable to load tasks. Please try again.',
+    networkMessage: 'Unable to reach the task service. Check that the backend is running.',
+    statusMessages: {
+      403: 'You do not have permission to view tasks.',
+      500: 'The task service is unavailable. Please try again later.',
+    },
+  })
 }
 
 async function loadTasks(targetPage = page.value.number) {
@@ -128,15 +124,21 @@ onMounted(() => loadTasks(0))
       <button type="submit" :disabled="isLoading">Apply filters</button>
     </form>
 
-    <p v-if="isLoading">Loading tasks...</p>
+    <LoadingIndicator v-if="isLoading" message="Loading tasks..." />
 
-    <div v-else-if="error" class="error-panel" role="alert">
-      <p class="error-message">{{ error }}</p>
-      <button type="button" @click="loadTasks()">Retry</button>
-    </div>
+    <ErrorMessage
+      v-else-if="error"
+      :message="error"
+      retry-label="Retry"
+      @retry="loadTasks()"
+    />
 
     <template v-else>
-      <p v-if="tasks.length === 0">No tasks found</p>
+      <EmptyState
+        v-if="tasks.length === 0"
+        title="No tasks found"
+        message="Try changing the filters or create a new task."
+      />
       <TaskTable v-else :tasks="tasks" />
 
       <div class="pagination" aria-label="Task list pagination">

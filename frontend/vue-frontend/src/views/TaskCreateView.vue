@@ -2,8 +2,10 @@
 import { ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 
+import ErrorMessage from '../components/ErrorMessage.vue'
+import LoadingIndicator from '../components/LoadingIndicator.vue'
 import TaskForm from '../components/TaskForm.vue'
-import { ApiError } from '../services/apiClient'
+import { ApiError, getUserFriendlyError } from '../services/apiClient'
 import { createTask } from '../services/taskService'
 
 const router = useRouter()
@@ -12,25 +14,16 @@ const error = ref(null)
 const serverErrors = ref({})
 
 function createTaskError(requestError) {
-  if (requestError instanceof ApiError) {
-    if (requestError.status === 403) {
-      return 'You do not have permission to create tasks.'
-    }
-
-    if (requestError.status === 409) {
-      return 'The task could not be created because its data conflicts with existing data.'
-    }
-
-    if (requestError.status >= 500) {
-      return 'The task service is unavailable. Please try again later.'
-    }
-  }
-
-  if (requestError instanceof TypeError) {
-    return 'Unable to reach the task service. Check that the backend is running.'
-  }
-
-  return 'Unable to create the task. Please review the form and try again.'
+  return getUserFriendlyError(requestError, {
+    fallback: 'Unable to create the task. Please review the form and try again.',
+    networkMessage: 'Unable to reach the task service. Check that the backend is running.',
+    statusMessages: {
+      400: 'Some task fields are invalid. Please review the form.',
+      403: 'You do not have permission to create tasks.',
+      409: 'The task could not be created because its data conflicts with existing data.',
+      500: 'The task service is unavailable. Please try again later.',
+    },
+  })
 }
 
 async function handleSubmit(task) {
@@ -73,7 +66,8 @@ async function handleSubmit(task) {
       </div>
     </div>
 
-    <p v-if="error" class="error-message" role="alert">{{ error }}</p>
+    <ErrorMessage v-if="error" :message="error" />
+    <LoadingIndicator v-if="isSubmitting" message="Creating task..." />
 
     <TaskForm
       :is-submitting="isSubmitting"

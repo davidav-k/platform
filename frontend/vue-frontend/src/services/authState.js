@@ -1,6 +1,6 @@
 import { computed, reactive } from 'vue'
 
-import { ApiError } from './apiClient'
+import { ApiError, getUserFriendlyError } from './apiClient'
 import { login as loginRequest, logout as logoutRequest } from './authService'
 import { getProfile } from './profileService'
 
@@ -24,25 +24,16 @@ function responseUser(response) {
 }
 
 function userMessage(error, fallback, unauthorizedMessage = 'Your session is not authorized.') {
-  if (error instanceof ApiError) {
-    if (error.status === 401) {
-      return unauthorizedMessage
-    }
-
-    if (error.status === 403) {
-      return 'Access is not allowed for this account.'
-    }
-
-    if (error.status >= 500) {
-      return 'The server is unavailable. Please try again later.'
-    }
-  }
-
-  if (error instanceof TypeError) {
-    return 'Unable to reach the server. Check that the backend is running.'
-  }
-
-  return fallback
+  return getUserFriendlyError(error, {
+    fallback,
+    statusMessages: {
+      400: 'The submitted authentication data is invalid.',
+      401: unauthorizedMessage,
+      403: 'Access is not allowed for this account.',
+      409: 'The account state does not allow this operation.',
+      500: 'The server is unavailable. Please try again later.',
+    },
+  })
 }
 
 export function clearAuthError() {

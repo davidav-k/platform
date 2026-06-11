@@ -10,6 +10,41 @@ export class ApiError extends Error {
   }
 }
 
+const defaultStatusMessages = {
+  400: 'The request contains invalid data. Please review it and try again.',
+  401: 'Your session has expired. Please sign in again.',
+  403: 'You do not have permission to perform this action.',
+  404: 'The requested resource was not found.',
+  409: 'The request conflicts with the current resource state.',
+  500: 'The server is unavailable. Please try again later.',
+}
+
+export function getUserFriendlyError(error, options = {}) {
+  const {
+    fallback = 'Something went wrong. Please try again.',
+    networkMessage = 'Unable to reach the server. Check that the backend is running.',
+    statusMessages = {},
+  } = options
+
+  if (error instanceof TypeError) {
+    return networkMessage
+  }
+
+  if (!(error instanceof ApiError)) {
+    return fallback
+  }
+
+  if (statusMessages[error.status]) {
+    return statusMessages[error.status]
+  }
+
+  if (error.status >= 500) {
+    return statusMessages[500] || defaultStatusMessages[500]
+  }
+
+  return defaultStatusMessages[error.status] || fallback
+}
+
 async function parseResponse(response) {
   if (response.status === 204 || response.status === 205) {
     return null

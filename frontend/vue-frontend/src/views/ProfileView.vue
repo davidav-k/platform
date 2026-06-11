@@ -1,6 +1,9 @@
 <script setup>
 import { onMounted } from 'vue'
 
+import EmptyState from '../components/EmptyState.vue'
+import ErrorMessage from '../components/ErrorMessage.vue'
+import LoadingIndicator from '../components/LoadingIndicator.vue'
 import {
   authError,
   currentUser,
@@ -8,9 +11,13 @@ import {
   loadCurrentUser,
 } from '../services/authState'
 
+function loadProfile() {
+  return loadCurrentUser().catch(() => null)
+}
+
 onMounted(() => {
   if (!currentUser.value) {
-    loadCurrentUser().catch(() => null)
+    loadProfile()
   }
 })
 </script>
@@ -19,8 +26,13 @@ onMounted(() => {
   <section>
     <h1>Profile</h1>
 
-    <p v-if="isLoading">Loading profile...</p>
-    <p v-else-if="authError" class="error-message" role="alert">{{ authError }}</p>
+    <LoadingIndicator v-if="isLoading" message="Loading profile..." />
+    <ErrorMessage
+      v-else-if="authError"
+      :message="authError"
+      retry-label="Retry"
+      @retry="loadProfile"
+    />
 
     <dl v-else-if="currentUser" class="profile-details">
       <dt>Email</dt>
@@ -41,6 +53,10 @@ onMounted(() => {
       </template>
     </dl>
 
-    <p v-else>You are not authenticated. Please sign in to view your profile.</p>
+    <EmptyState
+      v-else
+      title="Profile unavailable"
+      message="You are not authenticated. Please sign in to view your profile."
+    />
   </section>
 </template>

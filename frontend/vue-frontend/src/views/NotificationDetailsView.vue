@@ -2,8 +2,10 @@
 import { ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 
+import ErrorMessage from '../components/ErrorMessage.vue'
+import LoadingIndicator from '../components/LoadingIndicator.vue'
 import NotificationTypeBadge from '../components/NotificationTypeBadge.vue'
-import { ApiError } from '../services/apiClient'
+import { getUserFriendlyError } from '../services/apiClient'
 import { getNotification } from '../services/notificationService'
 
 const props = defineProps({
@@ -32,29 +34,16 @@ function formatDate(value) {
 }
 
 function notificationDetailsError(requestError) {
-  if (requestError instanceof ApiError) {
-    if (requestError.status === 400) {
-      return 'The notification ID is invalid.'
-    }
-
-    if (requestError.status === 403) {
-      return 'You do not have permission to view this notification.'
-    }
-
-    if (requestError.status === 404) {
-      return 'Notification not found.'
-    }
-
-    if (requestError.status >= 500) {
-      return 'The notification service is unavailable. Please try again later.'
-    }
-  }
-
-  if (requestError instanceof TypeError) {
-    return 'Unable to reach the notification service. Check that the backend is running.'
-  }
-
-  return 'Unable to load the notification. Please try again.'
+  return getUserFriendlyError(requestError, {
+    fallback: 'Unable to load the notification. Please try again.',
+    networkMessage: 'Unable to reach the notification service. Check that the backend is running.',
+    statusMessages: {
+      400: 'The notification ID is invalid.',
+      403: 'You do not have permission to view this notification.',
+      404: 'Notification not found.',
+      500: 'The notification service is unavailable. Please try again later.',
+    },
+  })
 }
 
 async function loadNotification() {
@@ -103,12 +92,17 @@ watch(() => props.id, loadNotification, { immediate: true })
       </button>
     </div>
 
-    <p v-if="isLoading && !notification">Loading notification...</p>
+    <LoadingIndicator
+      v-if="isLoading && !notification"
+      message="Loading notification..."
+    />
 
-    <div v-else-if="error" class="error-panel" role="alert">
-      <p class="error-message">{{ error }}</p>
-      <button type="button" @click="loadNotification">Retry</button>
-    </div>
+    <ErrorMessage
+      v-else-if="error"
+      :message="error"
+      retry-label="Retry"
+      @retry="loadNotification"
+    />
 
     <article v-else-if="notification" class="notification-details-card">
       <div class="notification-card-heading">

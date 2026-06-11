@@ -2,8 +2,10 @@
 import { ref, watch } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 
+import ErrorMessage from '../components/ErrorMessage.vue'
+import LoadingIndicator from '../components/LoadingIndicator.vue'
 import TaskForm from '../components/TaskForm.vue'
-import { ApiError } from '../services/apiClient'
+import { ApiError, getUserFriendlyError } from '../services/apiClient'
 import { getTask, updateTask } from '../services/taskService'
 
 const props = defineProps({
@@ -22,33 +24,21 @@ const serverErrors = ref({})
 let requestId = 0
 
 function taskError(requestError, action) {
-  if (requestError instanceof ApiError) {
-    if (requestError.status === 400) {
-      return action === 'load'
+  return getUserFriendlyError(requestError, {
+    fallback: action === 'load'
+      ? 'Unable to load the task. Please try again.'
+      : 'Unable to update the task. Please try again.',
+    networkMessage: 'Unable to reach the task service. Check that the backend is running.',
+    statusMessages: {
+      400: action === 'load'
         ? 'The task ID is invalid.'
-        : 'Some task fields are invalid. Please review the form.'
-    }
-
-    if (requestError.status === 403) {
-      return 'You do not have permission to update this task.'
-    }
-
-    if (requestError.status === 404) {
-      return 'Task not found or not available to your account.'
-    }
-
-    if (requestError.status >= 500) {
-      return 'The task service is unavailable. Please try again later.'
-    }
-  }
-
-  if (requestError instanceof TypeError) {
-    return 'Unable to reach the task service. Check that the backend is running.'
-  }
-
-  return action === 'load'
-    ? 'Unable to load the task. Please try again.'
-    : 'Unable to update the task. Please try again.'
+        : 'Some task fields are invalid. Please review the form.',
+      403: 'You do not have permission to update this task.',
+      404: 'Task not found or not available to your account.',
+      409: 'The task was changed by another operation. Refresh and try again.',
+      500: 'The task service is unavailable. Please try again later.',
+    },
+  })
 }
 
 async function loadTask() {
@@ -122,15 +112,18 @@ watch(() => props.id, loadTask, { immediate: true })
       </div>
     </div>
 
-    <p v-if="isLoading">Loading task...</p>
+    <LoadingIndicator v-if="isLoading" message="Loading task..." />
 
-    <div v-else-if="error && !task" class="error-panel" role="alert">
-      <p class="error-message">{{ error }}</p>
-      <button type="button" @click="loadTask">Retry</button>
-    </div>
+    <ErrorMessage
+      v-else-if="error && !task"
+      :message="error"
+      retry-label="Retry"
+      @retry="loadTask"
+    />
 
     <template v-else-if="task">
-      <p v-if="error" class="error-message" role="alert">{{ error }}</p>
+      <ErrorMessage v-if="error" :message="error" />
+      <LoadingIndicator v-if="isSubmitting" message="Saving task..." />
 
       <TaskForm
         mode="edit"

@@ -2,6 +2,8 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 
+import ErrorMessage from '../components/ErrorMessage.vue'
+import LoadingIndicator from '../components/LoadingIndicator.vue'
 import {
   authError,
   clearAuthError,
@@ -58,7 +60,9 @@ async function handleSubmit() {
         :disabled="isLoading"
       />
 
-      <p v-if="authError" class="error-message" role="alert">{{ authError }}</p>
+      <ErrorMessage v-if="authError" :message="authError" />
+
+      <LoadingIndicator v-if="isLoading" message="Signing in..." />
 
       <button type="submit" :disabled="isLoading">
         {{ isLoading ? 'Signing in...' : 'Sign in' }}
