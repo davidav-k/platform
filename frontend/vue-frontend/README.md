@@ -1,8 +1,7 @@
 # Vue Frontend
 
-Minimal Vue 3 frontend for the Task Management Platform MVP. The application
-currently provides navigation and placeholder pages only; backend API
-integration will be implemented in later steps.
+Minimal Vue 3 frontend for the Task Management Platform MVP. Login and profile
+loading use the API Gateway; task and notification pages remain placeholders.
 
 ## Prerequisites
 
@@ -63,7 +62,26 @@ Frontend API calls are grouped into small service modules:
 
 The service paths use the external API Gateway contracts (`/api/users`,
 `/api/tasks`, and `/api/notifications`). The current backend does not expose a
-public logout endpoint, so no logout service function is provided yet.
+public logout endpoint, so the logout service currently performs local cleanup
+only.
 
-These modules are not wired into the placeholder views. Real authentication,
-task, profile, and notification UI integration will be added in later steps.
+Login and profile loading are wired into the frontend. Task and notification UI
+integration will be added in later steps.
+
+## Manual Authentication Check
+
+1. Start the backend environment with the repository `compose.yml` workflow.
+2. Set `VITE_API_BASE_URL` to the API Gateway URL, normally `http://localhost:8080`.
+3. Run `npm run dev` and open the URL printed by Vite.
+4. Sign in with an existing enabled backend user.
+5. Confirm the profile fields and authenticated navigation are displayed.
+6. Select Logout and confirm the frontend redirects to `/login` and clears its local auth state.
+
+Every API request uses `credentials: "include"`. Authentication tokens remain
+in backend-issued HttpOnly cookies and are never stored in local storage or
+session storage.
+
+The backend currently has no public logout endpoint. The Logout button clears
+only the frontend's in-memory state; it cannot delete HttpOnly cookies. A page
+reload may therefore restore the authenticated session until the backend adds
+a cookie-clearing logout contract or the cookies expire.
