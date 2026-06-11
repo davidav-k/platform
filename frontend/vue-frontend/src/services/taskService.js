@@ -22,6 +22,10 @@ export function updateTaskStatus(taskId, statusUpdate) {
   return patch(`${TASKS_PATH}/${encodeURIComponent(taskId)}/status`, statusUpdate)
 }
 
+export function assignTask(taskId, assignment) {
+  return patch(`${TASKS_PATH}/${encodeURIComponent(taskId)}/assignee`, assignment)
+}
+
 export function deleteTask(taskId) {
   return del(`${TASKS_PATH}/${encodeURIComponent(taskId)}`)
 }

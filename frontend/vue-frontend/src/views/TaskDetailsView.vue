@@ -3,10 +3,11 @@ import { ref, watch } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 
 import ConfirmDeleteButton from '../components/ConfirmDeleteButton.vue'
+import TaskAssignmentPanel from '../components/TaskAssignmentPanel.vue'
 import TaskDetailsCard from '../components/TaskDetailsCard.vue'
 import TaskStatusSelector from '../components/TaskStatusSelector.vue'
 import { ApiError } from '../services/apiClient'
-import { deleteTask, getTask, updateTaskStatus } from '../services/taskService'
+import { assignTask, deleteTask, getTask, updateTaskStatus } from '../services/taskService'
 
 const props = defineProps({
   id: {
@@ -19,9 +20,11 @@ const router = useRouter()
 const task = ref(null)
 const isLoading = ref(false)
 const isUpdatingStatus = ref(false)
+const isUpdatingAssignment = ref(false)
 const isDeleting = ref(false)
 const error = ref(null)
 const statusError = ref(null)
+const assignmentError = ref(null)
 const deleteError = ref(null)
 let requestId = 0
 
@@ -56,6 +59,7 @@ async function loadTask() {
   isLoading.value = true
   error.value = null
   statusError.value = null
+  assignmentError.value = null
   deleteError.value = null
 
   try {
@@ -111,7 +115,12 @@ function statusUpdateError(requestError) {
 }
 
 async function handleStatusChange(status) {
-  if (isUpdatingStatus.value || isDeleting.value || status === task.value?.status) {
+  if (
+    isUpdatingStatus.value
+    || isUpdatingAssignment.value
+    || isDeleting.value
+    || status === task.value?.status
+  ) {
     return
   }
 
@@ -125,6 +134,50 @@ async function handleStatusChange(status) {
     statusError.value = statusUpdateError(requestError)
   } finally {
     isUpdatingStatus.value = false
+  }
+}
+
+function assignmentUpdateError(requestError) {
+  if (requestError instanceof ApiError) {
+    if (requestError.status === 400) {
+      return 'The assignee user ID is invalid.'
+    }
+
+    if (requestError.status === 403) {
+      return 'You do not have permission to assign this task.'
+    }
+
+    if (requestError.status === 404) {
+      return 'Task not found or assignment is not available to your account.'
+    }
+
+    if (requestError.status >= 500) {
+      return 'The task service is unavailable. Please try again later.'
+    }
+  }
+
+  if (requestError instanceof TypeError) {
+    return 'Unable to reach the task service. Check that the backend is running.'
+  }
+
+  return 'Unable to update the task assignee. Please try again.'
+}
+
+async function handleAssignmentChange(assigneeUserId) {
+  if (isUpdatingAssignment.value || isUpdatingStatus.value || isDeleting.value) {
+    return
+  }
+
+  isUpdatingAssignment.value = true
+  assignmentError.value = null
+
+  try {
+    await assignTask(props.id, { assigneeUserId })
+    await loadTask()
+  } catch (requestError) {
+    assignmentError.value = assignmentUpdateError(requestError)
+  } finally {
+    isUpdatingAssignment.value = false
   }
 }
 
@@ -185,13 +238,17 @@ watch(() => props.id, loadTask, { immediate: true })
 
       <div v-if="task" class="page-actions">
         <RouterLink
-          v-if="!isDeleting"
+          v-if="!isUpdatingStatus && !isUpdatingAssignment && !isDeleting"
           class="button-link"
           :to="{ name: 'task-edit', params: { id } }"
         >
           Edit
         </RouterLink>
-        <button type="button" :disabled="isLoading || isDeleting" @click="loadTask">
+        <button
+          type="button"
+          :disabled="isLoading || isUpdatingStatus || isUpdatingAssignment || isDeleting"
+          @click="loadTask"
+        >
           {{ isLoading ? 'Refreshing...' : 'Refresh task' }}
         </button>
       </div>
@@ -212,10 +269,22 @@ watch(() => props.id, loadTask, { immediate: true })
         <p v-if="statusError" class="error-message" role="alert">{{ statusError }}</p>
         <TaskStatusSelector
           :current-status="task.status"
-          :is-submitting="isUpdatingStatus || isDeleting"
+          :is-submitting="isUpdatingStatus || isUpdatingAssignment || isDeleting"
           @submit="handleStatusChange"
         />
       </section>
+
+      <div>
+        <p v-if="assignmentError" class="error-message" role="alert">
+          {{ assignmentError }}
+        </p>
+        <TaskAssignmentPanel
+          :current-assignee-user-id="task.assigneeUserId"
+          :is-submitting="isUpdatingAssignment"
+          :disabled="isLoading || isUpdatingStatus || isDeleting"
+          @submit="handleAssignmentChange"
+        />
+      </div>
 
       <section class="danger-panel" aria-labelledby="delete-task-heading">
         <h2 id="delete-task-heading">Delete Task</h2>
@@ -223,7 +292,7 @@ watch(() => props.id, loadTask, { immediate: true })
         <p v-if="deleteError" class="error-message" role="alert">{{ deleteError }}</p>
         <ConfirmDeleteButton
           :is-deleting="isDeleting"
-          :disabled="isLoading || isUpdatingStatus"
+          :disabled="isLoading || isUpdatingStatus || isUpdatingAssignment"
           @confirm="handleDelete"
         />
       </section>

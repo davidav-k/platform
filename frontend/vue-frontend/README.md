@@ -154,6 +154,25 @@ and delete operations. These internal fields are not exposed in `TaskResponse`,
 so the frontend does not display them. Missing, inaccessible, and already
 deleted tasks can all produce `404`; the UI reports those cases together.
 
+## Task Assignment
+
+Task details displays the current assignee and provides assign, reassign, and
+unassign actions through `PATCH /api/tasks/{id}/assignee`. The request payload
+is `{ "assigneeUserId": "<uuid>" }`; explicit `null` unassigns the task.
+Assignees are represented by the stable public user `userId`, which is a UUID.
+
+There is currently no public user-list, user-search, assignment-candidate, or
+user lookup endpoint, so the frontend accepts a UUID rather than inventing a
+dropdown data source. Task-service also does not verify that the UUID belongs
+to an active user; this is documented backend technical debt. Assignment
+history and assignment status are not exposed by the current contract.
+
+The control validates UUID format, prevents unchanged and duplicate requests,
+and reloads the task after success. Backend RBAC remains authoritative: admins
+can assign any task, creators can assign their tasks, and assignment alone does
+not grant reassignment rights. Missing or unauthorized assignment commonly
+returns `404`.
+
 ## Route Access
 
 Public routes:
@@ -250,6 +269,16 @@ redirect to `/login`. Authenticated users who open `/login` are redirected to
 4. Confirm successful deletion redirects to `/tasks`.
 5. Verify the deleted task is absent from the list and unavailable by direct URL.
 6. Verify assigned-only, missing, and already-deleted cases show a friendly error.
+
+## Manual Task Assignment Check
+
+1. Sign in as an administrator or the task creator and open a task.
+2. Confirm the current assignee UUID or Unassigned state is displayed.
+3. Enter another public user UUID and select Assign task once.
+4. Confirm controls remain disabled while updating and the task reloads afterward.
+5. Refresh the page and confirm the assignee UUID persists.
+6. Select Unassign and confirm the task returns to the Unassigned state.
+7. Verify malformed UUID and unauthorized assignment errors are user-friendly.
 
 Every API request uses `credentials: "include"`. Authentication tokens remain
 in backend-issued HttpOnly cookies and are never stored in local storage or
