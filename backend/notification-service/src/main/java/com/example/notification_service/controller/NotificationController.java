@@ -16,6 +16,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -34,19 +35,12 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/v1/notifications")
 @Validated
+@RequiredArgsConstructor
 public class NotificationController {
 
     private final CreateNotificationUseCase createNotificationUseCase;
     private final GetNotificationUseCase getNotificationUseCase;
     private final ListNotificationsUseCase listNotificationsUseCase;
-
-    public NotificationController(CreateNotificationUseCase createNotificationUseCase,
-                                  GetNotificationUseCase getNotificationUseCase,
-                                  ListNotificationsUseCase listNotificationsUseCase) {
-        this.createNotificationUseCase = createNotificationUseCase;
-        this.getNotificationUseCase = getNotificationUseCase;
-        this.listNotificationsUseCase = listNotificationsUseCase;
-    }
 
     @PostMapping
     public ResponseEntity<Response> createNotification(
@@ -60,7 +54,7 @@ public class NotificationController {
                 "Notification created successfully.",
                 HttpStatus.CREATED
         );
-        return ResponseEntity.created(URI.create("/api/v1/notifications/" + notification.getNotificationId())).body(response);
+        return ResponseEntity.created(URI.create("/api/v1/notifications/" + notification.notificationId())).body(response);
     }
     @GetMapping("/{notificationId}")
     public ResponseEntity<Response> getNotification(@PathVariable UUID notificationId,
@@ -90,7 +84,7 @@ public class NotificationController {
         ));
         return ResponseEntity.ok(RequestUtils.getResponse(
                 request,
-                Map.of("items", notifications.getItems(), "page", notifications.getPage()),
+                Map.of("items", notifications.items(), "page", notifications.page()),
                 "Notifications retrieved successfully.",
                 HttpStatus.OK
         ));

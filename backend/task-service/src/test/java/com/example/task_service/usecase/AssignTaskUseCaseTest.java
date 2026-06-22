@@ -63,7 +63,7 @@ class AssignTaskUseCaseTest {
             new AssignTaskRequest(newAssigneeUserId)
         );
 
-        assertThat(response.getAssigneeUserId()).isEqualTo(newAssigneeUserId);
+        assertThat(response.assigneeUserId()).isEqualTo(newAssigneeUserId);
     }
 
     @Test
@@ -79,7 +79,7 @@ class AssignTaskUseCaseTest {
             new AssignTaskRequest(newAssigneeUserId)
         );
 
-        assertThat(response.getAssigneeUserId()).isEqualTo(newAssigneeUserId);
+        assertThat(response.assigneeUserId()).isEqualTo(newAssigneeUserId);
     }
 
     @Test
@@ -94,7 +94,7 @@ class AssignTaskUseCaseTest {
             new AssignTaskRequest(null)
         );
 
-        assertThat(response.getAssigneeUserId()).isNull();
+        assertThat(response.assigneeUserId()).isNull();
     }
 
     @Test

@@ -60,9 +60,9 @@ class GetNotificationUseCaseTest {
 
         NotificationResponse response = getNotificationUseCase.getByNotificationId(notificationId);
 
-        assertThat(response.getNotificationId()).isEqualTo(notificationId);
-        assertThat(response.getRecipientUserId()).isEqualTo(entity.getRecipientUserId());
-        assertThat(response.getStatus()).isEqualTo(NotificationStatus.PENDING);
+        assertThat(response.notificationId()).isEqualTo(notificationId);
+        assertThat(response.recipientUserId()).isEqualTo(entity.getRecipientUserId());
+        assertThat(response.status()).isEqualTo(NotificationStatus.PENDING);
     }
 
     @Test

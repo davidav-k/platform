@@ -15,14 +15,15 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.UUID;
 
-/**
- * Persistent notification record owned by notification-service.
- */
+
+@Getter
 @Entity
 @Table(name = "notifications")
 public class NotificationEntity {
@@ -54,9 +55,11 @@ public class NotificationEntity {
     @Column(name = "subject", length = 255)
     private String subject;
 
+    @Setter
     @Column(name = "body", nullable = false, columnDefinition = "text")
     private String body;
 
+    @Setter
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 32)
     private NotificationStatus status;
@@ -70,6 +73,7 @@ public class NotificationEntity {
     @Column(name = "sent_at")
     private OffsetDateTime sentAt;
 
+    @Setter
     @Column(name = "failure_reason", columnDefinition = "text")
     private String failureReason;
 
@@ -130,87 +134,4 @@ public class NotificationEntity {
         updatedAt = OffsetDateTime.now(ZoneOffset.UTC);
     }
 
-    public Long getId() {
-        return id;
-    }
-
-    public UUID getNotificationId() {
-        return notificationId;
-    }
-
-    public UUID getRecipientUserId() {
-        return recipientUserId;
-    }
-
-    public NotificationType getType() {
-        return type;
-    }
-
-    public NotificationChannel getChannel() {
-        return channel;
-    }
-
-    public String getSubject() {
-        return subject;
-    }
-
-    public void setSubject(String subject) {
-        this.subject = subject;
-    }
-
-    public String getBody() {
-        return body;
-    }
-
-    public void setBody(String body) {
-        this.body = body;
-    }
-
-    public NotificationStatus getStatus() {
-        return status;
-    }
-
-    public void setStatus(NotificationStatus status) {
-        this.status = status;
-    }
-
-    public OffsetDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public OffsetDateTime getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public OffsetDateTime getSentAt() {
-        return sentAt;
-    }
-
-    public void setSentAt(OffsetDateTime sentAt) {
-        this.sentAt = sentAt;
-    }
-
-    public String getFailureReason() {
-        return failureReason;
-    }
-
-    public String getSourceService() {
-        return sourceService;
-    }
-
-    public String getSourceEntityType() {
-        return sourceEntityType;
-    }
-
-    public UUID getSourceEntityId() {
-        return sourceEntityId;
-    }
-
-    public void setFailureReason(String failureReason) {
-        this.failureReason = failureReason;
-    }
-
-    public Long getVersion() {
-        return version;
-    }
 }

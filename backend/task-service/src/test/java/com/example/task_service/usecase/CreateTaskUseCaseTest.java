@@ -59,17 +59,17 @@ class CreateTaskUseCaseTest {
 
         CreateTaskResponse response = createTaskUseCase.create(request, createdByUserId);
 
-        assertThat(response.getTaskId()).isNotNull();
-        assertThat(response.getTitle()).isEqualTo("Prepare create task use case");
-        assertThat(response.getDescription()).isEqualTo("Implement MVP task creation.");
-        assertThat(response.getStatus()).isEqualTo(TaskStatus.NEW);
-        assertThat(response.getPriority()).isEqualTo(TaskPriority.HIGH);
-        assertThat(response.getAssigneeUserId()).isEqualTo(assigneeUserId);
-        assertThat(response.getCreatedByUserId()).isEqualTo(createdByUserId);
-        assertThat(response.getCreatedAt()).isNotNull();
+        assertThat(response.taskId()).isNotNull();
+        assertThat(response.title()).isEqualTo("Prepare create task use case");
+        assertThat(response.description()).isEqualTo("Implement MVP task creation.");
+        assertThat(response.status()).isEqualTo(TaskStatus.NEW);
+        assertThat(response.priority()).isEqualTo(TaskPriority.HIGH);
+        assertThat(response.assigneeUserId()).isEqualTo(assigneeUserId);
+        assertThat(response.createdByUserId()).isEqualTo(createdByUserId);
+        assertThat(response.createdAt()).isNotNull();
 
         TaskEntity persisted = taskRepository.findAll().stream()
-            .filter(task -> response.getTaskId().equals(task.getTaskId()))
+            .filter(task -> response.taskId().equals(task.getTaskId()))
             .findFirst()
             .orElseThrow();
 
@@ -77,7 +77,7 @@ class CreateTaskUseCaseTest {
         assertThat(persisted.getPriority()).isEqualTo(TaskPriority.HIGH);
         assertThat(persisted.getCreatedAt()).isNotNull();
         verify(taskNotificationPublisher).notifyTaskAssigned(new TaskNotificationContext(
-            response.getTaskId(), response.getTitle(), assigneeUserId, createdByUserId
+            response.taskId(), response.title(), assigneeUserId, createdByUserId
         ));
     }
 
@@ -101,8 +101,8 @@ class CreateTaskUseCaseTest {
             UUID.randomUUID()
         );
 
-        assertThat(response.getTaskId()).isNotNull();
-        assertThat(taskRepository.findByTaskId(response.getTaskId())).isPresent();
+        assertThat(response.taskId()).isNotNull();
+        assertThat(taskRepository.findByTaskId(response.taskId())).isPresent();
     }
 
     @Test
@@ -111,7 +111,7 @@ class CreateTaskUseCaseTest {
 
         CreateTaskResponse response = createTaskUseCase.create(request, UUID.randomUUID());
 
-        assertThat(response.getPriority()).isEqualTo(TaskPriority.MEDIUM);
+        assertThat(response.priority()).isEqualTo(TaskPriority.MEDIUM);
     }
 
     @Test

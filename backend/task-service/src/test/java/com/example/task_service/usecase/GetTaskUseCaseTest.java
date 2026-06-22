@@ -60,15 +60,15 @@ class GetTaskUseCaseTest {
 
         TaskResponse response = getTaskUseCase.getByTaskId(taskId);
 
-        assertThat(response.getTaskId()).isEqualTo(taskId);
-        assertThat(response.getTitle()).isEqualTo("Read task");
-        assertThat(response.getDescription()).isEqualTo("Return one task by public id.");
-        assertThat(response.getStatus()).isEqualTo(TaskStatus.IN_PROGRESS);
-        assertThat(response.getPriority()).isEqualTo(TaskPriority.HIGH);
-        assertThat(response.getAssigneeUserId()).isEqualTo(assigneeUserId);
-        assertThat(response.getCreatedByUserId()).isEqualTo(createdByUserId);
-        assertThat(response.getCreatedAt()).isNotNull();
-        assertThat(response.getUpdatedAt()).isNotNull();
+        assertThat(response.taskId()).isEqualTo(taskId);
+        assertThat(response.title()).isEqualTo("Read task");
+        assertThat(response.description()).isEqualTo("Return one task by public id.");
+        assertThat(response.status()).isEqualTo(TaskStatus.IN_PROGRESS);
+        assertThat(response.priority()).isEqualTo(TaskPriority.HIGH);
+        assertThat(response.assigneeUserId()).isEqualTo(assigneeUserId);
+        assertThat(response.createdByUserId()).isEqualTo(createdByUserId);
+        assertThat(response.createdAt()).isNotNull();
+        assertThat(response.updatedAt()).isNotNull();
     }
 
     @Test
@@ -78,7 +78,7 @@ class GetTaskUseCaseTest {
         saveTask(taskId, UUID.randomUUID(), userId);
         when(currentUserAccessProvider.currentUserAccess()).thenReturn(new CurrentUserAccess(userId, false));
 
-        assertThat(getTaskUseCase.getByTaskId(taskId).getTaskId()).isEqualTo(taskId);
+        assertThat(getTaskUseCase.getByTaskId(taskId).taskId()).isEqualTo(taskId);
     }
 
     @Test
@@ -88,7 +88,7 @@ class GetTaskUseCaseTest {
         saveTask(taskId, userId, UUID.randomUUID());
         when(currentUserAccessProvider.currentUserAccess()).thenReturn(new CurrentUserAccess(userId, false));
 
-        assertThat(getTaskUseCase.getByTaskId(taskId).getTaskId()).isEqualTo(taskId);
+        assertThat(getTaskUseCase.getByTaskId(taskId).taskId()).isEqualTo(taskId);
     }
 
     @Test

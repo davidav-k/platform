@@ -227,7 +227,7 @@ class TaskControllerTest {
         mockMvc.perform(post("/api/v1/tasks")
                 .with(authentication(authenticated(UUID.randomUUID())))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{invalid-json"))
+                .content("\"invalid-json\""))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.code").value(400))
             .andExpect(jsonPath("$.message").value("Request payload is not valid"));
@@ -440,7 +440,7 @@ class TaskControllerTest {
             .andExpect(jsonPath("$.data.task.updatedAt").value("2026-06-04T05:00:00Z"));
 
         verify(changeTaskStatusUseCase).changeStatus(eq(taskId), argThat(request ->
-            request.getStatus() == TaskStatus.IN_PROGRESS
+            request.status() == TaskStatus.IN_PROGRESS
         ));
     }
 
@@ -560,13 +560,13 @@ class TaskControllerTest {
             .andExpect(jsonPath("$.data.page.totalPages").value(1));
 
         verify(listTasksUseCase).list(argThat(query ->
-            query.getStatus() == null
-                && query.getPriority() == null
-                && query.getAssigneeUserId() == null
-                && query.getCreatedByUserId() == null
-                && query.getPage() == 0
-                && query.getSize() == 20
-                && "createdAt,desc".equals(query.getSort())
+            query.status() == null
+                && query.priority() == null
+                && query.assigneeUserId() == null
+                && query.createdByUserId() == null
+                && query.page() == 0
+                && query.size() == 20
+                && "createdAt,desc".equals(query.sort())
         ));
     }
 
@@ -592,13 +592,13 @@ class TaskControllerTest {
             .andExpect(jsonPath("$.data.page.size").value(10));
 
         verify(listTasksUseCase).list(argThat(query ->
-            query.getStatus() == TaskStatus.NEW
-                && query.getPriority() == TaskPriority.HIGH
-                && assigneeUserId.equals(query.getAssigneeUserId())
-                && createdByUserId.equals(query.getCreatedByUserId())
-                && query.getPage() == 0
-                && query.getSize() == 10
-                && "updatedAt,asc".equals(query.getSort())
+            query.status() == TaskStatus.NEW
+                && query.priority() == TaskPriority.HIGH
+                && assigneeUserId.equals(query.assigneeUserId())
+                && createdByUserId.equals(query.createdByUserId())
+                && query.page() == 0
+                && query.size() == 10
+                && "updatedAt,asc".equals(query.sort())
         ));
     }
 

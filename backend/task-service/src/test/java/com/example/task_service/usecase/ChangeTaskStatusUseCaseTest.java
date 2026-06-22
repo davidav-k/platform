@@ -61,7 +61,7 @@ class ChangeTaskStatusUseCaseTest {
             new UpdateTaskStatusRequest(TaskStatus.DONE)
         );
 
-        assertThat(response.getStatus()).isEqualTo(TaskStatus.DONE);
+        assertThat(response.status()).isEqualTo(TaskStatus.DONE);
     }
 
     @Test
@@ -76,7 +76,7 @@ class ChangeTaskStatusUseCaseTest {
             new UpdateTaskStatusRequest(TaskStatus.IN_PROGRESS)
         );
 
-        assertThat(response.getStatus()).isEqualTo(TaskStatus.IN_PROGRESS);
+        assertThat(response.status()).isEqualTo(TaskStatus.IN_PROGRESS);
     }
 
     @Test
@@ -91,7 +91,7 @@ class ChangeTaskStatusUseCaseTest {
             new UpdateTaskStatusRequest(TaskStatus.CANCELLED)
         );
 
-        assertThat(response.getStatus()).isEqualTo(TaskStatus.CANCELLED);
+        assertThat(response.status()).isEqualTo(TaskStatus.CANCELLED);
     }
 
     @Test

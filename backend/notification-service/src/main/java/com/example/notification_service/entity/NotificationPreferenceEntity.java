@@ -10,6 +10,7 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
+import lombok.Getter;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -18,6 +19,7 @@ import java.util.UUID;
 /**
  * Persistent notification delivery preferences for one platform user.
  */
+@Getter
 @Entity
 @Table(name = "notification_preferences")
 public class NotificationPreferenceEntity {
@@ -80,39 +82,4 @@ public class NotificationPreferenceEntity {
         updatedAt = OffsetDateTime.now(ZoneOffset.UTC);
     }
 
-    public Long getId() {
-        return id;
-    }
-
-    public UUID getUserId() {
-        return userId;
-    }
-
-    public boolean isEmailEnabled() {
-        return emailEnabled;
-    }
-
-    public void setEmailEnabled(boolean emailEnabled) {
-        this.emailEnabled = emailEnabled;
-    }
-
-    public boolean isInAppEnabled() {
-        return inAppEnabled;
-    }
-
-    public void setInAppEnabled(boolean inAppEnabled) {
-        this.inAppEnabled = inAppEnabled;
-    }
-
-    public OffsetDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public OffsetDateTime getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public Long getVersion() {
-        return version;
-    }
 }

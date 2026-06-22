@@ -64,8 +64,8 @@ class ListTasksUseCaseTest {
 
         TaskListResponse response = listTasksUseCase.list(query(null, null, null, null, 0, 20));
 
-        assertThat(response.getItems()).hasSize(2);
-        assertThat(response.getItems()).allMatch(task -> createdByUserId.equals(task.getCreatedByUserId()));
+        assertThat(response.items()).hasSize(2);
+        assertThat(response.items()).allMatch(task -> createdByUserId.equals(task.createdByUserId()));
     }
 
     @Test
@@ -75,8 +75,8 @@ class ListTasksUseCaseTest {
 
         TaskListResponse response = listTasksUseCase.list(query(null, null, null, null, 0, 20));
 
-        assertThat(response.getItems()).hasSize(2);
-        assertThat(response.getItems()).allMatch(task -> assigneeUserId.equals(task.getAssigneeUserId()));
+        assertThat(response.items()).hasSize(2);
+        assertThat(response.items()).allMatch(task -> assigneeUserId.equals(task.assigneeUserId()));
     }
 
     @Test
@@ -87,8 +87,8 @@ class ListTasksUseCaseTest {
 
         TaskListResponse response = listTasksUseCase.list(query(null, null, null, null, 0, 20));
 
-        assertThat(response.getItems()).isEmpty();
-        assertThat(response.getPage().getTotalElements()).isZero();
+        assertThat(response.items()).isEmpty();
+        assertThat(response.page().totalElements()).isZero();
     }
 
     @Test
@@ -101,74 +101,74 @@ class ListTasksUseCaseTest {
         );
         TaskListResponse paged = listTasksUseCase.list(query(null, null, null, null, 1, 1));
 
-        assertThat(filtered.getItems()).hasSize(1);
-        assertThat(filtered.getItems().get(0).getTitle()).isEqualTo("Done low");
-        assertThat(paged.getItems()).hasSize(1);
-        assertThat(paged.getPage().getTotalElements()).isEqualTo(2);
-        assertThat(paged.getPage().getTotalPages()).isEqualTo(2);
+        assertThat(filtered.items()).hasSize(1);
+        assertThat(filtered.items().get(0).title()).isEqualTo("Done low");
+        assertThat(paged.items()).hasSize(1);
+        assertThat(paged.page().totalElements()).isEqualTo(2);
+        assertThat(paged.page().totalPages()).isEqualTo(2);
     }
 
     @Test
     void listsAllTasks() {
         TaskListResponse response = listTasksUseCase.list(query(null, null, null, null, 0, 20));
 
-        assertThat(response.getItems()).hasSize(3);
-        assertThat(response.getPage().getNumber()).isZero();
-        assertThat(response.getPage().getSize()).isEqualTo(20);
-        assertThat(response.getPage().getTotalElements()).isEqualTo(3);
-        assertThat(response.getPage().getTotalPages()).isEqualTo(1);
+        assertThat(response.items()).hasSize(3);
+        assertThat(response.page().number()).isZero();
+        assertThat(response.page().size()).isEqualTo(20);
+        assertThat(response.page().totalElements()).isEqualTo(3);
+        assertThat(response.page().totalPages()).isEqualTo(1);
     }
 
     @Test
     void filtersByStatus() {
         TaskListResponse response = listTasksUseCase.list(query(TaskStatus.NEW, null, null, null, 0, 20));
 
-        assertThat(response.getItems()).hasSize(1);
-        assertThat(response.getItems().get(0).getStatus()).isEqualTo(TaskStatus.NEW);
+        assertThat(response.items()).hasSize(1);
+        assertThat(response.items().get(0).status()).isEqualTo(TaskStatus.NEW);
     }
 
     @Test
     void filtersByPriority() {
         TaskListResponse response = listTasksUseCase.list(query(null, TaskPriority.HIGH, null, null, 0, 20));
 
-        assertThat(response.getItems()).hasSize(1);
-        assertThat(response.getItems().get(0).getPriority()).isEqualTo(TaskPriority.HIGH);
+        assertThat(response.items()).hasSize(1);
+        assertThat(response.items().get(0).priority()).isEqualTo(TaskPriority.HIGH);
     }
 
     @Test
     void filtersByAssigneeUserId() {
         TaskListResponse response = listTasksUseCase.list(query(null, null, assigneeUserId, null, 0, 20));
 
-        assertThat(response.getItems()).hasSize(2);
-        assertThat(response.getItems()).allMatch(task -> assigneeUserId.equals(task.getAssigneeUserId()));
+        assertThat(response.items()).hasSize(2);
+        assertThat(response.items()).allMatch(task -> assigneeUserId.equals(task.assigneeUserId()));
     }
 
     @Test
     void filtersByCreatedByUserId() {
         TaskListResponse response = listTasksUseCase.list(query(null, null, null, createdByUserId, 0, 20));
 
-        assertThat(response.getItems()).hasSize(2);
-        assertThat(response.getItems()).allMatch(task -> createdByUserId.equals(task.getCreatedByUserId()));
+        assertThat(response.items()).hasSize(2);
+        assertThat(response.items()).allMatch(task -> createdByUserId.equals(task.createdByUserId()));
     }
 
     @Test
     void returnsPaginationMetadata() {
         TaskListResponse response = listTasksUseCase.list(query(null, null, null, null, 1, 2));
 
-        assertThat(response.getItems()).hasSize(1);
-        assertThat(response.getPage().getNumber()).isEqualTo(1);
-        assertThat(response.getPage().getSize()).isEqualTo(2);
-        assertThat(response.getPage().getTotalElements()).isEqualTo(3);
-        assertThat(response.getPage().getTotalPages()).isEqualTo(2);
+        assertThat(response.items()).hasSize(1);
+        assertThat(response.page().number()).isEqualTo(1);
+        assertThat(response.page().size()).isEqualTo(2);
+        assertThat(response.page().totalElements()).isEqualTo(3);
+        assertThat(response.page().totalPages()).isEqualTo(2);
     }
 
     @Test
     void responseDoesNotExposeDatabaseId() {
         TaskListResponse response = listTasksUseCase.list(query(null, null, null, null, 0, 20));
 
-        assertThat(response.getItems().get(0).getTaskId()).isNotNull();
-        assertThat(response.getItems().get(0).getCreatedAt()).isNotNull();
-        assertThat(response.getItems().get(0).getUpdatedAt()).isNotNull();
+        assertThat(response.items().get(0).taskId()).isNotNull();
+        assertThat(response.items().get(0).createdAt()).isNotNull();
+        assertThat(response.items().get(0).updatedAt()).isNotNull();
     }
 
     private TaskListQuery query(TaskStatus status, TaskPriority priority, UUID assigneeUserId,

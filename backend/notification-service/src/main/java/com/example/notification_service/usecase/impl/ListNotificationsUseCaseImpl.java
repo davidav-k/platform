@@ -58,16 +58,16 @@ public class ListNotificationsUseCaseImpl implements ListNotificationsUseCase {
         if (query == null) {
             throw new IllegalArgumentException("Notification list query is required");
         }
-        if (query.getPage() < 0) {
+        if (query.page() < 0) {
             throw new IllegalArgumentException("Page must be greater than or equal to 0");
         }
-        if (query.getSize() < 1 || query.getSize() > 100) {
+        if (query.size() < 1 || query.size() > 100) {
             throw new IllegalArgumentException("Size must be between 1 and 100");
         }
     }
 
     private Pageable toPageable(NotificationListQuery query) {
-        return PageRequest.of(query.getPage(), query.getSize(), toSort(query.getSort()));
+        return PageRequest.of(query.page(), query.size(), toSort(query.sort()));
     }
 
     private Sort toSort(String sortValue) {
@@ -93,17 +93,17 @@ public class ListNotificationsUseCaseImpl implements ListNotificationsUseCase {
     private Specification<NotificationEntity> toSpecification(NotificationListQuery query) {
         return (root, criteriaQuery, criteriaBuilder) -> {
             List<Predicate> predicates = new ArrayList<>();
-            if (query.getRecipientUserId() != null) {
-                predicates.add(criteriaBuilder.equal(root.get("recipientUserId"), query.getRecipientUserId()));
+            if (query.recipientUserId() != null) {
+                predicates.add(criteriaBuilder.equal(root.get("recipientUserId"), query.recipientUserId()));
             }
-            if (query.getStatus() != null) {
-                predicates.add(criteriaBuilder.equal(root.get("status"), query.getStatus()));
+            if (query.status() != null) {
+                predicates.add(criteriaBuilder.equal(root.get("status"), query.status()));
             }
-            if (query.getChannel() != null) {
-                predicates.add(criteriaBuilder.equal(root.get("channel"), query.getChannel()));
+            if (query.channel() != null) {
+                predicates.add(criteriaBuilder.equal(root.get("channel"), query.channel()));
             }
-            if (query.getType() != null) {
-                predicates.add(criteriaBuilder.equal(root.get("type"), query.getType()));
+            if (query.type() != null) {
+                predicates.add(criteriaBuilder.equal(root.get("type"), query.type()));
             }
             return criteriaBuilder.and(predicates.toArray(Predicate[]::new));
         };

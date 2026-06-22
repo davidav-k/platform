@@ -13,30 +13,24 @@ import com.example.task_service.usecase.CreateTaskUseCase;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Validator;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Set;
 import java.util.UUID;
 
 @Service
 @Transactional
+@Slf4j
+@RequiredArgsConstructor
 public class CreateTaskUseCaseImpl implements CreateTaskUseCase {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(CreateTaskUseCaseImpl.class);
 
     private final TaskRepository taskRepository;
     private final Validator validator;
     private final TaskNotificationPublisher taskNotificationPublisher;
 
-    public CreateTaskUseCaseImpl(TaskRepository taskRepository, Validator validator,
-                                 TaskNotificationPublisher taskNotificationPublisher) {
-        this.taskRepository = taskRepository;
-        this.validator = validator;
-        this.taskNotificationPublisher = taskNotificationPublisher;
-    }
 
     @Override
     public CreateTaskResponse create(CreateTaskRequest request, UUID createdByUserId) {
@@ -59,19 +53,19 @@ public class CreateTaskUseCaseImpl implements CreateTaskUseCase {
     }
 
     private void publishAssignmentNotification(CreateTaskResponse task) {
-        if (task.getAssigneeUserId() == null) {
+        if (task.assigneeUserId() == null) {
             return;
         }
         try {
             taskNotificationPublisher.notifyTaskAssigned(new TaskNotificationContext(
-                task.getTaskId(),
-                task.getTitle(),
-                task.getAssigneeUserId(),
-                task.getCreatedByUserId()
+                task.taskId(),
+                task.title(),
+                task.assigneeUserId(),
+                task.createdByUserId()
             ));
         } catch (RuntimeException exception) {
-            LOGGER.warn("Task assignment notification failed for taskId={} and assigneeUserId={}",
-                task.getTaskId(), task.getAssigneeUserId(), exception);
+            log.warn("Task assignment notification failed for taskId={} and assigneeUserId={}",
+                task.taskId(), task.assigneeUserId(), exception);
         }
     }
 

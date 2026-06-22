@@ -52,13 +52,13 @@ class TaskNotificationPublisherTest {
 
         verify(notificationClient).createNotification(captor.capture());
         CreateNotificationRequest request = captor.getValue();
-        assertThat(request.getRecipientUserId()).isEqualTo(assigneeUserId);
-        assertThat(request.getType()).isEqualTo("TASK_ASSIGNED");
-        assertThat(request.getTitle()).isEqualTo("New task assigned");
-        assertThat(request.getMessage()).isEqualTo("Task \"Task title\" was assigned to you");
-        assertThat(request.getSourceService()).isEqualTo("task-service");
-        assertThat(request.getSourceEntityType()).isEqualTo("TASK");
-        assertThat(request.getSourceEntityId()).isNotNull();
+        assertThat(request.recipientUserId()).isEqualTo(assigneeUserId);
+        assertThat(request.type()).isEqualTo("TASK_ASSIGNED");
+        assertThat(request.title()).isEqualTo("New task assigned");
+        assertThat(request.message()).isEqualTo("Task \"Task title\" was assigned to you");
+        assertThat(request.sourceService()).isEqualTo("task-service");
+        assertThat(request.sourceEntityType()).isEqualTo("TASK");
+        assertThat(request.sourceEntityId()).isNotNull();
     }
 
     @Test

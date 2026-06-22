@@ -11,23 +11,19 @@ import com.example.notification_service.usecase.CreateSystemNotificationUseCase;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Validator;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Set;
 
 @Service
+@RequiredArgsConstructor
 @Transactional
 public class CreateSystemNotificationUseCaseImpl implements CreateSystemNotificationUseCase {
 
     private final NotificationRepository notificationRepository;
     private final Validator validator;
-
-    public CreateSystemNotificationUseCaseImpl(NotificationRepository notificationRepository,
-                                               Validator validator) {
-        this.notificationRepository = notificationRepository;
-        this.validator = validator;
-    }
 
     @Override
     public NotificationResponse create(CreateSystemNotificationRequest request) {
@@ -35,15 +31,15 @@ public class CreateSystemNotificationUseCaseImpl implements CreateSystemNotifica
 
         NotificationEntity notification = new NotificationEntity(
             null,
-            request.getRecipientUserId(),
-            request.getType(),
+            request.recipientUserId(),
+            request.type(),
             NotificationChannel.IN_APP,
-            trimNullable(request.getTitle()),
-            request.getMessage().trim(),
+            trimNullable(request.title()),
+            request.message().trim(),
             NotificationStatus.PENDING,
-            request.getSourceService().trim(),
-            request.getSourceEntityType().trim(),
-            request.getSourceEntityId()
+            request.sourceService().trim(),
+            request.sourceEntityType().trim(),
+            request.sourceEntityId()
         );
         return NotificationMapper.toResponse(notificationRepository.save(notification));
     }
@@ -59,6 +55,6 @@ public class CreateSystemNotificationUseCaseImpl implements CreateSystemNotifica
     }
 
     private String trimNullable(String value) {
-        return value == null ? null : value.trim();
+        return value == null ? null : value.strip();
     }
 }

@@ -37,7 +37,7 @@ public class ChangeTaskStatusUseCaseImpl implements ChangeTaskStatusUseCase {
             throw new TaskNotFoundException(taskId);
         }
 
-        task.setStatus(request.getStatus());
+        task.setStatus(request.status());
         TaskEntity updatedTask = taskRepository.saveAndFlush(task);
         return toResponse(updatedTask);
     }
@@ -49,7 +49,7 @@ public class ChangeTaskStatusUseCaseImpl implements ChangeTaskStatusUseCase {
         if (request == null) {
             throw new IllegalArgumentException("Task status request is required");
         }
-        if (request.getStatus() == null) {
+        if (request.status() == null) {
             throw new IllegalArgumentException("Status is required");
         }
     }

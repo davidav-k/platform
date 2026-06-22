@@ -120,8 +120,7 @@ class NotificationControllerTest {
 
     @Test
     void rejectsMissingRecipientUserId() throws Exception {
-        CreateNotificationRequest request = validRequest();
-        request.setRecipientUserId(null);
+        CreateNotificationRequest request = validRequest().withRecipientUserId(null);
 
         mockMvc.perform(post("/api/v1/notifications")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -133,8 +132,8 @@ class NotificationControllerTest {
 
     @Test
     void rejectsBlankBody() throws Exception {
-        CreateNotificationRequest request = validRequest();
-        request.setBody("   ");
+        CreateNotificationRequest request = validRequest().withBody("  ");
+
 
         mockMvc.perform(post("/api/v1/notifications")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -243,13 +242,13 @@ class NotificationControllerTest {
                 .andExpect(status().isOk());
 
         verify(listNotificationsUseCase).list(argThat(query ->
-                recipientUserId.equals(query.getRecipientUserId())
-                        && query.getStatus() == NotificationStatus.SENT
-                        && query.getChannel() == NotificationChannel.EMAIL
-                        && query.getType() == NotificationType.TASK_ASSIGNED
-                        && query.getPage() == 1
-                        && query.getSize() == 10
-                        && "updatedAt,asc".equals(query.getSort())
+                recipientUserId.equals(query.recipientUserId())
+                        && query.status() == NotificationStatus.SENT
+                        && query.channel() == NotificationChannel.EMAIL
+                        && query.type() == NotificationType.TASK_ASSIGNED
+                        && query.page() == 1
+                        && query.size() == 10
+                        && "updatedAt,asc".equals(query.sort())
         ));
     }
 

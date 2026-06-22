@@ -36,11 +36,11 @@ public class CreateNotificationUseCaseImpl implements CreateNotificationUseCase 
 
         NotificationEntity notification = new NotificationEntity(
                 null,
-                request.getRecipientUserId(),
-                request.getType(),
-                request.getChannel(),
-                trimNullable(request.getSubject()),
-                request.getBody().trim(),
+                request.recipientUserId(),
+                request.type(),
+                request.channel(),
+                trimNullable(request.subject()),
+                request.body().trim(),
                 NotificationStatus.PENDING
         );
 
