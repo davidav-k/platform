@@ -1,3 +1,10 @@
 spring:
   application:
     name: task-service
+
+outbox:
+  publisher:
+    enabled: false
+    batch-size: 20
+    max-retries: 3
+    fixed-delay: 5s

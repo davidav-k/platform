@@ -123,4 +123,23 @@ public class OutboxEventEntity {
     void beforeUpdate() {
         updatedAt = OffsetDateTime.now(ZoneOffset.UTC);
     }
+
+    public void markProcessing() {
+        status = OutboxEventStatus.PROCESSING;
+        errorMessage = null;
+        processedAt = null;
+    }
+
+    public void markProcessed() {
+        status = OutboxEventStatus.PROCESSED;
+        processedAt = OffsetDateTime.now(ZoneOffset.UTC);
+        errorMessage = null;
+    }
+
+    public void markFailed(String errorMessage) {
+        status = OutboxEventStatus.FAILED;
+        retryCount = retryCount == null ? 1 : retryCount + 1;
+        this.errorMessage = errorMessage;
+        processedAt = null;
+    }
 }
