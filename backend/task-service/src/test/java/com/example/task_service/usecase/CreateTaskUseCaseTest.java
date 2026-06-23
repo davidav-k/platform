@@ -7,18 +7,24 @@ import com.example.task_service.enumeration.TaskPriority;
 import com.example.task_service.enumeration.TaskStatus;
 import com.example.task_service.notification.TaskNotificationContext;
 import com.example.task_service.notification.TaskNotificationPublisher;
+import com.example.task_service.outbox.OutboxEventService;
 import com.example.task_service.repository.TaskRepository;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.ConstraintViolationException;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -43,11 +49,17 @@ class CreateTaskUseCaseTest {
     @Autowired
     private TaskRepository taskRepository;
 
+    @Autowired
+    private ObjectMapper objectMapper;
+
     @MockitoBean
     private TaskNotificationPublisher taskNotificationPublisher;
 
+    @MockitoBean
+    private OutboxEventService outboxEventService;
+
     @Test
-    void createsTaskWithNewStatusGeneratedTaskIdAndPersistsEntity() {
+    void createsTaskWithNewStatusPersistsEntityAndWritesTaskCreatedOutboxEvent() throws Exception {
         UUID createdByUserId = UUID.randomUUID();
         UUID assigneeUserId = UUID.randomUUID();
         CreateTaskRequest request = new CreateTaskRequest(
@@ -76,6 +88,25 @@ class CreateTaskUseCaseTest {
         assertThat(persisted.getStatus()).isEqualTo(TaskStatus.NEW);
         assertThat(persisted.getPriority()).isEqualTo(TaskPriority.HIGH);
         assertThat(persisted.getCreatedAt()).isNotNull();
+
+        ArgumentCaptor<String> payloadCaptor = ArgumentCaptor.forClass(String.class);
+        verify(outboxEventService).saveNewEvent(
+            eq("TASK"),
+            eq(response.taskId()),
+            eq("TASK_CREATED"),
+            payloadCaptor.capture()
+        );
+
+        JsonNode payload = objectMapper.readTree(payloadCaptor.getValue());
+        assertThat(payload.get("taskId").asText()).isEqualTo(response.taskId().toString());
+        assertThat(payload.get("title").asText()).isEqualTo("Prepare create task use case");
+        assertThat(payload.get("description").asText()).isEqualTo("Implement MVP task creation.");
+        assertThat(payload.get("status").asText()).isEqualTo("NEW");
+        assertThat(payload.get("priority").asText()).isEqualTo("HIGH");
+        assertThat(payload.get("assigneeUserId").asText()).isEqualTo(assigneeUserId.toString());
+        assertThat(payload.get("createdByUserId").asText()).isEqualTo(createdByUserId.toString());
+        assertThat(OffsetDateTime.parse(payload.get("createdAt").asText())).isEqualTo(response.createdAt());
+
         verify(taskNotificationPublisher).notifyTaskAssigned(new TaskNotificationContext(
             response.taskId(), response.title(), assigneeUserId, createdByUserId
         ));
@@ -87,6 +118,7 @@ class CreateTaskUseCaseTest {
 
         createTaskUseCase.create(request, UUID.randomUUID());
 
+        verify(outboxEventService).saveNewEvent(eq("TASK"), any(), eq("TASK_CREATED"), any());
         verify(taskNotificationPublisher, never()).notifyTaskAssigned(any());
     }
 
@@ -103,6 +135,24 @@ class CreateTaskUseCaseTest {
 
         assertThat(response.taskId()).isNotNull();
         assertThat(taskRepository.findByTaskId(response.taskId())).isPresent();
+        verify(outboxEventService).saveNewEvent(eq("TASK"), eq(response.taskId()), eq("TASK_CREATED"), any());
+    }
+
+    @Test
+    void outboxFailureRollsBackTaskAndSkipsAssignmentNotification() {
+        UUID assigneeUserId = UUID.randomUUID();
+        long taskCountBeforeCreate = taskRepository.count();
+        doThrow(new IllegalStateException("outbox unavailable"))
+            .when(outboxEventService).saveNewEvent(any(), any(), any(), any());
+
+        assertThatThrownBy(() -> createTaskUseCase.create(
+            new CreateTaskRequest("Rollback when outbox fails", null, TaskPriority.HIGH, assigneeUserId),
+            UUID.randomUUID()
+        )).isInstanceOf(IllegalStateException.class)
+            .hasMessage("outbox unavailable");
+
+        assertThat(taskRepository.count()).isEqualTo(taskCountBeforeCreate);
+        verify(taskNotificationPublisher, never()).notifyTaskAssigned(any());
     }
 
     @Test
