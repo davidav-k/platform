@@ -24,9 +24,7 @@ import java.util.UUID;
  * Persistent outbox record for task-service integration events.
  *
  * <p>The row is intended to be written in the same local transaction as the
- * task aggregate change that produced it. A future task-service publisher will
- * read these records and deliver them asynchronously. This entity does not
- * publish events by itself and is not wired into task use cases yet.</p>
+ * task aggregate change that produced it. </p>
  */
 @Getter
 @Entity
