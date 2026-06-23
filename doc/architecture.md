@@ -25,7 +25,7 @@ The Docker Compose stack currently runs:
 | --- | --- | --- |
 | `user-service` | Users, roles, authentication, JWT issuance and validation, MFA, profiles, and account lifecycle | `8085` |
 | `task-service` | Task lifecycle, ownership, assignment, status changes, filtering, pagination, and soft delete | `8086` |
-| `notification-service` | Notification persistence, create, get, list, filtering, pagination, and task-created integration | `8087` |
+| `notification-service` | Notification persistence, create, get, list, filtering, pagination, and task-assignment notification integration | `8087` |
 | `api-gateway` | External entry point, JWT early rejection, routing, CORS, and circuit breaker fallback | `8080` |
 | `frontend` | Vue 3 production bundle served by nginx with SPA route fallback | `5173` |
 | `config-server` | Spring Cloud Config native repository mounted from `./config` | `8888` |
