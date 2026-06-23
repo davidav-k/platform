@@ -12,6 +12,7 @@ import com.example.task_service.usecase.ListTasksUseCase;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -26,6 +27,7 @@ import java.util.Set;
 import java.util.UUID;
 
 @Service
+@RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class ListTasksUseCaseImpl implements ListTasksUseCase {
 
@@ -40,11 +42,6 @@ public class ListTasksUseCaseImpl implements ListTasksUseCase {
 
     private final TaskRepository taskRepository;
     private final CurrentUserAccessProvider currentUserAccessProvider;
-
-    public ListTasksUseCaseImpl(TaskRepository taskRepository, CurrentUserAccessProvider currentUserAccessProvider) {
-        this.taskRepository = taskRepository;
-        this.currentUserAccessProvider = currentUserAccessProvider;
-    }
 
     @Override
     public TaskListResponse list(TaskListQuery query) {

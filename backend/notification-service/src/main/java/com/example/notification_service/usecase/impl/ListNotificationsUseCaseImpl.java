@@ -9,6 +9,7 @@ import com.example.notification_service.mapper.NotificationMapper;
 import com.example.notification_service.repository.NotificationRepository;
 import com.example.notification_service.usecase.ListNotificationsUseCase;
 import jakarta.persistence.criteria.Predicate;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -25,6 +26,7 @@ import java.util.Set;
  * Lists notifications with validated filtering, pagination, and sorting.
  */
 @Service
+@RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class ListNotificationsUseCaseImpl implements ListNotificationsUseCase {
 
@@ -34,10 +36,6 @@ public class ListNotificationsUseCaseImpl implements ListNotificationsUseCase {
     );
 
     private final NotificationRepository notificationRepository;
-
-    public ListNotificationsUseCaseImpl(NotificationRepository notificationRepository) {
-        this.notificationRepository = notificationRepository;
-    }
 
     @Override
     public NotificationListResponse list(NotificationListQuery query) {

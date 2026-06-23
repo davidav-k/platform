@@ -37,13 +37,13 @@ public class CreateTaskUseCaseImpl implements CreateTaskUseCase {
         validate(request, createdByUserId);
 
         TaskEntity task = new TaskEntity(
-            UUID.randomUUID(),
-            request.getTitle().trim(),
-            request.getDescription(),
-            TaskStatus.NEW,
-            priorityOrDefault(request),
-            request.getAssigneeUserId(),
-            createdByUserId
+                UUID.randomUUID(),
+                request.getTitle().trim(),
+                request.getDescription(),
+                TaskStatus.NEW,
+                priorityOrDefault(request),
+                request.getAssigneeUserId(),
+                createdByUserId
         );
 
         TaskEntity saved = taskRepository.saveAndFlush(task);
@@ -58,14 +58,14 @@ public class CreateTaskUseCaseImpl implements CreateTaskUseCase {
         }
         try {
             taskNotificationPublisher.notifyTaskAssigned(new TaskNotificationContext(
-                task.taskId(),
-                task.title(),
-                task.assigneeUserId(),
-                task.createdByUserId()
+                    task.taskId(),
+                    task.title(),
+                    task.assigneeUserId(),
+                    task.createdByUserId()
             ));
         } catch (RuntimeException exception) {
             log.warn("Task assignment notification failed for taskId={} and assigneeUserId={}",
-                task.taskId(), task.assigneeUserId(), exception);
+                    task.taskId(), task.assigneeUserId(), exception);
         }
     }
 
@@ -88,14 +88,14 @@ public class CreateTaskUseCaseImpl implements CreateTaskUseCase {
 
     private CreateTaskResponse toResponse(TaskEntity task) {
         return new CreateTaskResponse(
-            task.getTaskId(),
-            task.getTitle(),
-            task.getDescription(),
-            task.getStatus(),
-            task.getPriority(),
-            task.getAssigneeUserId(),
-            task.getCreatedByUserId(),
-            task.getCreatedAt()
+                task.getTaskId(),
+                task.getTitle(),
+                task.getDescription(),
+                task.getStatus(),
+                task.getPriority(),
+                task.getAssigneeUserId(),
+                task.getCreatedByUserId(),
+                task.getCreatedAt()
         );
     }
 }

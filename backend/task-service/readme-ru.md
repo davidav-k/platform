@@ -2,7 +2,7 @@
 
 ## Статус
 
-Реализованы все необходимые функции, связанные с обработкой задач типа MVP: создание, получение информации о задачах, их перечисление и частичная обновка. Сервис запускается, регистрируется в системе Eureka и загружает конфигурацию с сервера Config Server.
+Реализованы все необходимые функции, связанные с обработкой задач типа MVP: создание, получение информации о задачах, их перечисление и частичное изменение. Сервис запускается, регистрируется в системе Eureka и загружает конфигурацию с сервера Config Server.
 
 ## Цель
 
@@ -25,7 +25,7 @@
 
 Flyway отвечает за эволюцию схемы обработки задач. Версии изменений хранятся в директории `src/main/resources/db/migration` ; исходная версия MVP находится в директории `V1__task_service_baseline.sql` .
 
-Настройки базы данных во время выполнения программы предоставляются сервером конфигурации `config/task-service-dev.yml` . Имя базы данных для сервисов выполнения задач по умолчанию составляет `tasks_db` до `TASK_POSTGRES_DB` .
+Настройки базы данных во время выполнения программы предоставляются сервером конфигурации `config/task-service-dev.yml` . Имя базы данных для сервисов выполнения задач по умолчанию составляет `tasks_db`.
 
 ## Аутентификация
 
@@ -92,7 +92,7 @@ curl -i http://localhost:8080/api/tasks
 Внешние клиенты должны обращаться к сервису task-service через API-шлюз:
 
 *   Маршрут прохождения: `http://localhost:8080/api/tasks`
-*   Внутренний маршрут обслуживания: `http://localhost:8086/api/v1/tasks`
+*   Внутренний маршрут: `http://localhost:8086/api/v1/tasks`
 
 ### `POST /api/v1/tasks`
 
@@ -103,20 +103,6 @@ curl -i http://localhost:8080/api/tasks
 *   Аутентификация: обязательна
 *   Собственник: `createdByUserId` определяется на основании информации, содержащейся в подписанном JWT-сообщении.
 *   Маршрут прохождения: `POST /api/tasks`
-
-Пример использования Gateway:
-
-```bash
-curl -i -X POST http://localhost:8080/api/tasks \
-  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "Implement login",
-    "description": "Create login functionality",
-    "priority": "HIGH",
-    "assigneeUserId": "11111111-1111-1111-1111-111111111111"
-  }'
-```
 
 Форма тела в ответе:
 
@@ -140,19 +126,7 @@ curl -i -X POST http://localhost:8080/api/tasks \
 }
 ```
 
-`createdByUserId` игнорируется, если сообщение отправлено клиентом.
-
-```bash
-curl -i -X POST http://localhost:8080/api/tasks \
-  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "Ownership is server controlled",
-    "createdByUserId": "00000000-0000-0000-0000-000000000000"
-  }'
-```
-
-Хранимый объект `createdByUserId` по-прежнему является субъектом подписи JWT, прошедшим аутентификацию.
+Хранимый объект `createdByUserId`  является субъектом подписи JWT, прошедшим аутентификацию.
 
 ### `GET /api/v1/tasks/{taskId}`
 
@@ -161,45 +135,13 @@ curl -i -X POST http://localhost:8080/api/tasks \
 *   Ответ в формате DTO: `TaskResponse` в стандартной оболочке `data.task` .
 *   Аутентификация: обязательна
 *   Разрешения на доступ: пользователи с правами администратора могут просматривать любые задачи. Остальные пользователи должны быть либо создателями этих задач, либо лицами, которым они были поручены.
-*   Недоделанные задачи возвращаются в состояние `404 NOT_FOUND .`
+*   Если нет разрешения на доступ возвращается  `404 NOT_FOUND .`
 *   Маршрут прохождения: `GET /api/tasks/{taskId}`
 
-Пример использования Gateway:
-
-```bash
-TASK_ID="<task-uuid>"
-
-curl -i \
-  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
-  "http://localhost:8080/api/tasks/${TASK_ID}"
-```
-
-Форма тела в ответе:
-
-```json
-{
-  "code": 200,
-  "status": "OK",
-  "message": "Task retrieved successfully.",
-  "data": {
-    "task": {
-      "taskId": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
-      "title": "Implement login",
-      "description": "Create login functionality",
-      "status": "NEW",
-      "priority": "HIGH",
-      "assigneeUserId": "11111111-1111-1111-1111-111111111111",
-      "createdByUserId": "22222222-2222-2222-2222-222222222222",
-      "createdAt": "2026-06-03T10:15:30Z",
-      "updatedAt": "2026-06-03T10:15:30Z"
-    }
-  }
-}
-```
 
 ### `GET /api/v1/tasks`
 
-Возвращает список задач в формате страницированного списка через `ListTasksUseCase` .
+Возвращает список задач в формате постраничного списка через `ListTasksUseCase` .
 
 *   Необязательные фильтры: `status` , `priority` , `assigneeUserId` , `createdByUserId`
 *   Нумерация страниц: `page` по умолчанию равно `0` , `size` по умолчанию равно `20 .`
@@ -208,20 +150,6 @@ curl -i \
 *   Аутентификация: обязательна
 *   Разрешения на доступ: пользователи с правами администратора могут видеть все задачи; остальные пользователи могут видеть только те задачи, которые они сами создали или которые им поручены.
 *   Маршрут прохождения: `GET /api/tasks`
-
-Примеры использования Gateway:
-
-```bash
-curl -i \
-  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
-  "http://localhost:8080/api/tasks?page=0&size=20"
-```
-
-```bash
-curl -i \
-  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
-  "http://localhost:8080/api/tasks?status=NEW&priority=HIGH&assigneeUserId=11111111-1111-1111-1111-111111111111&page=0&size=20"
-```
 
 Форма тела в ответе:
 
@@ -267,17 +195,6 @@ curl -i \
 *   Задачи, которые отсутствуют или недоступны для выполнения, обозначаются как `404 NOT_FOUND .`
 *   Маршрут прохождения: `PATCH /api/tasks/{taskId}`
 
-Пример использования Gateway:
-
-```bash
-curl -i -X PATCH "http://localhost:8080/api/tasks/${TASK_ID}" \
-  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "Updated task title",
-    "priority": "HIGH"
-  }'
-```
 
 ### `PATCH /api/v1/tasks/{taskId}/status`
 
@@ -290,14 +207,7 @@ curl -i -X PATCH "http://localhost:8080/api/tasks/${TASK_ID}" \
 *   Другие поля, связанные с выполнением задач, остаются без изменений. Обработкой данных, связанных с `updatedAt` , занимается соответствующий сервис.
 *   Маршрут прохождения: `PATCH /api/tasks/{taskId}/status`
 
-Пример использования Gateway:
 
-```bash
-curl -i -X PATCH "http://localhost:8080/api/tasks/${TASK_ID}/status" \
-  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
-  -H "Content-Type: application/json" \
-  -d '{"status":"IN_PROGRESS"}'
-```
 
 ### `DELETE /api/v1/tasks/{taskId}`
 
@@ -305,25 +215,19 @@ curl -i -X PATCH "http://localhost:8080/api/tasks/${TASK_ID}/status" \
 
 *   Пользователи с правами администратора могут удалять любые задачи. Другие пользователи могут удалять только те задачи, которые сами создали.
 *   Получатели задач не могут удалять те задачи, которые они сами не создавали.
-*   Ответ: `200 OK` с стандартной метаданными ответа и без какого-либо данных.
+*   Ответ: `200 OK` со стандартными метаданными ответа и без каких-либо данных.
 *   Задачи, которые отсутствуют, недоступны или уже удалены, отображаются как `404 NOT_FOUND .`
 *   Удаленные задачи не учитываются при выполнении обычных операций по получению информации о задачах и их перечислении. Кроме того, с удаленными задачами невозможно выполнять никаких действий.
 *   Времена удаления данных и идентификаторы участников операций остаются конфиденциальной информацией и не разглашаются в данных, передаваемых в рамках задач.
 *   Маршрут прохождения: `DELETE /api/tasks/{taskId}`
 
-Пример использования Gateway:
-
-```bash
-curl -i -X DELETE "http://localhost:8080/api/tasks/${TASK_ID}" \
-  -H "Authorization: Bearer ${ACCESS_TOKEN}"
-```
 
 ### `PATCH /api/v1/tasks/{taskId}/assignee`
 
 Назначает, переназначает или снимает с кого-либо обязанности по выполнению задачи с помощью символа `AssignTaskUseCase` .
 
 *   Поле для ввода запроса: `assigneeUserId` в формате UUID, или явное указание значения `null` для отмены присвоения.
-*   Это поле обязательно должно быть заполнено; пустой объект будет отклонен.
+*   Это поле обязательно должно быть заполнено; пустое полео будет отклонено.
 *   Пользователи с правами администратора могут назначать любые задачи другим пользователям. Остальные пользователи должны сами создавать задачи.
 *   Получатели задач не могут переназначать те задачи, которые они сами не создавали.
 *   Задачи, которые отсутствуют, недоступны или были удалены, отображаются как `404 NOT_FOUND .`
@@ -333,18 +237,10 @@ curl -i -X DELETE "http://localhost:8080/api/tasks/${TASK_ID}" \
 
 Пример использования Gateway:
 
-```bash
-curl -i -X PATCH "http://localhost:8080/api/tasks/${TASK_ID}/assignee" \
-  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
-  -H "Content-Type: application/json" \
-  -d '{"assigneeUserId":"11111111-1111-1111-1111-111111111111"}'
-```
 
-## Местный стартап
+## Локальный запуск
 
-### Предварительные требования/Условия для участия
-
-Обслуживание инфраструктуры для целей работы сетей:
+### Предварительные требования
 
 *   Сервер конфигурации ( `http://localhost:8888` )
 *   Eureka Server ( `http://localhost:8761` )
@@ -363,7 +259,7 @@ mvn -f backend/task-service/pom.xml spring-boot:run
 docker compose --env-file .env -f compose.yml up -d --build task-service
 ```
 
-### Проверка состояния здоровья
+### Проверка состояния
 
 ```
 GET http://localhost:8086/actuator/health

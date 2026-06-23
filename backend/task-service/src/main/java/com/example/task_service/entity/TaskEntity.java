@@ -14,11 +14,14 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.UUID;
 
+@Getter
 @Entity
 @Table(name = "tasks")
 public class TaskEntity {
@@ -36,20 +39,25 @@ public class TaskEntity {
     @Column(name = "task_id", nullable = false, updatable = false, unique = true)
     private UUID taskId;
 
+    @Setter
     @Column(name = "title", nullable = false, length = 200)
     private String title;
 
+    @Setter
     @Column(name = "description", columnDefinition = "text")
     private String description;
 
+    @Setter
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 32)
     private TaskStatus status;
 
+    @Setter
     @Enumerated(EnumType.STRING)
     @Column(name = "priority", nullable = false, length = 32)
     private TaskPriority priority;
 
+    @Setter
     @Column(name = "assignee_user_id")
     private UUID assigneeUserId;
 
@@ -62,9 +70,11 @@ public class TaskEntity {
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
+    @Setter
     @Column(name = "deleted_at")
     private OffsetDateTime deletedAt;
 
+    @Setter
     @Column(name = "deleted_by_user_id")
     private UUID deletedByUserId;
 
@@ -105,83 +115,4 @@ public class TaskEntity {
         updatedAt = OffsetDateTime.now(ZoneOffset.UTC);
     }
 
-    public Long getId() {
-        return id;
-    }
-
-    public UUID getTaskId() {
-        return taskId;
-    }
-
-    public String getTitle() {
-        return title;
-    }
-
-    public void setTitle(String title) {
-        this.title = title;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    public TaskStatus getStatus() {
-        return status;
-    }
-
-    public void setStatus(TaskStatus status) {
-        this.status = status;
-    }
-
-    public TaskPriority getPriority() {
-        return priority;
-    }
-
-    public void setPriority(TaskPriority priority) {
-        this.priority = priority;
-    }
-
-    public UUID getAssigneeUserId() {
-        return assigneeUserId;
-    }
-
-    public void setAssigneeUserId(UUID assigneeUserId) {
-        this.assigneeUserId = assigneeUserId;
-    }
-
-    public UUID getCreatedByUserId() {
-        return createdByUserId;
-    }
-
-    public OffsetDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public OffsetDateTime getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public OffsetDateTime getDeletedAt() {
-        return deletedAt;
-    }
-
-    public void setDeletedAt(OffsetDateTime deletedAt) {
-        this.deletedAt = deletedAt;
-    }
-
-    public UUID getDeletedByUserId() {
-        return deletedByUserId;
-    }
-
-    public void setDeletedByUserId(UUID deletedByUserId) {
-        this.deletedByUserId = deletedByUserId;
-    }
-
-    public Long getVersion() {
-        return version;
-    }
 }

@@ -58,6 +58,6 @@ public class CreateNotificationUseCaseImpl implements CreateNotificationUseCase 
     }
 
     private String trimNullable(String value) {
-        return value == null ? null : value.trim();
+        return value == null ? null : value.strip();
     }
 }

@@ -8,23 +8,19 @@ import com.example.task_service.repository.TaskRepository;
 import com.example.task_service.security.CurrentUserAccessProvider;
 import com.example.task_service.security.CurrentUserAccessProvider.CurrentUserAccess;
 import com.example.task_service.usecase.ChangeTaskStatusUseCase;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
 @Service
+@RequiredArgsConstructor
 @Transactional
 public class ChangeTaskStatusUseCaseImpl implements ChangeTaskStatusUseCase {
 
     private final TaskRepository taskRepository;
     private final CurrentUserAccessProvider currentUserAccessProvider;
-
-    public ChangeTaskStatusUseCaseImpl(TaskRepository taskRepository,
-                                       CurrentUserAccessProvider currentUserAccessProvider) {
-        this.taskRepository = taskRepository;
-        this.currentUserAccessProvider = currentUserAccessProvider;
-    }
 
     @Override
     public TaskResponse changeStatus(UUID taskId, UpdateTaskStatusRequest request) {
