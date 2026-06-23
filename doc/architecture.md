@@ -14,7 +14,7 @@ references, and future lifecycle propagation, see
 [User deletion and deactivation policy](architecture/user-deletion-policy.md).
 
 For the proposed transactional outbox model, candidate domain events, broker
-options, and incremental migration phases, see
+decision, Kafka adapter design, and incremental migration phases, see
 [Outbox pattern design](architecture/outbox-pattern-design.md).
 
 ## Implemented Runtime
@@ -65,7 +65,8 @@ The notification API contract is documented in
 
 The following items are roadmap direction, not implemented functionality:
 
-- later event-driven communication using the proposed outbox pattern; broker selection remains open
+- later event-driven communication using the proposed outbox pattern; Kafka is
+  selected as the future platform domain-event broker but is not implemented
 - audit service
 - OpenAI-backed task automation
 - Kubernetes and Helm deployment configuration

@@ -7,7 +7,8 @@ and supporting infrastructure. Each service owns its domain and persistence.
 
 The current communication model for new MVP services is synchronous REST.
 Event-driven integration is a future direction only. No broker is introduced
-by these contracts.
+by these contracts. Kafka is selected as the future platform domain-event
+broker in the outbox design, but it is not implemented in the current MVP.
 
 ## Service Responsibilities
 
@@ -139,10 +140,10 @@ administrative access explicitly.
 
 Future versions may replace selected synchronous calls with broker-delivered
 events recorded through service-owned transactional outboxes. Candidate event
-purposes, payload guidelines, delivery semantics, broker options, and migration
-phases are defined in
-[Outbox pattern design](outbox-pattern-design.md). The design is not implemented
-and does not select a broker.
+purposes, payload guidelines, delivery semantics, Kafka topic strategy, and
+migration phases are defined in
+[Outbox pattern design](outbox-pattern-design.md). Kafka delivery is not
+implemented yet.
 
 ## API Gateway Routing Contract
 
