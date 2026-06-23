@@ -10,9 +10,11 @@ retry, and status transitions.
 The current MVP continues to use its existing synchronous and in-process
 integrations. The `task-service` publisher currently uses a logging/no-op
 `OutboxEventPublisher`; no real broker delivery exists yet. This
-delivery-semantics design branch does not introduce Kafka, RabbitMQ, broker
-dependencies, schema changes, Java runtime behavior changes, consumers, Docker
-Compose changes, or notification cutover.
+Kafka adapter design branch selects Kafka as the future broker for platform
+domain events, but does not implement it. It does not introduce Kafka
+dependencies, Spring Kafka, Spring Cloud Stream, broker containers, schema
+changes, Java runtime behavior changes, consumers, Docker Compose changes, or
+notification cutover.
 
 ## 1. Problem Statement
 
@@ -61,8 +63,8 @@ distributed transaction between a service database and a message broker.
 
 ## 3. Non-Goals
 
-- Implementing Kafka, RabbitMQ, broker dependencies, or broker infrastructure
-  in this branch.
+- Implementing Kafka, RabbitMQ, broker dependencies, Spring Kafka, Spring
+  Cloud Stream, or broker infrastructure in this branch.
 - Adding or changing task-service migrations, entities, repositories,
   publishers, schedulers, or consumers in this branch.
 - Implementing distributed transactions or two-phase commit.
@@ -135,9 +137,8 @@ Flyway migrations. Docker Compose currently contains no message broker.
 Each producing service records an integration event in its own outbox table in
 the same local database transaction as the aggregate change. A separate
 publisher reads unpublished records and delivers them through an adapter. The
-current adapter logs only; a future adapter may send to Kafka or another
-selected broker. Consumers process messages independently and update only their
-own databases.
+current adapter logs only; the selected future adapter is Kafka-based.
+Consumers process messages independently and update only their own databases.
 
 Target task-notification flow:
 
@@ -427,11 +428,24 @@ At minimum, observe:
 Logs and traces should carry `eventId`, correlation ID, event type, producer,
 and aggregate ID without logging sensitive payloads.
 
-## 13. Future Broker Decision
+## 13. Broker Decision: Kafka
 
-The repository roadmap mentions Kafka, but no final broker decision or
-operational commitment exists. Both options require a separate ADR and proof of
-operation before implementation.
+Kafka is selected as the future broker for Platform domain events. Kafka is not
+implemented in this branch; this is a documentation and adapter-design decision
+only.
+
+Kafka is the better fit for this project because it provides:
+
+- a durable event log for domain events
+- scalable consumer groups for independent services
+- replay-friendly retained events for future consumers
+- partition-based ordering where events use a stable aggregate key
+- a strong fit for event-driven microservices
+- a natural path for future notification, audit, and analytics services
+
+RabbitMQ remains useful for command-style work queues and flexible routing, but
+the Platform roadmap is closer to durable domain event streams with multiple
+independent consumers.
 
 | Consideration | Kafka | RabbitMQ |
 | --- | --- | --- |
@@ -439,17 +453,133 @@ operation before implementation.
 | Replay | Strong fit for retained event replay and new consumer groups | Possible through topology and retention choices, but not the primary queue model |
 | Ordering | Partition ordering; key design is important | Queue ordering with caveats for concurrency, retries, and redelivery |
 | Routing | Topics and consumer groups | Flexible exchanges, routing keys, and queues |
-| Typical fit | Event streams, multiple independent consumers, analytics, long retention | Work queues, command-style delivery, flexible routing, simpler bounded workflows |
+| Typical fit | Event streams, multiple independent consumers, audit, analytics, long retention | Work queues, command-style delivery, flexible routing, simpler bounded workflows |
 | Operational questions | Partition count, retention, rebalancing, schema governance | Exchange/queue topology, acknowledgements, dead lettering, queue growth |
 | Spring integration | Spring for Apache Kafka | Spring AMQP |
 
-The decision should use expected throughput, replay needs, ordering scope,
-consumer count, operational expertise, hosting constraints, and observability
-requirements. Exact library versions must be selected from the Spring Boot
-3.4.x dependency baseline and verified with Spring Cloud 2024.x when the
-implementation branch begins.
+Exact Kafka, Spring Kafka, and infrastructure versions must be selected from
+the Spring Boot 3.4.x dependency baseline and verified with Spring Cloud 2024.x
+when the implementation branch begins.
 
-## 14. MVP Migration Strategy
+## 14. Initial Kafka Topic Strategy
+
+The initial topic for task domain events is:
+
+```text
+platform.task-events
+```
+
+Topic plan:
+
+| Item | Decision |
+| --- | --- |
+| Producer | `task-service` |
+| Initial topic | `platform.task-events` |
+| Future consumers | `notification-service`, `audit-service` |
+| Event key | `aggregateId`, which is the task public UUID for task events |
+| Event value | Kafka message envelope containing outbox metadata and payload |
+| Ordering expectation | best-effort ordering per taskId partition key |
+
+For task events, `aggregateId` is the task ID. Using it as the Kafka key should
+route events for the same task to the same partition, preserving partition
+order where Kafka and producer settings allow it. This does not create a global
+ordering guarantee and does not remove the requirement for idempotent,
+duplicate-safe consumers.
+
+## 15. Kafka Message Envelope
+
+The Kafka adapter should publish a transport envelope shaped as:
+
+| Field | Source |
+| --- | --- |
+| `eventId` | `OutboxEventEntity.eventId` |
+| `eventType` | `OutboxEventEntity.eventType` |
+| `aggregateType` | `OutboxEventEntity.aggregateType` |
+| `aggregateId` | `OutboxEventEntity.aggregateId` |
+| `occurredAt` | outbox `createdAt` unless a future payload-specific domain timestamp is promoted |
+| `eventVersion` | initial value decided in the implementation branch; recommended default is `1` |
+| `payload` | parsed or embedded JSON from `OutboxEventEntity.payload` |
+
+The envelope should preserve the immutable payload written by the task use
+case. The adapter may wrap the payload with metadata, but must not change the
+meaning of the payload fields. `eventVersion` is a transport/schema field; the
+current `outbox_events` table does not have an `event_version` column, so the
+initial Kafka adapter may use a configured/default value until a future
+migration adds persisted event versions.
+
+## 16. Kafka Outbox Adapter Design
+
+The future implementation should add `KafkaOutboxEventPublisher` implementing
+`OutboxEventPublisher`.
+
+Adapter responsibilities:
+
+- Read the already persisted `OutboxEventEntity` supplied by
+  `OutboxEventProcessor`.
+- Map the entity to the Kafka message envelope.
+- Send the message to the configured topic, initially `platform.task-events`.
+- Use `aggregateId` as the Kafka record key.
+- Return normally only after Kafka accepts the send according to the selected
+  producer acknowledgement policy.
+- Throw on failed send so `OutboxEventProcessor` can mark the event `FAILED`.
+
+Adapter boundaries:
+
+- Does not know task-service business logic.
+- Does not call `notification-service`.
+- Does not mutate task entities or any business aggregates.
+- Does not own outbox status transitions; the processor remains responsible
+  for `PROCESSING`, `PROCESSED`, and `FAILED`.
+- Does not replace or remove the synchronous REST notification flow.
+
+The existing `LoggingOutboxEventPublisher` may remain as a local/development
+fallback if useful, but it must remain explicit and not be confused with real
+delivery.
+
+## 17. Kafka Retry and Idempotency Semantics
+
+Kafka delivery keeps the selected outbox semantics:
+
+- `eventId` is the idempotency key.
+- Duplicate Kafka messages are possible.
+- Consumers must handle duplicate event delivery safely.
+- `notification-service` must persist consumed event IDs or enforce an
+  equivalent unique constraint before notification cutover.
+- The same `eventId` must not create duplicate notifications.
+
+Retry behavior:
+
+- A failed Kafka send causes the outbox event to become `FAILED`.
+- `retry_count` is incremented after failed delivery.
+- The event remains retryable until `outbox.publisher.max-retries`.
+- After max retries, the event remains `FAILED` for manual inspection or
+  future recovery.
+- Dead-letter handling is future work and should be designed before production
+  cutover.
+
+## 18. Future Configuration Plan
+
+Future task-service configuration:
+
+```yaml
+outbox:
+  publisher:
+    enabled: false
+    batch-size: 20
+    max-retries: 3
+    fixed-delay: 5s
+    adapter: kafka
+
+platform:
+  kafka:
+    task-events-topic: platform.task-events
+```
+
+`outbox.publisher.enabled` should remain false by default until Kafka
+infrastructure, producer configuration, monitoring, and operational recovery
+are ready. This branch does not add these properties to runtime configuration.
+
+## 19. MVP Migration Strategy
 
 ### Phase 1: Keep synchronous REST and add outbox persistence
 
@@ -475,10 +605,10 @@ retry, and status transitions. The delivery adapter is logging/no-op only and
 ### Phase 2b: Add real delivery adapter
 
 Add a real implementation behind `OutboxEventPublisher` without changing task
-business use cases. If Kafka is selected, add broker infrastructure and
-dependencies in the same implementation stream only after compatibility and
-operational requirements are verified. The adapter must preserve at-least-once
-semantics and must not include task-service business logic.
+business use cases. The selected adapter target is Kafka. Add broker
+infrastructure and dependencies only after compatibility and operational
+requirements are verified. The adapter must preserve at-least-once semantics
+and must not include task-service business logic.
 
 ### Phase 3: Move notification delivery to event-driven flow
 
@@ -503,7 +633,7 @@ service contracts, runbooks, diagrams, and tests.
 User lifecycle events can follow the same phases independently. Services do
 not need to migrate all event types in one release.
 
-## 15. Notification Cutover Strategy
+## 20. Notification Cutover Strategy
 
 The current synchronous REST notification flow remains active. Real outbox
 delivery should be introduced behind `OutboxEventPublisher` first, with no
@@ -512,7 +642,7 @@ notification-service consumption and no REST removal in the same branch.
 Cutover sequence:
 
 1. Add a real delivery adapter behind `OutboxEventPublisher`.
-2. Add broker infrastructure if Kafka or another broker is selected.
+2. Add Kafka broker infrastructure.
 3. Add notification-service event consumer separately.
 4. Add a notification-service idempotency table or unique constraint based on
    `event_id`.
@@ -522,21 +652,24 @@ Cutover sequence:
 7. Remove the synchronous REST notification flow only in a dedicated cutover
    branch.
 
-## 16. Next Implementation Sequence
+## 21. Next Implementation Sequence
 
 Recommended implementation order:
 
-1. Decide and document the broker choice and operational requirements.
-2. Add the real delivery adapter behind `OutboxEventPublisher`.
-3. Add broker infrastructure if Kafka is selected.
-4. Add notification-service event consumer for selected task events.
-5. Add durable notification-service idempotency using `event_id`.
-6. Verify duplicate handling, retry behavior, and failure recovery.
-7. Cut over notification creation from REST to events.
-8. Remove `task-service` synchronous REST notification integration in a
+1. Add Kafka to Docker Compose.
+2. Add Spring Kafka dependency only to `task-service`.
+3. Add Kafka producer configuration.
+4. Add `KafkaOutboxEventPublisher`.
+5. Keep `LoggingOutboxEventPublisher` as a local/development fallback if useful.
+6. Add producer tests.
+7. Add notification-service idempotency table or unique constraint.
+8. Add notification-service Kafka consumer.
+9. Verify duplicate handling, retry behavior, and failure recovery.
+10. Cut over notification creation from REST to events.
+11. Remove `task-service` synchronous REST notification integration in a
    dedicated branch after verification.
 
-## 17. Database Design Sketch
+## 22. Database Design Sketch
 
 Each producing service owns a table conceptually shaped as:
 
@@ -574,7 +707,7 @@ durable idempotency. Its exact schema is deferred. All schema changes must use
 new Flyway migrations in the owning service; no shared outbox database or
 cross-service foreign key is allowed.
 
-## 18. Security Considerations
+## 23. Security Considerations
 
 - Do not include passwords, password hashes, JWTs, refresh tokens, MFA secrets,
   verification keys, cookies, or credentials in events.
@@ -596,11 +729,11 @@ cross-service foreign key is allowed.
 - Define retention and erasure implications before events contain personal
   data, especially for user lifecycle and notification content.
 
-## 19. Open Questions
+## 24. Open Questions
 
-- Kafka or RabbitMQ, and what measured requirements decide the choice?
 - Polling publisher or change data capture for the first implementation?
-- Topic, exchange, queue, partition, and routing-key conventions?
+- Kafka partition count, retention, topic configuration, and producer
+  acknowledgement policy?
 - Event naming and schema-versioning convention?
 - JSON with governed schemas, another serialization format, or a schema
   registry?
@@ -621,7 +754,10 @@ cross-service foreign key is allowed.
 
 The selected delivery semantics are service-owned transactional outbox records
 with at-least-once delivery, idempotent consumers, duplicate-tolerant
-processing, and best-effort per-aggregate ordering. The current implementation
-persists task-service outbox rows and has a disabled local publisher foundation
-with a logging/no-op adapter. Real broker delivery, notification-service
-consumption, and synchronous REST notification removal remain future work.
+processing, and best-effort per-aggregate ordering. Kafka is selected as the
+future broker for platform domain events, starting with
+`platform.task-events` produced by `task-service` and keyed by task
+`aggregateId`. The current implementation persists task-service outbox rows
+and has a disabled local publisher foundation with a logging/no-op adapter.
+Real Kafka delivery, notification-service consumption, and synchronous REST
+notification removal remain future work.
