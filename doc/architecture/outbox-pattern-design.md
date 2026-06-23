@@ -3,19 +3,23 @@
 ## Status
 
 This document describes a proposed future event-driven communication model for
-Platform. It is an architecture target, not implemented functionality.
+Platform, with the first implementation candidate scoped to task-service task
+events. It is an architecture target, not implemented functionality.
 
 The current MVP continues to use its existing synchronous and in-process
 integrations until the migration phases in this document are implemented and
-verified. This design does not introduce a broker, outbox schema, publisher,
-consumer, scheduler, or infrastructure configuration.
+verified. This design-review branch does not introduce a broker, outbox schema,
+entity, repository, publisher, consumer, scheduler, or infrastructure
+configuration.
 
 ## 1. Problem Statement
 
 The MVP uses synchronous service-to-service communication for task assignment
-notifications. `task-service` persists a task and then calls an internal
-`notification-service` REST endpoint. The notification call has independent
-transactional state from the task database transaction.
+notifications. When `task-service` creates a task with an assignee that is not
+the creator, it persists the task and then calls an internal
+`notification-service` REST endpoint through `RestNotificationClient`. The
+notification call has independent transactional state from the task database
+transaction.
 
 This model has several limitations:
 
@@ -57,6 +61,8 @@ distributed transaction between a service database and a message broker.
 
 - Implementing Kafka, RabbitMQ, outbox tables, or message-processing code in
   this branch.
+- Adding task-service outbox migrations, entities, repositories, publishers,
+  schedulers, or consumers in this branch.
 - Implementing distributed transactions or two-phase commit.
 - Guaranteeing immediate consistency between services.
 - Guaranteeing exactly-once end-to-end processing.
@@ -78,16 +84,30 @@ integration event is published.
 ### `task-service`
 
 Owns tasks, assignments, status changes, and task deletion state. Creating a
-non-self-assigned task currently triggers a best-effort synchronous REST call
-to notification-service after the task has been persisted. The call uses the
-initiating request's access token. Notification failure is logged and does not
-fail the task response.
+task with a non-self assignee currently triggers a best-effort synchronous REST
+call to notification-service after the task has been persisted. The flow is:
+
+```text
+CreateTaskUseCaseImpl
+  -> TaskRepository.saveAndFlush(task)
+  -> TaskNotificationPublisherImpl.notifyTaskAssigned(...)
+  -> RestNotificationClient.createNotification(...)
+  -> POST /internal/api/v1/notifications/system
+```
+
+The REST request delegates the initiating request's access token to
+notification-service. Notification failure is logged and does not fail the task
+response. The separate task assignment endpoint currently updates assignment
+state but does not publish a notification. Status changes are persisted by
+task-service and do not currently notify notification-service.
 
 ### `notification-service`
 
 Owns notifications, preferences, and delivery state. It exposes authenticated
 HTTP endpoints and an internal endpoint used by task-service to create a
-system notification. It does not consume broker events.
+system notification. The internal endpoint persists an `IN_APP` notification
+with `PENDING` status and task source metadata supplied by task-service. It
+does not consume broker events.
 
 ### Shared infrastructure
 
@@ -103,40 +123,20 @@ the same local database transaction as the aggregate change. A separate
 publisher reads unpublished records and sends them to the selected broker.
 Consumers process messages independently and update only their own databases.
 
-Example task-notification flow:
+Target task-notification flow:
 
 ```text
-Client creates assigned task
-          |
-          v
-task-service transaction
-  +-----------------------------+
-  | insert/update Task           |
-  | insert TaskAssigned outbox   |
-  +-----------------------------+
-          |
-          | commit once
-          v
-task-service outbox publisher
-          |
-          v
-message broker
-          |
-          v
-notification-service consumer
-  +-----------------------------+
-  | check eventId idempotency    |
-  | create Notification          |
-  | record processed eventId     |
-  +-----------------------------+
-          |
-          v
-notification-service commit
+Task Service
+  -> persist business entity
+  -> persist outbox event in same transaction
+  -> publisher reads outbox
+  -> event delivered
+  -> notification-service processes event
 ```
 
 The API Gateway, Config Server, and Eureka retain their current responsibilities.
-Broker traffic is internal service communication and must not be routed through
-API Gateway.
+Future broker traffic is internal service communication and must not be routed
+through API Gateway.
 
 ## 6. Outbox Pattern Overview
 
@@ -149,7 +149,7 @@ A producer handles a domain command as follows:
 4. Commit the aggregate change and outbox record atomically.
 5. A background publisher reads eligible unpublished outbox records.
 6. The publisher sends each event to the broker.
-7. After broker acknowledgement, the publisher marks the record as published
+7. After broker acknowledgement, the publisher marks the record as processed
    or otherwise records publication progress.
 8. Consumers process the event and commit changes in their own databases.
 
@@ -172,27 +172,19 @@ that meets measured throughput and reliability needs. The choice is deferred.
 
 ## 7. Proposed Event Types
 
-These are initial candidates and purposes, not implemented contracts.
+These are the initial task-service outbox event types expected for MVP
+implementation planning. They are not implemented contracts in this branch.
 
 | Event | Producer | Purpose |
 | --- | --- | --- |
-| `TaskCreated` | `task-service` | Announces creation of a task for notifications, audit, and future projections |
-| `TaskUpdated` | `task-service` | Announces changes to editable task fields; payload should identify changed fields or provide the approved event representation |
-| `TaskStatusChanged` | `task-service` | Announces an explicit status transition independently of general updates |
-| `TaskDeleted` | `task-service` | Announces task soft deletion so consumers can update projections without deleting source history |
-| `TaskAssigned` | `task-service` | Announces assignment, reassignment, or unassignment and identifies previous and current assignees when approved by the schema |
-| `UserCreated` | `user-service` | Announces creation of a retained user identity; creation does not necessarily mean the account is active |
-| `UserActivated` | `user-service` | Announces that an account became active according to user-service lifecycle rules |
-| `UserDeactivated` | `user-service` | Announces that an account became inactive while retaining its stable user identifier |
-| `NotificationCreated` | `notification-service` | Announces creation of a notification for audit, delivery, or presentation consumers |
+| `TASK_CREATED` | `task-service` | Announces task creation after task persistence |
+| `TASK_ASSIGNED` | `task-service` | Announces assignment, reassignment, or unassignment after assignment state changes |
+| `TASK_STATUS_CHANGED` | `task-service` | Announces an explicit status transition after task status persistence |
 
-`NotificationCreated` must not be consumed in a way that recursively creates
-the same notification. Consumer ownership and routing must be explicit before
-that event is implemented.
-
-Existing names such as `TaskCreatedEvent` in service-boundary documentation are
-design placeholders. A later event-contract decision should select one naming
-convention and apply it consistently without changing existing HTTP contracts.
+Broader events such as task deletion, user lifecycle events, and notification
+events remain future candidates and require separate design review. Event names
+use uppercase enum-style identifiers here to match the requested MVP outbox
+scope and the existing `TASK_ASSIGNED` notification type.
 
 ## 8. Event Payload Guidelines
 
@@ -201,7 +193,7 @@ A common event envelope should contain:
 | Field | Purpose |
 | --- | --- |
 | `eventId` | Globally unique event identifier used for tracing and idempotency |
-| `eventType` | Stable logical event name, for example `TaskAssigned` |
+| `eventType` | Stable logical event name, for example `TASK_ASSIGNED` |
 | `aggregateId` | Stable public identifier of the changed aggregate |
 | `aggregateType` | Aggregate category, for example `TASK` or `USER` |
 | `occurredAt` | UTC ISO-8601 timestamp for the domain change |
@@ -238,15 +230,22 @@ or equivalent rules to detect stale or out-of-order events.
 ### Task Service
 
 - Remains the source of truth for task state.
+- Owns task creation, assignment, status transitions, and task persistence.
 - Creates task events in the task database transaction that changes the task.
 - Publishes task event records through a task-service-owned publisher.
 - Does not wait for notification creation to complete before committing a task.
 - Does not embed notification delivery logic in task event publication.
+- During Phase 1, keeps the current synchronous REST notification flow while
+  adding outbox persistence.
 
 ### Notification Service
 
-- Consumes relevant task events, initially `TaskAssigned` and later other
-  approved task events.
+- Remains the source of truth for notification records, notification
+  preferences, notification channels, and delivery state.
+- During the current MVP, receives task assignment notification requests
+  through `POST /internal/api/v1/notifications/system`.
+- In the target architecture, consumes relevant task events, initially from
+  the approved MVP event set.
 - Applies notification preferences and creates notification records in its own
   transaction.
 - Deduplicates consumed events before creating side effects.
@@ -292,10 +291,21 @@ Ordering guarantees should be scoped per aggregate, not globally. Publishers
 must avoid concurrently publishing the same outbox row. Consumers must handle
 concurrent delivery and stale aggregate versions safely.
 
+### Event lifecycle
+
+Outbox records should use this initial lifecycle:
+
+| Status | Meaning |
+| --- | --- |
+| `NEW` | Event was persisted with the aggregate transaction and is eligible for publication |
+| `PROCESSING` | A publisher has claimed the event for delivery |
+| `PROCESSED` | Event delivery was acknowledged and no further publication is pending |
+| `FAILED` | Event failed publication and requires retry or operator handling according to retry policy |
+
 ### Publisher recovery and cleanup
 
 Outbox records need explicit publication states, retry metadata, and retention.
-Published rows should be archived or deleted only according to an operational
+Processed rows should be archived or deleted only according to an operational
 retention policy. Stuck pending records require detection and recovery.
 
 ### Monitoring
@@ -333,36 +343,32 @@ requirements. Exact library versions must be selected from the Spring Boot
 3.4.x dependency baseline and verified with Spring Cloud 2024.x when the
 implementation branch begins.
 
-## 12. MVP Migration Plan
+## 12. MVP Migration Strategy
 
-### Phase 1: Current synchronous integration
+### Phase 1: Keep synchronous REST and add outbox persistence
 
-Keep the existing task-to-notification REST flow. Add no broker dependency.
-Use current tests as the behavior baseline and define event contracts before
-changing runtime behavior.
+Keep the existing task-to-notification REST flow. Add task-service outbox
+persistence in the same local transaction as task persistence. Add no broker
+dependency and no publisher. Use current tests as the behavior baseline and
+verify that task rollback also rolls back the outbox insert.
 
-### Phase 2: Outbox persistence
+### Phase 2: Add publisher
 
-Add service-owned outbox migrations and transactional event creation behind
-internal abstractions. Continue synchronous notification behavior during this
-phase unless a separately reviewed shadow-publication plan is used. Verify that
-domain rollback also rolls back the outbox insert.
+Introduce a task-service publisher that reads eligible outbox rows and marks
+lifecycle progress. Keep the synchronous REST notification flow active. If a
+broker is selected for this phase, choose it through a separate implementation
+decision and version-compatibility check.
 
-### Phase 3: Broker publication
+### Phase 3: Move notification delivery to event-driven flow
 
-Introduce the selected broker and an outbox publisher. Publish events while
-retaining the existing synchronous path. Measure publication reliability,
-duplicates, ordering, and lag. Avoid letting both paths create duplicate
-notifications in production; use a non-side-effecting consumer, feature flag,
-or controlled environment for verification.
+Implement notification-service event consumption with durable idempotency,
+retry handling, and controlled duplicate prevention. Move task notification
+creation to the event-driven flow after end-to-end acceptance criteria pass.
+Avoid letting both synchronous REST and event consumption create duplicate
+notifications in production; use feature flags or controlled environments for
+rollout.
 
-### Phase 4: Consumer implementation
-
-Implement notification-service consumers with durable idempotency records,
-retry handling, and dead-letter behavior. Validate event-driven notification
-creation and operational recovery end to end.
-
-### Phase 5: Remove synchronous coupling
+### Phase 4: Remove synchronous REST integration
 
 After event publication and consumption meet defined acceptance criteria,
 disable and then remove task-service's direct notification REST call and
@@ -383,9 +389,9 @@ outbox_event
 - aggregate_id
 - event_type
 - payload
-- created_at
-- published_at
 - status
+- created_at
+- processed_at
 ```
 
 Likely implementation concerns include:
@@ -438,7 +444,7 @@ cross-service foreign key is allowed.
 - How will correlation and trace context cross asynchronous boundaries?
 - Which observability stack and service-level objectives will be used?
 - How will schema compatibility be tested in CI across producers and consumers?
-- Which event is the first production migration candidate: `TaskAssigned` or
+- Which event is the first production migration candidate: `TASK_ASSIGNED` or
   another lower-risk event?
 - What acceptance criteria permit removal of the synchronous REST integration?
 
