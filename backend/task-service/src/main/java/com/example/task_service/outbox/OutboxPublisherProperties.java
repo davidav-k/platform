@@ -16,6 +16,7 @@ public class OutboxPublisherProperties {
     private static final long MIN_FIXED_DELAY_MILLIS = 1L;
 
     private boolean enabled;
+    private String adapter = "logging";
     private int batchSize = 20;
     private int maxRetries = 3;
     private Duration fixedDelay = Duration.ofSeconds(5);

@@ -33,3 +33,15 @@ notification-service:
   base-url: ${NOTIFICATION_SERVICE_BASE_URL:http://notification-service:8087}
   connect-timeout: ${NOTIFICATION_SERVICE_CONNECT_TIMEOUT:2s}
   read-timeout: ${NOTIFICATION_SERVICE_READ_TIMEOUT:2s}
+
+outbox:
+  publisher:
+    enabled: ${OUTBOX_PUBLISHER_ENABLED:false}
+    adapter: ${OUTBOX_PUBLISHER_ADAPTER:logging}
+    batch-size: ${OUTBOX_PUBLISHER_BATCH_SIZE:20}
+    max-retries: ${OUTBOX_PUBLISHER_MAX_RETRIES:3}
+    fixed-delay: ${OUTBOX_PUBLISHER_FIXED_DELAY:5s}
+    kafka:
+      enabled: ${OUTBOX_PUBLISHER_KAFKA_ENABLED:false}
+      bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
+      topic: ${KAFKA_TASK_EVENTS_TOPIC:platform.task-events}
