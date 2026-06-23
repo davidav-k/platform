@@ -2,15 +2,17 @@
 
 ## Status
 
-This document describes a proposed future event-driven communication model for
-Platform, with the first implementation candidate scoped to task-service task
-events. It is an architecture target, not implemented functionality.
+This document describes the Platform outbox architecture and delivery
+semantics. The first implemented producer is `task-service`, which persists
+task outbox events and has a local publisher foundation with polling, claiming,
+retry, and status transitions.
 
 The current MVP continues to use its existing synchronous and in-process
-integrations until the migration phases in this document are implemented and
-verified. This design-review branch does not introduce a broker, outbox schema,
-entity, repository, publisher, consumer, scheduler, or infrastructure
-configuration.
+integrations. The `task-service` publisher currently uses a logging/no-op
+`OutboxEventPublisher`; no real broker delivery exists yet. This
+delivery-semantics design branch does not introduce Kafka, RabbitMQ, broker
+dependencies, schema changes, Java runtime behavior changes, consumers, Docker
+Compose changes, or notification cutover.
 
 ## 1. Problem Statement
 
@@ -59,10 +61,10 @@ distributed transaction between a service database and a message broker.
 
 ## 3. Non-Goals
 
-- Implementing Kafka, RabbitMQ, outbox tables, or message-processing code in
-  this branch.
-- Adding task-service outbox migrations, entities, repositories, publishers,
-  schedulers, or consumers in this branch.
+- Implementing Kafka, RabbitMQ, broker dependencies, or broker infrastructure
+  in this branch.
+- Adding or changing task-service migrations, entities, repositories,
+  publishers, schedulers, or consumers in this branch.
 - Implementing distributed transactions or two-phase commit.
 - Guaranteeing immediate consistency between services.
 - Guaranteeing exactly-once end-to-end processing.
@@ -97,9 +99,21 @@ CreateTaskUseCaseImpl
 
 The REST request delegates the initiating request's access token to
 notification-service. Notification failure is logged and does not fail the task
-response. The separate task assignment endpoint currently updates assignment
-state but does not publish a notification. Status changes are persisted by
-task-service and do not currently notify notification-service.
+response.
+
+`task-service` also persists durable outbox rows in the same transaction as
+task business changes for:
+
+- `TASK_CREATED` from `CreateTaskUseCaseImpl`
+- `TASK_ASSIGNED` from `AssignTaskUseCaseImpl`
+- `TASK_STATUS_CHANGED` from `ChangeTaskStatusUseCaseImpl`
+
+The local outbox publisher foundation is implemented but disabled by default
+through `outbox.publisher.enabled=false`. When enabled, it polls claimable
+events and passes them to `OutboxEventPublisher`. The current
+`OutboxEventPublisher` implementation logs event metadata only and does not
+send messages externally, call notification-service, or replace the synchronous
+REST notification flow.
 
 ### `notification-service`
 
@@ -120,8 +134,10 @@ Flyway migrations. Docker Compose currently contains no message broker.
 
 Each producing service records an integration event in its own outbox table in
 the same local database transaction as the aggregate change. A separate
-publisher reads unpublished records and sends them to the selected broker.
-Consumers process messages independently and update only their own databases.
+publisher reads unpublished records and delivers them through an adapter. The
+current adapter logs only; a future adapter may send to Kafka or another
+selected broker. Consumers process messages independently and update only their
+own databases.
 
 Target task-notification flow:
 
@@ -148,10 +164,14 @@ A producer handles a domain command as follows:
    transaction.
 4. Commit the aggregate change and outbox record atomically.
 5. A background publisher reads eligible unpublished outbox records.
-6. The publisher sends each event to the broker.
-7. After broker acknowledgement, the publisher marks the record as processed
-   or otherwise records publication progress.
-8. Consumers process the event and commit changes in their own databases.
+6. The publisher marks claimed events `PROCESSING`.
+7. The publisher delivers each event through `OutboxEventPublisher`.
+8. After successful delivery acknowledgement, the publisher marks the record
+   `PROCESSED`.
+9. After failed delivery, the publisher marks the record `FAILED`, increments
+   `retry_count`, stores a short error message, and leaves it eligible for
+   retry until the configured retry limit is reached.
+10. Consumers process the event and commit changes in their own databases.
 
 The same database commit contains both the business change and the intent to
 publish. A committed aggregate cannot lose its event merely because the broker
@@ -161,6 +181,19 @@ A failure can still occur after broker publication but before the outbox row is
 marked published. The event may then be published again. The design therefore
 uses **at-least-once delivery** and requires idempotent consumers. It does not
 claim exactly-once processing.
+
+The selected delivery guarantee for Platform outbox delivery is:
+
+- **At-least-once delivery** from outbox publisher to the eventual delivery
+  channel.
+- Consumers must be idempotent.
+- Duplicate events are possible and expected.
+- Ordering is best-effort per aggregate and is not globally guaranteed.
+
+Per-aggregate ordering should be approximated by polling in `created_at` order
+and, for broker delivery, routing events for the same aggregate to the same
+partition or ordered lane where the selected broker supports it. Consumers
+must still tolerate duplicates and stale or out-of-order events.
 
 Two publisher implementation strategies may be evaluated later:
 
@@ -173,7 +206,8 @@ that meets measured throughput and reliability needs. The choice is deferred.
 ## 7. Proposed Event Types
 
 These are the initial task-service outbox event types expected for MVP
-implementation planning. They are not implemented contracts in this branch.
+implementation. They are currently written by `task-service` to its local
+outbox table, but they are not yet delivered to an external broker.
 
 | Event | Producer | Purpose |
 | --- | --- | --- |
@@ -188,7 +222,12 @@ scope and the existing `TASK_ASSIGNED` notification type.
 
 ## 8. Event Payload Guidelines
 
-A common event envelope should contain:
+Current task-service outbox rows store metadata columns plus a JSON payload.
+The persisted row data is the producer-side event source of record. Payloads
+are immutable after creation; publishers and delivery adapters must not rewrite
+event payloads.
+
+A future transport envelope should contain:
 
 | Field | Purpose |
 | --- | --- |
@@ -205,6 +244,11 @@ correlation ID, causation ID, aggregate version, and trace context. Transport
 metadata such as broker offsets or delivery tags does not belong in the
 portable domain envelope.
 
+The current `outbox_events` table does not have an `event_version` column. A
+future migration should add an explicit `event_version` field before multiple
+payload schema versions are active. This branch does not require adding that
+field.
+
 Payload rules:
 
 - Use stable public UUIDs, never service-local numeric primary keys.
@@ -215,11 +259,19 @@ Payload rules:
 - Make additive compatible changes where possible.
 - Version incompatible schemas and define consumer transition rules.
 - Do not place entities, JPA models, or service-internal DTOs on the wire.
+- Treat `event_type` as the stable semantic meaning of the event.
+- Keep payload schema changes backward compatible whenever possible.
 
 Consumers must treat `eventId` as an idempotency key. A consumer should record
 successful processing in its own database transaction with the resulting local
 state change. Duplicate delivery of the same `eventId` must not create a second
 notification or repeat another non-idempotent side effect.
+
+For notification cutover, `notification-service` must use `event_id` based
+deduplication before creating notification side effects. It should either store
+processed event IDs in a consumer-owned table or enforce an equivalent unique
+constraint tied to the resulting notification. The same `event_id` must not
+create duplicate notifications.
 
 Ordering is not globally guaranteed. Where order matters, routing should keep
 events for one aggregate together and consumers should use aggregate versions
@@ -233,10 +285,16 @@ or equivalent rules to detect stale or out-of-order events.
 - Owns task creation, assignment, status transitions, and task persistence.
 - Creates task events in the task database transaction that changes the task.
 - Publishes task event records through a task-service-owned publisher.
+- Polls claimable `NEW` and retryable `FAILED` outbox events.
+- Marks claimed events `PROCESSING` before delivery.
+- Marks events `PROCESSED` only after successful delivery.
+- Marks events `FAILED`, increments `retry_count`, and records a short error
+  message after failed delivery.
+- Controls retry eligibility with `outbox.publisher.max-retries`.
 - Does not wait for notification creation to complete before committing a task.
 - Does not embed notification delivery logic in task event publication.
-- During Phase 1, keeps the current synchronous REST notification flow while
-  adding outbox persistence.
+- Keeps the current synchronous REST notification flow until a dedicated
+  notification cutover branch removes it.
 
 ### Notification Service
 
@@ -269,9 +327,15 @@ service writes outbox rows on behalf of another service.
 
 ### Retries
 
-Publishers and consumers require bounded retries with backoff and jitter.
-Retry policy must distinguish transient failures from invalid messages or
-permanent business rejection.
+The current task-service publisher foundation increments `retry_count` after a
+failed delivery attempt. `NEW` and `FAILED` events remain retryable while their
+`retry_count` is less than `outbox.publisher.max-retries`. Once the maximum is
+reached, events remain `FAILED` for manual inspection or future recovery work.
+
+Retry backoff, jitter, next-attempt scheduling, dead-letter handling, and
+operator replay are future work. A future broker adapter should distinguish
+transient delivery failures from invalid event data or permanent business
+rejection.
 
 ### Duplicate delivery
 
@@ -302,13 +366,55 @@ Outbox records should use this initial lifecycle:
 | `PROCESSED` | Event delivery was acknowledged and no further publication is pending |
 | `FAILED` | Event failed publication and requires retry or operator handling according to retry policy |
 
+Current task-service producer behavior is:
+
+```text
+business use case transaction
+  -> persist task change
+  -> persist outbox event with status NEW
+
+publisher polling transaction
+  -> select claimable NEW/FAILED events ordered by created_at
+  -> mark selected events PROCESSING
+
+delivery attempt
+  -> call OutboxEventPublisher.publish(outboxEvent)
+  -> on success, mark PROCESSED and set processed_at
+  -> on failure, mark FAILED, increment retry_count, store error_message
+```
+
 ### Publisher recovery and cleanup
 
 Outbox records need explicit publication states, retry metadata, and retention.
 Processed rows should be archived or deleted only according to an operational
 retention policy. Stuck pending records require detection and recovery.
 
-### Monitoring
+`PROCESSING` recovery for publisher crashes is not finalized. A future branch
+should decide whether to add claim timestamps, ownership metadata, or a
+timeout-based reset policy before enabling real production delivery.
+
+## 11. Delivery Adapter Contract
+
+`OutboxEventPublisher` is the adapter boundary between local outbox processing
+and any future delivery technology.
+
+The adapter contract is:
+
+- Receive already persisted `OutboxEventEntity` data from the processor.
+- Deliver using only event metadata and payload stored on the outbox row.
+- Return normally only after the delivery channel has accepted the event.
+- Throw an exception when delivery fails so the processor can mark the event
+  `FAILED` and increment retry state.
+- Not know task-service use case or business-rule internals.
+- Not mutate task business entities or any non-outbox aggregate state.
+- Not call `notification-service` directly.
+- Not log full payloads by default.
+
+The current implementation, `LoggingOutboxEventPublisher`, is intentionally
+logging/no-op only. A future implementation may be Kafka-based, but broker
+selection and dependencies require a separate implementation branch.
+
+## 12. Monitoring
 
 At minimum, observe:
 
@@ -321,7 +427,7 @@ At minimum, observe:
 Logs and traces should carry `eventId`, correlation ID, event type, producer,
 and aggregate ID without logging sensitive payloads.
 
-## 11. Future Broker Decision
+## 13. Future Broker Decision
 
 The repository roadmap mentions Kafka, but no final broker decision or
 operational commitment exists. Both options require a separate ADR and proof of
@@ -343,7 +449,7 @@ requirements. Exact library versions must be selected from the Spring Boot
 3.4.x dependency baseline and verified with Spring Cloud 2024.x when the
 implementation branch begins.
 
-## 12. MVP Migration Strategy
+## 14. MVP Migration Strategy
 
 ### Phase 1: Keep synchronous REST and add outbox persistence
 
@@ -352,12 +458,27 @@ persistence in the same local transaction as task persistence. Add no broker
 dependency and no publisher. Use current tests as the behavior baseline and
 verify that task rollback also rolls back the outbox insert.
 
+Status: implemented for `TASK_CREATED`, `TASK_ASSIGNED`, and
+`TASK_STATUS_CHANGED`.
+
 ### Phase 2: Add publisher
 
 Introduce a task-service publisher that reads eligible outbox rows and marks
 lifecycle progress. Keep the synchronous REST notification flow active. If a
 broker is selected for this phase, choose it through a separate implementation
 decision and version-compatibility check.
+
+Status: local publisher foundation is implemented with polling, claiming,
+retry, and status transitions. The delivery adapter is logging/no-op only and
+`outbox.publisher.enabled=false` by default.
+
+### Phase 2b: Add real delivery adapter
+
+Add a real implementation behind `OutboxEventPublisher` without changing task
+business use cases. If Kafka is selected, add broker infrastructure and
+dependencies in the same implementation stream only after compatibility and
+operational requirements are verified. The adapter must preserve at-least-once
+semantics and must not include task-service business logic.
 
 ### Phase 3: Move notification delivery to event-driven flow
 
@@ -367,6 +488,10 @@ creation to the event-driven flow after end-to-end acceptance criteria pass.
 Avoid letting both synchronous REST and event consumption create duplicate
 notifications in production; use feature flags or controlled environments for
 rollout.
+
+The notification-service consumer must be added separately from the
+task-service publisher. It must use `event_id` based deduplication before
+creating notification records.
 
 ### Phase 4: Remove synchronous REST integration
 
@@ -378,26 +503,67 @@ service contracts, runbooks, diagrams, and tests.
 User lifecycle events can follow the same phases independently. Services do
 not need to migrate all event types in one release.
 
-## 13. Database Design Sketch
+## 15. Notification Cutover Strategy
 
-Each producing service may eventually own a table conceptually shaped as:
+The current synchronous REST notification flow remains active. Real outbox
+delivery should be introduced behind `OutboxEventPublisher` first, with no
+notification-service consumption and no REST removal in the same branch.
+
+Cutover sequence:
+
+1. Add a real delivery adapter behind `OutboxEventPublisher`.
+2. Add broker infrastructure if Kafka or another broker is selected.
+3. Add notification-service event consumer separately.
+4. Add a notification-service idempotency table or unique constraint based on
+   `event_id`.
+5. Run old and new flows carefully only where duplicate notification creation
+   is prevented or isolated by environment and feature flags.
+6. Verify consumer behavior, retry behavior, deduplication, and observability.
+7. Remove the synchronous REST notification flow only in a dedicated cutover
+   branch.
+
+## 16. Next Implementation Sequence
+
+Recommended implementation order:
+
+1. Decide and document the broker choice and operational requirements.
+2. Add the real delivery adapter behind `OutboxEventPublisher`.
+3. Add broker infrastructure if Kafka is selected.
+4. Add notification-service event consumer for selected task events.
+5. Add durable notification-service idempotency using `event_id`.
+6. Verify duplicate handling, retry behavior, and failure recovery.
+7. Cut over notification creation from REST to events.
+8. Remove `task-service` synchronous REST notification integration in a
+   dedicated branch after verification.
+
+## 17. Database Design Sketch
+
+Each producing service owns a table conceptually shaped as:
 
 ```text
-outbox_event
+outbox_events
 - id
+- event_id
 - aggregate_type
 - aggregate_id
 - event_type
 - payload
 - status
+- retry_count
+- error_message
 - created_at
+- updated_at
 - processed_at
+- version
 ```
 
 Likely implementation concerns include:
 
-- UUID `id` corresponding to `eventId`
-- JSON payload storage with explicit schema version
+- numeric `id` for local persistence and UUID `event_id` for cross-service
+  tracing and idempotency
+- JSON payload storage with explicit schema version; `event_version` is a
+  recommended future field because the current task-service table does not yet
+  include it
 - indexes supporting unpublished status and creation order
 - retry count, next-attempt time, and last-error metadata
 - optimistic or pessimistic claim/lock metadata for concurrent publishers
@@ -408,7 +574,7 @@ durable idempotency. Its exact schema is deferred. All schema changes must use
 new Flyway migrations in the owning service; no shared outbox database or
 cross-service foreign key is allowed.
 
-## 14. Security Considerations
+## 18. Security Considerations
 
 - Do not include passwords, password hashes, JWTs, refresh tokens, MFA secrets,
   verification keys, cookies, or credentials in events.
@@ -430,7 +596,7 @@ cross-service foreign key is allowed.
 - Define retention and erasure implications before events contain personal
   data, especially for user lifecycle and notification content.
 
-## 15. Open Questions
+## 19. Open Questions
 
 - Kafka or RabbitMQ, and what measured requirements decide the choice?
 - Polling publisher or change data capture for the first implementation?
@@ -447,11 +613,15 @@ cross-service foreign key is allowed.
 - Which event is the first production migration candidate: `TASK_ASSIGNED` or
   another lower-risk event?
 - What acceptance criteria permit removal of the synchronous REST integration?
+- What `event_version` convention should be used before adding incompatible
+  payload versions?
+- How should stuck `PROCESSING` rows be detected and reset safely?
 
 ## Decision Summary
 
-The proposed direction is a service-owned transactional outbox with
-at-least-once broker delivery and idempotent consumers. It preserves current
-aggregate ownership and HTTP APIs while allowing synchronous integrations to
-be replaced incrementally after reliability and operational behavior are
-verified. The broker and implementation mechanism remain open decisions.
+The selected delivery semantics are service-owned transactional outbox records
+with at-least-once delivery, idempotent consumers, duplicate-tolerant
+processing, and best-effort per-aggregate ordering. The current implementation
+persists task-service outbox rows and has a disabled local publisher foundation
+with a logging/no-op adapter. Real broker delivery, notification-service
+consumption, and synchronous REST notification removal remain future work.
