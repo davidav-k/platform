@@ -51,6 +51,23 @@ public class TaskOutboxPayloadFactory {
         }
     }
 
+    public String taskStatusChangedPayload(TaskEntity task, TaskStatus previousStatus) {
+        try {
+            return objectMapper.writeValueAsString(new TaskStatusChangedPayload(
+                task.getTaskId(),
+                task.getTitle(),
+                previousStatus,
+                task.getStatus(),
+                task.getPriority(),
+                task.getAssigneeUserId(),
+                task.getCreatedByUserId(),
+                task.getUpdatedAt()
+            ));
+        } catch (JsonProcessingException exception) {
+            throw new IllegalStateException("Failed to serialize TASK_STATUS_CHANGED payload", exception);
+        }
+    }
+
     private record TaskCreatedPayload(
         UUID taskId,
         String title,
@@ -70,6 +87,18 @@ public class TaskOutboxPayloadFactory {
         TaskPriority priority,
         UUID previousAssigneeUserId,
         UUID newAssigneeUserId,
+        UUID createdByUserId,
+        OffsetDateTime updatedAt
+    ) {
+    }
+
+    private record TaskStatusChangedPayload(
+        UUID taskId,
+        String title,
+        TaskStatus previousStatus,
+        TaskStatus newStatus,
+        TaskPriority priority,
+        UUID assigneeUserId,
         UUID createdByUserId,
         OffsetDateTime updatedAt
     ) {
