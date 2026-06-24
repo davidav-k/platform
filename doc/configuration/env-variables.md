@@ -145,8 +145,12 @@ fixed in configuration and Compose:
 | `KAFKA_TASK_EVENTS_TOPIC` | No | `platform.task-events` | `platform.task-events` | task-service, notification-service | Topic for task domain events. |
 | `OUTBOX_PUBLISHER_ENABLED` | No | `false` | `true` | task-service | Enables task-service outbox polling. Keep false by default. |
 | `OUTBOX_PUBLISHER_ADAPTER` | No | `logging` | `kafka` | task-service | Selects the outbox publisher adapter. Use `kafka` only when Kafka is intentionally enabled. |
+| `OUTBOX_PUBLISHER_KAFKA_BOOTSTRAP_SERVERS` | No | `kafka:9092` | `kafka:9092` | task-service | Explicit Kafka bootstrap server list for the task-service outbox publisher. Falls back to `KAFKA_BOOTSTRAP_SERVERS`. |
+| `OUTBOX_PUBLISHER_KAFKA_TOPIC` | No | `platform.task-events` | `platform.task-events` | task-service | Explicit Kafka topic for the task-service outbox publisher. Falls back to `KAFKA_TASK_EVENTS_TOPIC`. |
 | `NOTIFICATION_KAFKA_ENABLED` | No | `false` | `true` | notification-service | Enables notification-service Kafka consumer processing. Keep false by default. |
+| `NOTIFICATION_KAFKA_TOPIC` | No | `platform.task-events` | `platform.task-events` | notification-service | Explicit Kafka topic consumed by notification-service. Falls back to `KAFKA_TASK_EVENTS_TOPIC`. |
 | `NOTIFICATION_SERVICE_ENABLED` | No | `true` | `true` | task-service | Enables task-service calls to notification-service. |
+| `NOTIFICATION_ASSIGNMENT_REST_ENABLED` | No | `true` | `false` | task-service | Preferred local cutover flag controlling synchronous REST assignment notifications. |
 | `NOTIFICATION_SERVICE_ASSIGNMENT_REST_ENABLED` | No | `true` | `false` | task-service | Controls only synchronous REST assignment notifications. Set false during controlled Kafka notification cutover verification. |
 | `NOTIFICATION_SERVICE_BASE_URL` | No | `http://notification-service:8087` | `http://notification-service:8087` | task-service | Base URL for internal notification-service REST calls. |
 | `NOTIFICATION_SERVICE_CONNECT_TIMEOUT` | No | `2s` | `2s` | task-service | Connection timeout for internal notification-service REST calls. |
@@ -158,7 +162,7 @@ Safe local Kafka notification verification uses:
 OUTBOX_PUBLISHER_ENABLED=true
 OUTBOX_PUBLISHER_ADAPTER=kafka
 NOTIFICATION_KAFKA_ENABLED=true
-NOTIFICATION_SERVICE_ASSIGNMENT_REST_ENABLED=false
+NOTIFICATION_ASSIGNMENT_REST_ENABLED=false
 ```
 
 The default `.env.example` keeps Kafka notification consumption disabled and

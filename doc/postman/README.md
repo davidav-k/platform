@@ -64,6 +64,15 @@ The collection verifies:
 - assigned-task notification list and get for the admin recipient
 - refresh-token cookie rotation
 
+## Kafka Notification Flow
+
+The default Postman flow verifies MVP behavior and does not require Kafka
+notification cutover settings. To verify notification creation through Kafka
+while keeping the existing REST code in place, enable the local Kafka E2E
+environment values first and then run the assigned-task portion of this
+collection. See
+[Kafka notification E2E verification](../kafka-notification-e2e-verification.md).
+
 ## Current Contract Limits
 
 - There is no public logout endpoint. The logout request is disabled and marked pending.

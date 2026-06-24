@@ -687,7 +687,7 @@ For local Kafka notification flow verification, use explicit runtime flags:
 OUTBOX_PUBLISHER_ENABLED=true
 OUTBOX_PUBLISHER_ADAPTER=kafka
 NOTIFICATION_KAFKA_ENABLED=true
-NOTIFICATION_SERVICE_ASSIGNMENT_REST_ENABLED=false
+NOTIFICATION_ASSIGNMENT_REST_ENABLED=false
 ```
 
 Manual verification steps:
@@ -697,7 +697,7 @@ Manual verification steps:
 2. Enable the task-service outbox publisher and select the Kafka adapter.
 3. Enable the notification-service Kafka consumer.
 4. Disable task-service REST assignment notifications with
-   `NOTIFICATION_SERVICE_ASSIGNMENT_REST_ENABLED=false`.
+   `NOTIFICATION_ASSIGNMENT_REST_ENABLED=false`.
 5. Create or assign a task that has a non-creator assignee.
 6. Verify notification-service creates the notification from the Kafka event.
 7. Verify duplicate event delivery does not create a duplicate notification
