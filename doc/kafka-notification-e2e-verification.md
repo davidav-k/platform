@@ -1,4 +1,4 @@
-# Kafka Notification E2E Verification
+# Kafka Notification E2E Verification And Cutover
 
 This document verifies the local Kafka notification path without removing or
 disabling the existing synchronous REST notification code.
@@ -10,7 +10,21 @@ The default MVP runtime remains unchanged:
 - notification-service Kafka consumer is disabled
 - task-service REST assignment notifications are enabled
 
-Use this flow only for local/dev verification.
+Use this flow for local/dev verification and controlled cutover.
+
+Kafka notification mode is the recommended runtime mode after verification:
+
+```text
+Task Assignment
+-> Task Service
+-> Outbox Event
+-> Kafka
+-> Notification Consumer
+-> Notification Created
+```
+
+The synchronous REST assignment notification code remains available for
+configuration-only rollback.
 
 ## Prerequisites
 
@@ -25,7 +39,18 @@ Use this flow only for local/dev verification.
 - A verified regular user exists for the Postman MVP flow, or you are ready to
   complete registration verification through MailHog.
 
-## Enable Kafka E2E Mode
+## Runtime Modes
+
+Default MVP mode:
+
+```text
+OUTBOX_PUBLISHER_ENABLED=false
+OUTBOX_PUBLISHER_ADAPTER=logging
+NOTIFICATION_KAFKA_ENABLED=false
+NOTIFICATION_ASSIGNMENT_REST_ENABLED=true
+```
+
+Kafka notification mode:
 
 Set these values in `.env`:
 
@@ -37,6 +62,15 @@ OUTBOX_PUBLISHER_KAFKA_TOPIC=platform.task-events
 NOTIFICATION_KAFKA_ENABLED=true
 NOTIFICATION_KAFKA_TOPIC=platform.task-events
 NOTIFICATION_ASSIGNMENT_REST_ENABLED=false
+```
+
+Rollback mode:
+
+```text
+OUTBOX_PUBLISHER_ENABLED=false
+OUTBOX_PUBLISHER_ADAPTER=logging
+NOTIFICATION_KAFKA_ENABLED=false
+NOTIFICATION_ASSIGNMENT_REST_ENABLED=true
 ```
 
 Keep these defaults unless you intentionally need different local ports or
@@ -59,6 +93,11 @@ docker compose --env-file .env -f compose.yml up -d --build
 synchronous REST assignment notification call. It does not remove
 `RestNotificationClient`, `TaskNotificationPublisher`, or the
 notification-service internal REST endpoint.
+
+If task-service starts with Kafka publishing enabled and REST assignment
+notifications disabled while `NOTIFICATION_KAFKA_ENABLED=false`, it logs a
+warning. Startup is not blocked, but task assignment notifications may not be
+delivered until the notification-service Kafka consumer is enabled.
 
 ## Create A Verifiable Event
 
@@ -112,7 +151,54 @@ The script checks:
 The script does not perform login or create users/tasks. It intentionally does
 not hardcode local credentials or depend on mutable user state.
 
-## Manual Database Inspection
+## Controlled Cutover Runbook
+
+Phase A: enable Kafka consumer.
+
+```text
+NOTIFICATION_KAFKA_ENABLED=true
+NOTIFICATION_KAFKA_TOPIC=platform.task-events
+```
+
+Start or recreate notification-service and verify it starts cleanly.
+
+Phase B: enable Kafka producer.
+
+```text
+OUTBOX_PUBLISHER_ENABLED=true
+OUTBOX_PUBLISHER_ADAPTER=kafka
+OUTBOX_PUBLISHER_KAFKA_TOPIC=platform.task-events
+OUTBOX_PUBLISHER_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+```
+
+Create or update a task and verify new outbox events move to `PROCESSED`.
+
+Phase C: disable REST assignment notifications.
+
+```text
+NOTIFICATION_ASSIGNMENT_REST_ENABLED=false
+```
+
+This skips only synchronous REST assignment notification sending from
+task-service. REST code and notification-service internal endpoints remain in
+place.
+
+Phase D: observe notification creation.
+
+Verify:
+
+- `outbox_events.status = PROCESSED`
+- Kafka topic receives `platform.task-events` messages
+- `event_consumption_log` has exactly one row for the `event_id`
+- `notifications` has exactly one notification for the task/recipient pair
+- task-service logs show the REST assignment notification path was skipped
+
+Phase E: roll back if necessary.
+
+Use the rollback mode values below and recreate affected services. No code
+change is required.
+
+## Operational Verification
 
 Inspect the latest task assignment outbox event:
 
@@ -157,6 +243,22 @@ Expected:
 - `source_entity_type = TASK`
 - `source_entity_id` equals the task ID from the outbox event
 
+Inspect Kafka topic traffic:
+
+```bash
+docker exec tsp_kafka /opt/bitnami/kafka/bin/kafka-console-consumer.sh \
+  --bootstrap-server localhost:9092 \
+  --topic platform.task-events \
+  --from-beginning \
+  --max-messages 5
+```
+
+Expected:
+
+- messages contain `eventType`
+- task assignment messages use `TASK_ASSIGNED`
+- `eventId` matches the idempotency key stored by notification-service
+
 ## Duplicate Delivery Protection
 
 Duplicate Kafka delivery is expected under at-least-once delivery. The
@@ -195,7 +297,7 @@ The assignment endpoint writes `TASK_ASSIGNED` outbox events, but the legacy
 synchronous REST assignment notification path currently runs from task
 creation with an assignee.
 
-## Roll Back To Default MVP Behavior
+## Rollback Runbook
 
 Set these values in `.env`:
 

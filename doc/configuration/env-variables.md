@@ -168,6 +168,19 @@ NOTIFICATION_ASSIGNMENT_REST_ENABLED=false
 The default `.env.example` keeps Kafka notification consumption disabled and
 keeps synchronous REST assignment notifications enabled.
 
+Kafka notification mode is the recommended runtime mode after local
+verification. It remains explicit and reversible:
+
+- Default mode keeps `OUTBOX_PUBLISHER_ENABLED=false`,
+  `OUTBOX_PUBLISHER_ADAPTER=logging`, `NOTIFICATION_KAFKA_ENABLED=false`, and
+  `NOTIFICATION_ASSIGNMENT_REST_ENABLED=true`.
+- Kafka mode sets `OUTBOX_PUBLISHER_ENABLED=true`,
+  `OUTBOX_PUBLISHER_ADAPTER=kafka`, `NOTIFICATION_KAFKA_ENABLED=true`, and
+  `NOTIFICATION_ASSIGNMENT_REST_ENABLED=false`.
+- Rollback mode restores `NOTIFICATION_ASSIGNMENT_REST_ENABLED=true` and
+  `NOTIFICATION_KAFKA_ENABLED=false`; disabling the outbox publisher or
+  returning to the logging adapter is also supported.
+
 ### Mail
 
 | Name | Required | Default | Example | Consumed by | Description |

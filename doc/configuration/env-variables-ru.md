@@ -152,6 +152,19 @@ NOTIFICATION_ASSIGNMENT_REST_ENABLED=false
 По умолчанию `.env.example` оставляет Kafka consumer выключенным, а
 синхронные REST-уведомления о назначении включенными.
 
+Kafka notification mode является рекомендуемым runtime-режимом после локальной
+проверки. Режим остается явным и обратимым:
+
+- Default mode оставляет `OUTBOX_PUBLISHER_ENABLED=false`,
+  `OUTBOX_PUBLISHER_ADAPTER=logging`, `NOTIFICATION_KAFKA_ENABLED=false` и
+  `NOTIFICATION_ASSIGNMENT_REST_ENABLED=true`.
+- Kafka mode использует `OUTBOX_PUBLISHER_ENABLED=true`,
+  `OUTBOX_PUBLISHER_ADAPTER=kafka`, `NOTIFICATION_KAFKA_ENABLED=true` и
+  `NOTIFICATION_ASSIGNMENT_REST_ENABLED=false`.
+- Rollback mode возвращает `NOTIFICATION_ASSIGNMENT_REST_ENABLED=true` и
+  `NOTIFICATION_KAFKA_ENABLED=false`; также можно отключить outbox publisher
+  или вернуть logging adapter.
+
 ### Почта
 
 | Имя | Необходимо. | По умолчанию | Пример | Поглощенный/Потребленный | Описание |

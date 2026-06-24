@@ -690,6 +690,17 @@ NOTIFICATION_KAFKA_ENABLED=true
 NOTIFICATION_ASSIGNMENT_REST_ENABLED=false
 ```
 
+After verification, this Kafka notification mode is the recommended runtime
+mode for task assignment notifications:
+
+```text
+Task Assignment -> Task Service -> Outbox Event -> Kafka -> Notification Consumer -> Notification Created
+```
+
+The legacy REST assignment notification code remains available for
+configuration-only rollback and must not be removed until a dedicated cleanup
+branch.
+
 Manual verification steps:
 
 1. Start Docker Compose with Kafka, PostgreSQL, task-service, and
