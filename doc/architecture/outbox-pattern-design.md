@@ -8,13 +8,15 @@ task outbox events and has a local publisher foundation with polling, claiming,
 retry, and status transitions.
 
 The current MVP continues to use its existing synchronous and in-process
-integrations. The `task-service` publisher currently uses a logging/no-op
-`OutboxEventPublisher`; no real broker delivery exists yet. This
-Kafka adapter design branch selects Kafka as the future broker for platform
-domain events, but does not implement it. It does not introduce Kafka
-dependencies, Spring Kafka, Spring Cloud Stream, broker containers, schema
-changes, Java runtime behavior changes, consumers, Docker Compose changes, or
-notification cutover.
+integrations. Kafka infrastructure exists for local development, and
+`task-service` can publish outbox events through `KafkaOutboxEventPublisher`
+when explicitly enabled. `notification-service` has Kafka consumer support,
+durable `event_id` idempotency through `event_consumption_log`, and task-event
+notification processing behind `notification.kafka.enabled`.
+
+Kafka publishing and notification consumption remain disabled by default. The
+existing synchronous REST notification flow remains active and unchanged.
+Notification cutover has not happened.
 
 ## 1. Problem Statement
 
@@ -63,10 +65,13 @@ distributed transaction between a service database and a message broker.
 
 ## 3. Non-Goals
 
-- Implementing Kafka, RabbitMQ, broker dependencies, Spring Kafka, Spring
-  Cloud Stream, or broker infrastructure in this branch.
-- Adding or changing task-service migrations, entities, repositories,
-  publishers, schedulers, or consumers in this branch.
+- Replacing synchronous REST notification behavior in the current runtime.
+- Removing task-service `RestNotificationClient` or `TaskNotificationPublisher`.
+- Enabling Kafka publishing or notification consumption by default.
+- Performing notification cutover in the same branch as infrastructure,
+  producer, consumer, or test hardening work.
+- Adding RabbitMQ, Spring Cloud Stream, or another broker abstraction.
+- Adding or changing task-service business use cases for cutover.
 - Implementing distributed transactions or two-phase commit.
 - Guaranteeing immediate consistency between services.
 - Guaranteeing exactly-once end-to-end processing.
@@ -122,15 +127,23 @@ REST notification flow.
 Owns notifications, preferences, and delivery state. It exposes authenticated
 HTTP endpoints and an internal endpoint used by task-service to create a
 system notification. The internal endpoint persists an `IN_APP` notification
-with `PENDING` status and task source metadata supplied by task-service. It
-does not consume broker events.
+with `PENDING` status and task source metadata supplied by task-service.
+
+`notification-service` also has Kafka consumer support for task events. The
+consumer is disabled by default through `notification.kafka.enabled=false`.
+When explicitly enabled, it consumes the task-event envelope, checks
+`event_consumption_log` by `event_id`, creates notifications for supported task
+events, and records the consumed event in the same local transaction. Duplicate
+Kafka deliveries with the same `eventId` are ignored and must not create a
+second notification.
 
 ### Shared infrastructure
 
 API Gateway routes external HTTP traffic and rejects invalid JWTs early.
 Config Server supplies runtime configuration, and Eureka provides service
 discovery. Each persistence service owns a separate PostgreSQL database and
-Flyway migrations. Docker Compose currently contains no message broker.
+Flyway migrations. Docker Compose includes a single-node Kafka broker for
+local development.
 
 ## 5. Proposed Event-Driven Architecture
 
@@ -208,7 +221,8 @@ that meets measured throughput and reliability needs. The choice is deferred.
 
 These are the initial task-service outbox event types expected for MVP
 implementation. They are currently written by `task-service` to its local
-outbox table, but they are not yet delivered to an external broker.
+outbox table and can be delivered to Kafka when the task-service publisher and
+Kafka adapter are explicitly enabled.
 
 | Event | Producer | Purpose |
 | --- | --- | --- |
@@ -334,7 +348,7 @@ failed delivery attempt. `NEW` and `FAILED` events remain retryable while their
 reached, events remain `FAILED` for manual inspection or future recovery work.
 
 Retry backoff, jitter, next-attempt scheduling, dead-letter handling, and
-operator replay are future work. A future broker adapter should distinguish
+operator replay are future work. A broker adapter should distinguish
 transient delivery failures from invalid event data or permanent business
 rejection.
 
@@ -411,9 +425,11 @@ The adapter contract is:
 - Not call `notification-service` directly.
 - Not log full payloads by default.
 
-The current implementation, `LoggingOutboxEventPublisher`, is intentionally
-logging/no-op only. A future implementation may be Kafka-based, but broker
-selection and dependencies require a separate implementation branch.
+The current local/development fallback, `LoggingOutboxEventPublisher`, is
+intentionally logging/no-op only. `KafkaOutboxEventPublisher` is available as
+the real task-service delivery adapter when the publisher is explicitly
+configured to use Kafka. The adapter publishes to `platform.task-events` by
+default and keeps outbox status transitions in `OutboxEventProcessor`.
 
 ## 12. Monitoring
 
@@ -430,9 +446,9 @@ and aggregate ID without logging sensitive payloads.
 
 ## 13. Broker Decision: Kafka
 
-Kafka is selected as the future broker for Platform domain events. Kafka is not
-implemented in this branch; this is a documentation and adapter-design decision
-only.
+Kafka is selected as the broker for Platform domain events. Local Docker
+Compose infrastructure and the task-service producer adapter are implemented,
+but publishing remains opt-in and disabled by default.
 
 Kafka is the better fit for this project because it provides:
 
@@ -457,9 +473,9 @@ independent consumers.
 | Operational questions | Partition count, retention, rebalancing, schema governance | Exchange/queue topology, acknowledgements, dead lettering, queue growth |
 | Spring integration | Spring for Apache Kafka | Spring AMQP |
 
-Exact Kafka, Spring Kafka, and infrastructure versions must be selected from
-the Spring Boot 3.4.x dependency baseline and verified with Spring Cloud 2024.x
-when the implementation branch begins.
+Kafka and Spring Kafka versions should continue to follow the Spring Boot
+3.4.x dependency baseline and be verified with Spring Cloud 2024.x during
+future upgrades.
 
 ## 14. Initial Kafka Topic Strategy
 
@@ -475,7 +491,7 @@ Topic plan:
 | --- | --- |
 | Producer | `task-service` |
 | Initial topic | `platform.task-events` |
-| Future consumers | `notification-service`, `audit-service` |
+| Consumers | `notification-service`; future `audit-service` |
 | Event key | `aggregateId`, which is the task public UUID for task events |
 | Event value | Kafka message envelope containing outbox metadata and payload |
 | Ordering expectation | best-effort ordering per taskId partition key |
@@ -488,7 +504,7 @@ duplicate-safe consumers.
 
 ## 15. Kafka Message Envelope
 
-The Kafka adapter should publish a transport envelope shaped as:
+The Kafka adapter publishes a transport envelope shaped as:
 
 | Field | Source |
 | --- | --- |
@@ -509,8 +525,7 @@ migration adds persisted event versions.
 
 ## 16. Kafka Outbox Adapter Design
 
-The future implementation should add `KafkaOutboxEventPublisher` implementing
-`OutboxEventPublisher`.
+`KafkaOutboxEventPublisher` implements `OutboxEventPublisher`.
 
 Adapter responsibilities:
 
@@ -575,9 +590,10 @@ platform:
     task-events-topic: platform.task-events
 ```
 
-`outbox.publisher.enabled` should remain false by default until Kafka
-infrastructure, producer configuration, monitoring, and operational recovery
-are ready. This branch does not add these properties to runtime configuration.
+`outbox.publisher.enabled` remains false by default. The task-service Kafka
+adapter is selected only when explicitly configured. `notification.kafka.enabled`
+also remains false by default so Kafka-created notifications are opt-in during
+verification.
 
 ## 19. MVP Migration Strategy
 
@@ -610,63 +626,85 @@ infrastructure and dependencies only after compatibility and operational
 requirements are verified. The adapter must preserve at-least-once semantics
 and must not include task-service business logic.
 
-### Phase 3: Move notification delivery to event-driven flow
+### Phase 3: Add Kafka notification processing
 
-Implement notification-service event consumption with durable idempotency,
-retry handling, and controlled duplicate prevention. Move task notification
-creation to the event-driven flow after end-to-end acceptance criteria pass.
-Avoid letting both synchronous REST and event consumption create duplicate
-notifications in production; use feature flags or controlled environments for
-rollout.
+Implement notification-service event consumption with durable idempotency and
+controlled duplicate prevention. `notification-service` now supports creating
+notifications from `TASK_CREATED`, `TASK_ASSIGNED`, and `TASK_STATUS_CHANGED`
+events when `notification.kafka.enabled=true`. Processing and
+`event_consumption_log` writes happen in the same local transaction, and the
+consumption record is saved only after notification processing succeeds.
 
-The notification-service consumer must be added separately from the
-task-service publisher. It must use `event_id` based deduplication before
-creating notification records.
+### Phase 4: Controlled notification cutover
 
-### Phase 4: Remove synchronous REST integration
+Do not allow both synchronous REST and Kafka processing to create the same task
+assignment notification in production. The safer cutover approach for this
+project is:
+
+1. Keep REST notification flow active.
+2. Keep Kafka consumer disabled by default.
+3. Enable Kafka producer and consumer together only in controlled local/dev
+   environments first.
+4. Before any dual-running environment can create user-visible task assignment
+   notifications, disable REST assignment notification when Kafka notification
+   consumer is enabled.
+5. Verify Kafka-created notifications and duplicate suppression.
+6. Remove task-service's direct notification REST call only in a dedicated
+   cleanup branch after verification.
+
+The alternative approach, adding a shared idempotency key across REST-created
+and Kafka-created notifications, is possible but broader. It would require
+coordinating identifiers across synchronous and asynchronous flows and changing
+notification creation contracts. For the current platform, disabling the REST
+assignment notification path only when Kafka notification consumer is enabled
+is the smaller and safer cutover.
+
+### Phase 5: Remove synchronous REST integration
 
 After event publication and consumption meet defined acceptance criteria,
-disable and then remove task-service's direct notification REST call and
-delegated JWT propagation. Keep rollback controls during rollout and update
-service contracts, runbooks, diagrams, and tests.
+remove task-service's direct notification REST call and delegated JWT
+propagation in a dedicated branch. Keep rollback controls during rollout and
+update service contracts, runbooks, diagrams, and tests.
 
 User lifecycle events can follow the same phases independently. Services do
 not need to migrate all event types in one release.
 
 ## 20. Notification Cutover Strategy
 
-The current synchronous REST notification flow remains active. Real outbox
-delivery should be introduced behind `OutboxEventPublisher` first, with no
-notification-service consumption and no REST removal in the same branch.
+The current synchronous REST notification flow remains active. Kafka
+notification processing exists but is disabled by default through
+`notification.kafka.enabled=false`. Duplicate delivery protection is
+implemented through `event_consumption_log` and covered by unit tests plus a
+PostgreSQL-backed integration test.
 
 Cutover sequence:
 
-1. Add a real delivery adapter behind `OutboxEventPublisher`.
-2. Add Kafka broker infrastructure.
-3. Add notification-service event consumer separately.
-4. Add a notification-service idempotency table or unique constraint based on
-   `event_id`.
-5. Run old and new flows carefully only where duplicate notification creation
-   is prevented or isolated by environment and feature flags.
-6. Verify consumer behavior, retry behavior, deduplication, and observability.
-7. Remove the synchronous REST notification flow only in a dedicated cutover
-   branch.
+1. Phase 1: keep REST notification flow active, keep Kafka consumer disabled
+   by default, and verify tests.
+2. Phase 2: enable Kafka consumer in local/dev only while keeping REST active;
+   observe duplicate risk and operational behavior without production cutover.
+3. Phase 3: prevent double notification creation before any dual-running
+   user-visible environment. Prefer disabling REST assignment notification
+   when Kafka notification consumer is enabled instead of creating the same
+   notification through both paths.
+4. Phase 4: enable Kafka publishing and Kafka consumer together in a controlled
+   environment and verify notifications are created from events.
+5. Phase 5: remove the synchronous REST notification flow only in a dedicated
+   cleanup branch after verification.
 
 ## 21. Next Implementation Sequence
 
 Recommended implementation order:
 
-1. Add Kafka to Docker Compose.
-2. Add Spring Kafka dependency only to `task-service`.
-3. Add Kafka producer configuration.
-4. Add `KafkaOutboxEventPublisher`.
-5. Keep `LoggingOutboxEventPublisher` as a local/development fallback if useful.
-6. Add producer tests.
-7. Add notification-service idempotency table or unique constraint.
-8. Add notification-service Kafka consumer.
-9. Verify duplicate handling, retry behavior, and failure recovery.
-10. Cut over notification creation from REST to events.
-11. Remove `task-service` synchronous REST notification integration in a
+1. Keep Kafka producer and consumer disabled by default.
+2. Run unit tests and Docker-backed integration tests for duplicate delivery.
+3. Verify local/dev Kafka producer and consumer behavior with explicit flags.
+4. Add operational metrics for consumer lag, duplicate count, processing
+   failures, and notification creation latency.
+5. Add a feature flag or equivalent runtime control to disable REST assignment
+   notifications when Kafka notification consumer is enabled.
+6. Cut over notification creation from REST to events in a controlled branch.
+7. Remove `task-service` synchronous REST notification integration in a
    dedicated branch after verification.
 
 ## 22. Database Design Sketch
@@ -755,9 +793,9 @@ cross-service foreign key is allowed.
 The selected delivery semantics are service-owned transactional outbox records
 with at-least-once delivery, idempotent consumers, duplicate-tolerant
 processing, and best-effort per-aggregate ordering. Kafka is selected as the
-future broker for platform domain events, starting with
-`platform.task-events` produced by `task-service` and keyed by task
-`aggregateId`. The current implementation persists task-service outbox rows
-and has a disabled local publisher foundation with a logging/no-op adapter.
-Real Kafka delivery, notification-service consumption, and synchronous REST
-notification removal remain future work.
+broker for platform domain events, starting with `platform.task-events`
+produced by `task-service` and keyed by task `aggregateId`. The current
+implementation persists task-service outbox rows, can publish through Kafka
+when explicitly enabled, and can create notification-service records from Kafka
+events when explicitly enabled. Synchronous REST notification removal remains
+future work and must happen only in a dedicated cutover branch.
