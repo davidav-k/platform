@@ -8,7 +8,7 @@ outbox:
     adapter: logging
     batch-size: 20
     max-retries: 3
-    fixed-delay: 5s
+    fixed-delay-millis: 5000
     kafka:
       enabled: false
       bootstrap-servers: kafka:9092
