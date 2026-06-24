@@ -7,29 +7,27 @@ semantics. The first implemented producer is `task-service`, which persists
 task outbox events and has a local publisher foundation with polling, claiming,
 retry, and status transitions.
 
-The current MVP continues to use its existing synchronous and in-process
-integrations. Kafka infrastructure exists for local development, and
-`task-service` can publish outbox events through `KafkaOutboxEventPublisher`
-when explicitly enabled. `notification-service` has Kafka consumer support,
-durable `event_id` idempotency through `event_consumption_log`, and task-event
-notification processing behind `notification.kafka.enabled`.
+Kafka is now the default task-notification delivery mechanism. `task-service`
+publishes outbox events through `KafkaOutboxEventPublisher`, and
+`notification-service` consumes task events with durable `event_id`
+idempotency through `event_consumption_log`.
 
-Kafka publishing and notification consumption remain disabled by default. The
-existing synchronous REST notification flow remains active and unchanged.
-Notification cutover has not happened.
+The existing synchronous REST notification flow remains available for
+configuration-only rollback, but it is not the default delivery path.
 
 `task-service` now has an explicit runtime control for the synchronous REST
 assignment notification path:
 
 ```yaml
 notification-service:
-  assignment-rest-enabled: true
+  assignment-rest-enabled: false
 ```
 
-The default is `true`, so MVP behavior is unchanged. Setting it to `false`
-skips only task assignment notifications sent through the synchronous REST
-path; it does not remove `RestNotificationClient`, `TaskNotificationPublisher`,
-the notification-service internal REST endpoint, or task outbox event writing.
+The default is `false`, so Kafka-created notifications are the active path.
+Setting it to `true` re-enables only task assignment notifications sent through
+the synchronous REST path for rollback; it does not remove
+`RestNotificationClient`, `TaskNotificationPublisher`, the notification-service
+internal REST endpoint, or task outbox event writing.
 
 ## 1. Problem Statement
 
@@ -78,11 +76,9 @@ distributed transaction between a service database and a message broker.
 
 ## 3. Non-Goals
 
-- Replacing synchronous REST notification behavior in the current runtime.
+- Removing synchronous REST notification fallback code.
 - Removing task-service `RestNotificationClient` or `TaskNotificationPublisher`.
-- Enabling Kafka publishing or notification consumption by default.
-- Performing notification cutover in the same branch as infrastructure,
-  producer, consumer, or test hardening work.
+- Removing rollback controls for REST assignment notifications.
 - Adding RabbitMQ, Spring Cloud Stream, or another broker abstraction.
 - Adding or changing task-service business use cases for cutover.
 - Implementing distributed transactions or two-phase commit.
@@ -105,9 +101,10 @@ integration event is published.
 
 ### `task-service`
 
-Owns tasks, assignments, status changes, and task deletion state. Creating a
-task with a non-self assignee currently triggers a best-effort synchronous REST
-call to notification-service after the task has been persisted. The flow is:
+Owns tasks, assignments, status changes, and task deletion state. Creating or
+assigning a task writes durable outbox events that are published to Kafka by
+default. The legacy rollback flow, when
+`notification-service.assignment-rest-enabled=true`, is:
 
 ```text
 CreateTaskUseCaseImpl
@@ -118,8 +115,8 @@ CreateTaskUseCaseImpl
 ```
 
 The REST request delegates the initiating request's access token to
-notification-service. Notification failure is logged and does not fail the task
-response.
+notification-service. In rollback mode, notification failure is logged and does
+not fail the task response.
 
 `task-service` also persists durable outbox rows in the same transaction as
 task business changes for:
@@ -128,12 +125,10 @@ task business changes for:
 - `TASK_ASSIGNED` from `AssignTaskUseCaseImpl`
 - `TASK_STATUS_CHANGED` from `ChangeTaskStatusUseCaseImpl`
 
-The local outbox publisher foundation is implemented but disabled by default
-through `outbox.publisher.enabled=false`. When enabled, it polls claimable
-events and passes them to `OutboxEventPublisher`. The current
-`OutboxEventPublisher` implementation logs event metadata only and does not
-send messages externally, call notification-service, or replace the synchronous
-REST notification flow.
+The local outbox publisher is enabled by default through
+`outbox.publisher.enabled=true` with `outbox.publisher.adapter=kafka`. It polls
+claimable events and passes them to `KafkaOutboxEventPublisher`, which sends
+events to Kafka without calling notification-service directly.
 
 Synchronous REST assignment notifications are controlled independently through
 `notification-service.assignment-rest-enabled`. The effective behavior is:
@@ -141,8 +136,8 @@ Synchronous REST assignment notifications are controlled independently through
 | `notification-service.enabled` | `notification-service.assignment-rest-enabled` | Assignment REST notification behavior |
 | --- | --- | --- |
 | `false` | any value | skipped |
-| `true` | `true` | sent when existing assignment conditions pass |
-| `true` | `false` | skipped for Kafka notification cutover verification |
+| `true` | `true` | sent when existing assignment conditions pass for rollback |
+| `true` | `false` | skipped; default Kafka notification delivery path |
 
 ### `notification-service`
 
@@ -152,8 +147,8 @@ system notification. The internal endpoint persists an `IN_APP` notification
 with `PENDING` status and task source metadata supplied by task-service.
 
 `notification-service` also has Kafka consumer support for task events. The
-consumer is disabled by default through `notification.kafka.enabled=false`.
-When explicitly enabled, it consumes the task-event envelope, checks
+consumer is enabled by default through `notification.kafka.enabled=true`.
+It consumes the task-event envelope, checks
 `event_consumption_log` by `event_id`, creates notifications for supported task
 events, and records the consumed event in the same local transaction. Duplicate
 Kafka deliveries with the same `eventId` are ignored and must not create a
@@ -175,7 +170,7 @@ publisher reads unpublished records and delivers them through an adapter. The
 current adapter logs only; the selected future adapter is Kafka-based.
 Consumers process messages independently and update only their own databases.
 
-Target task-notification flow:
+Current default task-notification flow:
 
 ```text
 Task Service
@@ -447,11 +442,10 @@ The adapter contract is:
 - Not call `notification-service` directly.
 - Not log full payloads by default.
 
-The current local/development fallback, `LoggingOutboxEventPublisher`, is
-intentionally logging/no-op only. `KafkaOutboxEventPublisher` is available as
-the real task-service delivery adapter when the publisher is explicitly
-configured to use Kafka. The adapter publishes to `platform.task-events` by
-default and keeps outbox status transitions in `OutboxEventProcessor`.
+The fallback `LoggingOutboxEventPublisher` is intentionally logging/no-op only.
+`KafkaOutboxEventPublisher` is the default real task-service delivery adapter.
+The adapter publishes to `platform.task-events` by default and keeps outbox
+status transitions in `OutboxEventProcessor`.
 
 ## 12. Monitoring
 
@@ -470,7 +464,7 @@ and aggregate ID without logging sensitive payloads.
 
 Kafka is selected as the broker for Platform domain events. Local Docker
 Compose infrastructure and the task-service producer adapter are implemented,
-but publishing remains opt-in and disabled by default.
+and Kafka is the default notification delivery path.
 
 Kafka is the better fit for this project because it provides:
 
@@ -596,12 +590,12 @@ Retry behavior:
 
 ## 18. Future Configuration Plan
 
-Future task-service configuration:
+Task-service notification delivery configuration:
 
 ```yaml
 outbox:
   publisher:
-    enabled: false
+    enabled: true
     batch-size: 20
     max-retries: 3
     fixed-delay: 5s
@@ -612,10 +606,12 @@ platform:
     task-events-topic: platform.task-events
 ```
 
-`outbox.publisher.enabled` remains false by default. The task-service Kafka
-adapter is selected only when explicitly configured. `notification.kafka.enabled`
-also remains false by default so Kafka-created notifications are opt-in during
-verification.
+`outbox.publisher.enabled=true`, `outbox.publisher.adapter=kafka`, and
+`notification.kafka.enabled=true` are the default notification delivery
+settings. Rollback is configuration-only by setting
+`notification-service.assignment-rest-enabled=true` and
+`notification.kafka.enabled=false`; `outbox.publisher.adapter=logging` may also
+be used for local no-op publishing.
 
 ## 19. MVP Migration Strategy
 
@@ -637,8 +633,7 @@ broker is selected for this phase, choose it through a separate implementation
 decision and version-compatibility check.
 
 Status: local publisher foundation is implemented with polling, claiming,
-retry, and status transitions. The delivery adapter is logging/no-op only and
-`outbox.publisher.enabled=false` by default.
+retry, and status transitions. The default delivery adapter is Kafka.
 
 ### Phase 2b: Add real delivery adapter
 
@@ -660,18 +655,13 @@ consumption record is saved only after notification processing succeeds.
 ### Phase 4: Controlled notification cutover
 
 Do not allow both synchronous REST and Kafka processing to create the same task
-assignment notification in production. The safer cutover approach for this
-project is:
+assignment notification in production. The safer default for this project is:
 
-1. Keep REST notification flow active.
-2. Keep Kafka consumer disabled by default.
-3. Enable Kafka producer and consumer together only in controlled local/dev
-   environments first.
-4. Before any dual-running environment can create user-visible task assignment
-   notifications, disable REST assignment notification when Kafka notification
-   consumer is enabled.
-5. Verify Kafka-created notifications and duplicate suppression.
-6. Remove task-service's direct notification REST call only in a dedicated
+1. Keep Kafka producer and consumer enabled.
+2. Keep REST assignment notifications disabled.
+3. Verify Kafka-created notifications and duplicate suppression.
+4. Use REST assignment notifications only as a configuration rollback.
+5. Remove task-service's direct notification REST call only in a dedicated
    cleanup branch after verification.
 
 The alternative approach, adding a shared idempotency key across REST-created
@@ -730,40 +720,32 @@ not need to migrate all event types in one release.
 
 ## 20. Notification Cutover Strategy
 
-The current synchronous REST notification flow remains active. Kafka
-notification processing exists but is disabled by default through
-`notification.kafka.enabled=false`. Duplicate delivery protection is
-implemented through `event_consumption_log` and covered by unit tests plus a
-PostgreSQL-backed integration test.
+Kafka notification processing is the active default. The synchronous REST
+notification flow remains implemented as a rollback path. Duplicate delivery
+protection is implemented through `event_consumption_log` and covered by unit
+tests plus a PostgreSQL-backed integration test.
 
-Cutover sequence:
+Operational sequence:
 
-1. Phase 1: keep REST notification flow active, keep Kafka consumer disabled
-   by default, and verify tests.
-2. Phase 2: enable Kafka consumer in local/dev only while keeping REST active;
-   observe duplicate risk and operational behavior without production cutover.
-3. Phase 3: prevent double notification creation before any dual-running
-   user-visible environment. Prefer disabling REST assignment notification
-   when Kafka notification consumer is enabled instead of creating the same
-   notification through both paths.
-4. Phase 4: enable Kafka publishing and Kafka consumer together in a controlled
-   environment and verify notifications are created from events.
-5. Phase 5: remove the synchronous REST notification flow only in a dedicated
-   cleanup branch after verification.
+1. Keep Kafka publishing and Kafka consumer enabled.
+2. Keep REST assignment notifications disabled.
+3. Verify notifications are created from events.
+4. For rollback, set `notification-service.assignment-rest-enabled=true` and
+   `notification.kafka.enabled=false`.
+5. Remove the synchronous REST notification flow only in a dedicated cleanup
+   branch after verification.
 
 ## 21. Next Implementation Sequence
 
 Recommended implementation order:
 
-1. Keep Kafka producer and consumer disabled by default.
-2. Run unit tests and Docker-backed integration tests for duplicate delivery.
-3. Verify local/dev Kafka producer and consumer behavior with explicit flags.
-4. Add operational metrics for consumer lag, duplicate count, processing
+1. Run unit tests and Docker-backed integration tests for duplicate delivery.
+2. Verify local/dev Kafka producer and consumer behavior with default flags.
+3. Add operational metrics for consumer lag, duplicate count, processing
    failures, and notification creation latency.
-5. Use `notification-service.assignment-rest-enabled=false` to disable REST
-   assignment notifications when Kafka notification consumer is enabled.
-6. Cut over notification creation from REST to events in a controlled branch.
-7. Remove `task-service` synchronous REST notification integration in a
+4. Validate rollback with `notification-service.assignment-rest-enabled=true`
+   and `notification.kafka.enabled=false`.
+5. Remove `task-service` synchronous REST notification integration in a
    dedicated branch after verification.
 
 ## 22. Database Design Sketch

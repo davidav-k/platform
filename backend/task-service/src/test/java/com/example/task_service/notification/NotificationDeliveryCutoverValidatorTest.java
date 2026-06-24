@@ -41,7 +41,12 @@ class NotificationDeliveryCutoverValidatorTest {
 
         new NotificationDeliveryCutoverValidator(outboxProperties, notificationProperties, environment).run(NO_ARGS);
 
-        assertThat(output).doesNotContain("Task assignment notifications may not be delivered");
+        assertThat(output)
+            .contains("Notification delivery startup configuration")
+            .contains("outboxPublisherEnabled=true")
+            .contains("outboxPublisherAdapter=kafka")
+            .contains("assignmentRestNotificationEnabled=false")
+            .doesNotContain("Task assignment notifications may not be delivered");
     }
 
     @Test

@@ -116,7 +116,7 @@ docker exec tsp_postgres pg_isready -q >/dev/null 2>&1 ||
   fail "PostgreSQL is not accepting connections inside tsp_postgres"
 pass "PostgreSQL is accepting connections"
 
-docker exec tsp_kafka /opt/bitnami/kafka/bin/kafka-topics.sh \
+docker exec tsp_kafka /opt/kafka/bin/kafka-topics.sh \
   --bootstrap-server localhost:9092 --list >/dev/null 2>&1 ||
   fail "Kafka broker is not reachable inside tsp_kafka"
 pass "Kafka broker is reachable"

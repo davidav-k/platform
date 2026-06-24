@@ -25,6 +25,14 @@ public class NotificationDeliveryCutoverValidator implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
+        log.info(
+            "Notification delivery startup configuration: outboxPublisherEnabled={}, outboxPublisherAdapter={}, "
+                + "assignmentRestNotificationEnabled={}",
+            outboxPublisherProperties.isEnabled(),
+            outboxPublisherProperties.getAdapter(),
+            notificationClientProperties.isAssignmentRestEnabled()
+        );
+
         if (isKafkaPublisherEnabled()
             && !notificationClientProperties.isAssignmentRestEnabled()
             && !isNotificationKafkaEnabled()) {

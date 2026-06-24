@@ -37,5 +37,5 @@ jwt:
 
 notification:
   kafka:
-    enabled: ${NOTIFICATION_KAFKA_ENABLED:false}
+    enabled: ${NOTIFICATION_KAFKA_ENABLED:true}
     topic: ${NOTIFICATION_KAFKA_TOPIC:${KAFKA_TASK_EVENTS_TOPIC:platform.task-events}}

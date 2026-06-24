@@ -1,16 +1,16 @@
 # Kafka Notification E2E Verification And Cutover
 
-This document verifies the local Kafka notification path without removing or
-disabling the existing synchronous REST notification code.
+This document verifies the default local Kafka notification path without
+removing the existing synchronous REST notification code.
 
-The default MVP runtime remains unchanged:
+The default runtime is Kafka-based notification delivery:
 
-- task-service outbox publisher is disabled
-- task-service outbox publisher adapter is `logging`
-- notification-service Kafka consumer is disabled
-- task-service REST assignment notifications are enabled
+- task-service outbox publisher is enabled
+- task-service outbox publisher adapter is `kafka`
+- notification-service Kafka consumer is enabled
+- task-service REST assignment notifications are disabled
 
-Use this flow for local/dev verification and controlled cutover.
+Use this flow for local/dev verification and rollback validation.
 
 Kafka notification mode is the recommended runtime mode after verification:
 
@@ -41,18 +41,7 @@ configuration-only rollback.
 
 ## Runtime Modes
 
-Default MVP mode:
-
-```text
-OUTBOX_PUBLISHER_ENABLED=false
-OUTBOX_PUBLISHER_ADAPTER=logging
-NOTIFICATION_KAFKA_ENABLED=false
-NOTIFICATION_ASSIGNMENT_REST_ENABLED=true
-```
-
-Kafka notification mode:
-
-Set these values in `.env`:
+Default Kafka notification mode:
 
 ```text
 OUTBOX_PUBLISHER_ENABLED=true
@@ -138,7 +127,7 @@ After creating the assigned task, run:
 
 The script checks:
 
-- required Kafka E2E env values are enabled
+- default Kafka notification env values are enabled
 - REST assignment notifications are disabled
 - Docker Compose services are running
 - Kafka broker is reachable
@@ -151,18 +140,19 @@ The script checks:
 The script does not perform login or create users/tasks. It intentionally does
 not hardcode local credentials or depend on mutable user state.
 
-## Controlled Cutover Runbook
+## Operational Runbook
 
-Phase A: enable Kafka consumer.
+Phase A: verify Kafka consumer is enabled.
 
 ```text
 NOTIFICATION_KAFKA_ENABLED=true
 NOTIFICATION_KAFKA_TOPIC=platform.task-events
 ```
 
-Start or recreate notification-service and verify it starts cleanly.
+Start or recreate notification-service and verify startup logs show
+`kafkaConsumerEnabled=true`.
 
-Phase B: enable Kafka producer.
+Phase B: verify Kafka producer is enabled.
 
 ```text
 OUTBOX_PUBLISHER_ENABLED=true
@@ -173,7 +163,7 @@ OUTBOX_PUBLISHER_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
 
 Create or update a task and verify new outbox events move to `PROCESSED`.
 
-Phase C: disable REST assignment notifications.
+Phase C: verify REST assignment notifications are disabled.
 
 ```text
 NOTIFICATION_ASSIGNMENT_REST_ENABLED=false
@@ -246,7 +236,7 @@ Expected:
 Inspect Kafka topic traffic:
 
 ```bash
-docker exec tsp_kafka /opt/bitnami/kafka/bin/kafka-console-consumer.sh \
+docker exec tsp_kafka /opt/kafka/bin/kafka-console-consumer.sh \
   --bootstrap-server localhost:9092 \
   --topic platform.task-events \
   --from-beginning \
@@ -314,6 +304,6 @@ Then recreate the stack:
 docker compose --env-file .env -f compose.yml up -d --build
 ```
 
-This returns local behavior to the MVP defaults: synchronous REST assignment
-notifications remain active, Kafka notification consumption is disabled, and
+This returns local behavior to the REST fallback: synchronous REST assignment
+notifications are active, Kafka notification consumption is disabled, and
 Kafka publishing is not used.
