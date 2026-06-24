@@ -23,6 +23,7 @@ class TaskNotificationPublisherTest {
     @Test
     void disabledIntegrationDoesNotCallClient() {
         properties.setEnabled(false);
+        properties.setAssignmentRestEnabled(true);
 
         publisher.notifyTaskAssigned(context(UUID.randomUUID()));
 
@@ -30,8 +31,29 @@ class TaskNotificationPublisherTest {
     }
 
     @Test
+    void disabledAssignmentRestNotificationDoesNotCallClient() {
+        properties.setEnabled(true);
+        properties.setAssignmentRestEnabled(false);
+
+        publisher.notifyTaskAssigned(context(UUID.randomUUID()));
+
+        verify(notificationClient, never()).createNotification(any());
+    }
+
+    @Test
+    void nullContextDoesNotCallClient() {
+        properties.setEnabled(true);
+        properties.setAssignmentRestEnabled(true);
+
+        publisher.notifyTaskAssigned(null);
+
+        verify(notificationClient, never()).createNotification(any());
+    }
+
+    @Test
     void nullAssigneeDoesNotCallClient() {
         properties.setEnabled(true);
+        properties.setAssignmentRestEnabled(true);
         TaskNotificationContext context = new TaskNotificationContext(
             UUID.randomUUID(), "Task title", null, UUID.randomUUID()
         );
@@ -44,6 +66,7 @@ class TaskNotificationPublisherTest {
     @Test
     void validAssigneeCallsClientWithExpectedRequest() {
         properties.setEnabled(true);
+        properties.setAssignmentRestEnabled(true);
         UUID assigneeUserId = UUID.randomUUID();
         ArgumentCaptor<CreateNotificationRequest> captor =
             ArgumentCaptor.forClass(CreateNotificationRequest.class);
@@ -64,6 +87,7 @@ class TaskNotificationPublisherTest {
     @Test
     void selfAssignedTaskDoesNotCallClient() {
         properties.setEnabled(true);
+        properties.setAssignmentRestEnabled(true);
         UUID userId = UUID.randomUUID();
 
         publisher.notifyTaskAssigned(new TaskNotificationContext(
@@ -76,6 +100,7 @@ class TaskNotificationPublisherTest {
     @Test
     void clientExceptionDoesNotPropagate() {
         properties.setEnabled(true);
+        properties.setAssignmentRestEnabled(true);
         org.mockito.Mockito.doThrow(new NotificationClientException("request failed", null))
             .when(notificationClient).createNotification(any());
 

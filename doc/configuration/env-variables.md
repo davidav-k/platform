@@ -136,6 +136,34 @@ fixed in configuration and Compose:
 
 ## External Integrations
 
+### Kafka And Notification Cutover
+
+| Name | Required | Default | Example | Consumed by | Description |
+| --- | --- | --- | --- | --- | --- |
+| `KAFKA_LOCAL_PORT` | No | `9092` | `9092` | Docker Compose | Local host port exposed by the Kafka broker. |
+| `KAFKA_BOOTSTRAP_SERVERS` | No | `kafka:9092` | `kafka:9092` | task-service, notification-service | Kafka bootstrap server list for service-to-service broker access. |
+| `KAFKA_TASK_EVENTS_TOPIC` | No | `platform.task-events` | `platform.task-events` | task-service, notification-service | Topic for task domain events. |
+| `OUTBOX_PUBLISHER_ENABLED` | No | `false` | `true` | task-service | Enables task-service outbox polling. Keep false by default. |
+| `OUTBOX_PUBLISHER_ADAPTER` | No | `logging` | `kafka` | task-service | Selects the outbox publisher adapter. Use `kafka` only when Kafka is intentionally enabled. |
+| `NOTIFICATION_KAFKA_ENABLED` | No | `false` | `true` | notification-service | Enables notification-service Kafka consumer processing. Keep false by default. |
+| `NOTIFICATION_SERVICE_ENABLED` | No | `true` | `true` | task-service | Enables task-service calls to notification-service. |
+| `NOTIFICATION_SERVICE_ASSIGNMENT_REST_ENABLED` | No | `true` | `false` | task-service | Controls only synchronous REST assignment notifications. Set false during controlled Kafka notification cutover verification. |
+| `NOTIFICATION_SERVICE_BASE_URL` | No | `http://notification-service:8087` | `http://notification-service:8087` | task-service | Base URL for internal notification-service REST calls. |
+| `NOTIFICATION_SERVICE_CONNECT_TIMEOUT` | No | `2s` | `2s` | task-service | Connection timeout for internal notification-service REST calls. |
+| `NOTIFICATION_SERVICE_READ_TIMEOUT` | No | `2s` | `2s` | task-service | Read timeout for internal notification-service REST calls. |
+
+Safe local Kafka notification verification uses:
+
+```text
+OUTBOX_PUBLISHER_ENABLED=true
+OUTBOX_PUBLISHER_ADAPTER=kafka
+NOTIFICATION_KAFKA_ENABLED=true
+NOTIFICATION_SERVICE_ASSIGNMENT_REST_ENABLED=false
+```
+
+The default `.env.example` keeps Kafka notification consumption disabled and
+keeps synchronous REST assignment notifications enabled.
+
 ### Mail
 
 | Name | Required | Default | Example | Consumed by | Description |
@@ -148,7 +176,7 @@ fixed in configuration and Compose:
 
 ### Future Integrations
 
-No active environment variable contract exists for Kafka, Prometheus, Grafana,
+No active environment variable contract exists for Prometheus, Grafana,
 production mail providers, or OpenAI integration.
 
 ## Commented Fallback Toggles
@@ -168,8 +196,8 @@ required `.env` contract:
 | `.env.example` | All required local values and optional service overrides |
 | `compose.yml` | `POSTGRES_USER`, `POSTGRES_DB`, `SPRING_CLOUD_CONFIG_SERVER_NATIVE_SEARCH_LOCATIONS`, `APPLICATION_PORT` for task-service; commented fallback toggles |
 | `config/user-service-dev.yml` | PostgreSQL, mail, JWT, admin, and `APPLICATION_PORT` variables |
-| `config/task-service-dev.yml` | PostgreSQL (`TASK_POSTGRES_DB`), JWT, Eureka, `APPLICATION_PORT`, and `NOTIFICATION_SERVICE_ENABLED`, `NOTIFICATION_SERVICE_BASE_URL`, `NOTIFICATION_SERVICE_CONNECT_TIMEOUT`, `NOTIFICATION_SERVICE_READ_TIMEOUT` variables |
-| `config/notification-service-dev.yml` | PostgreSQL (`NOTIFICATION_POSTGRES_DB`), Eureka, and `APPLICATION_PORT` variables |
+| `config/task-service-dev.yml` | PostgreSQL (`TASK_POSTGRES_DB`), JWT, Eureka, `APPLICATION_PORT`, task-service notification REST variables, and outbox publisher variables |
+| `config/notification-service-dev.yml` | PostgreSQL (`NOTIFICATION_POSTGRES_DB`), Eureka, `APPLICATION_PORT`, and notification Kafka variables |
 | `backend/user-service/src/main/resources/application.yml` | `spring.application.name` only |
 | `backend/user-service/src/main/resources/bootstrap.yml` | `ACTIVE_PROFILE` and optional `CONFIG_SERVER_URI` override |
 | `backend/user-service/src/main/resources/application-dev.yml` | Retained development-profile marker only |

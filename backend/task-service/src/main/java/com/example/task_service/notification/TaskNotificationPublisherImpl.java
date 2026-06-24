@@ -3,8 +3,6 @@ package com.example.task_service.notification;
 import com.example.task_service.notification.dto.CreateNotificationRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -21,6 +19,10 @@ public class TaskNotificationPublisherImpl implements TaskNotificationPublisher 
             || context == null
             || context.assigneeUserId() == null
             || context.assigneeUserId().equals(context.createdByUserId())) {
+            return;
+        }
+        if (!properties.isAssignmentRestEnabled()) {
+            log.info("Skipping synchronous REST assignment notification because assignment REST notifications are disabled");
             return;
         }
 

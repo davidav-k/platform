@@ -16,5 +16,6 @@ public class NotificationClientProperties {
     private Duration connectTimeout = Duration.ofSeconds(2);
     private Duration readTimeout = Duration.ofSeconds(2);
     private boolean enabled;
+    private boolean assignmentRestEnabled = true;
 
 }

@@ -18,6 +18,19 @@ Kafka publishing and notification consumption remain disabled by default. The
 existing synchronous REST notification flow remains active and unchanged.
 Notification cutover has not happened.
 
+`task-service` now has an explicit runtime control for the synchronous REST
+assignment notification path:
+
+```yaml
+notification-service:
+  assignment-rest-enabled: true
+```
+
+The default is `true`, so MVP behavior is unchanged. Setting it to `false`
+skips only task assignment notifications sent through the synchronous REST
+path; it does not remove `RestNotificationClient`, `TaskNotificationPublisher`,
+the notification-service internal REST endpoint, or task outbox event writing.
+
 ## 1. Problem Statement
 
 The MVP uses synchronous service-to-service communication for task assignment
@@ -121,6 +134,15 @@ events and passes them to `OutboxEventPublisher`. The current
 `OutboxEventPublisher` implementation logs event metadata only and does not
 send messages externally, call notification-service, or replace the synchronous
 REST notification flow.
+
+Synchronous REST assignment notifications are controlled independently through
+`notification-service.assignment-rest-enabled`. The effective behavior is:
+
+| `notification-service.enabled` | `notification-service.assignment-rest-enabled` | Assignment REST notification behavior |
+| --- | --- | --- |
+| `false` | any value | skipped |
+| `true` | `true` | sent when existing assignment conditions pass |
+| `true` | `false` | skipped for Kafka notification cutover verification |
 
 ### `notification-service`
 
@@ -659,6 +681,32 @@ notification creation contracts. For the current platform, disabling the REST
 assignment notification path only when Kafka notification consumer is enabled
 is the smaller and safer cutover.
 
+For local Kafka notification flow verification, use explicit runtime flags:
+
+```text
+OUTBOX_PUBLISHER_ENABLED=true
+OUTBOX_PUBLISHER_ADAPTER=kafka
+NOTIFICATION_KAFKA_ENABLED=true
+NOTIFICATION_SERVICE_ASSIGNMENT_REST_ENABLED=false
+```
+
+Manual verification steps:
+
+1. Start Docker Compose with Kafka, PostgreSQL, task-service, and
+   notification-service.
+2. Enable the task-service outbox publisher and select the Kafka adapter.
+3. Enable the notification-service Kafka consumer.
+4. Disable task-service REST assignment notifications with
+   `NOTIFICATION_SERVICE_ASSIGNMENT_REST_ENABLED=false`.
+5. Create or assign a task that has a non-creator assignee.
+6. Verify notification-service creates the notification from the Kafka event.
+7. Verify duplicate event delivery does not create a duplicate notification
+   with the existing duplicate-delivery integration test.
+
+REST notification code still exists and can be re-enabled by setting
+`notification-service.assignment-rest-enabled=true`. Final removal remains a
+future cleanup branch.
+
 ### Phase 5: Remove synchronous REST integration
 
 After event publication and consumption meet defined acceptance criteria,
@@ -701,8 +749,8 @@ Recommended implementation order:
 3. Verify local/dev Kafka producer and consumer behavior with explicit flags.
 4. Add operational metrics for consumer lag, duplicate count, processing
    failures, and notification creation latency.
-5. Add a feature flag or equivalent runtime control to disable REST assignment
-   notifications when Kafka notification consumer is enabled.
+5. Use `notification-service.assignment-rest-enabled=false` to disable REST
+   assignment notifications when Kafka notification consumer is enabled.
 6. Cut over notification creation from REST to events in a controlled branch.
 7. Remove `task-service` synchronous REST notification integration in a
    dedicated branch after verification.

@@ -30,6 +30,7 @@ jwt:
 
 notification-service:
   enabled: ${NOTIFICATION_SERVICE_ENABLED:true}
+  assignment-rest-enabled: ${NOTIFICATION_SERVICE_ASSIGNMENT_REST_ENABLED:true}
   base-url: ${NOTIFICATION_SERVICE_BASE_URL:http://notification-service:8087}
   connect-timeout: ${NOTIFICATION_SERVICE_CONNECT_TIMEOUT:2s}
   read-timeout: ${NOTIFICATION_SERVICE_READ_TIMEOUT:2s}
