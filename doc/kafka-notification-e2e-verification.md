@@ -90,8 +90,7 @@ delivered until the notification-service Kafka consumer is enabled.
 
 ## Create A Verifiable Event
 
-Use the existing Postman MVP flow documented in
-[doc/postman/README.md](postman/README.md).
+Use the existing Postman MVP flow documented 
 
 The relevant step is the request that creates an assigned task:
 

@@ -215,4 +215,4 @@ Views and components do not call `fetch` directly.
 - [ ] Run `npm run build` successfully.
 
 For backend endpoint verification, seeded users, and the broader service E2E
-workflow, use [the Postman guide](../../doc/postman/README.md).
+workflow

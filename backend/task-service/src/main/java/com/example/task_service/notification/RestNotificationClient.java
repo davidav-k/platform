@@ -1,6 +1,7 @@
 package com.example.task_service.notification;
 
 import com.example.task_service.notification.dto.CreateNotificationRequest;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -8,20 +9,13 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
 @Component
+@RequiredArgsConstructor
 public class RestNotificationClient implements NotificationClient {
 
     private static final String CREATE_NOTIFICATION_PATH = "/internal/api/v1/notifications/system";
 
     private final RestClient restClient;
     private final CurrentRequestAccessTokenProvider accessTokenProvider;
-
-    public RestNotificationClient(
-        @Qualifier("notificationServiceRestClient") RestClient restClient,
-        CurrentRequestAccessTokenProvider accessTokenProvider
-    ) {
-        this.restClient = restClient;
-        this.accessTokenProvider = accessTokenProvider;
-    }
 
     @Override
     public void createNotification(CreateNotificationRequest request) {

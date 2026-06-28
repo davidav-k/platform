@@ -4,8 +4,8 @@ import com.example.task_service.entity.OutboxEventEntity;
 import com.example.task_service.outbox.OutboxEventPublisher;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
@@ -14,6 +14,7 @@ import java.util.concurrent.ExecutionException;
 
 @Slf4j
 @Component
+@RequiredArgsConstructor
 @ConditionalOnProperty(prefix = "outbox.publisher", name = "adapter", havingValue = "kafka")
 public class KafkaOutboxEventPublisher implements OutboxEventPublisher {
 
@@ -22,16 +23,6 @@ public class KafkaOutboxEventPublisher implements OutboxEventPublisher {
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final ObjectMapper objectMapper;
     private final KafkaOutboxPublisherProperties properties;
-
-    public KafkaOutboxEventPublisher(
-        @Qualifier("outboxKafkaTemplate") KafkaTemplate<String, String> kafkaTemplate,
-        ObjectMapper objectMapper,
-        KafkaOutboxPublisherProperties properties
-    ) {
-        this.kafkaTemplate = kafkaTemplate;
-        this.objectMapper = objectMapper;
-        this.properties = properties;
-    }
 
     @Override
     public void publish(OutboxEventEntity event) {

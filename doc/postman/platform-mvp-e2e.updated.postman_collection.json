@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "3e42b8cb-848a-4dc8-a73d-a588078ffcf1",
     "name": "Platform MVP End-to-End - API Gateway",
-    "description": "Gateway-only MVP verification for authentication, user activation, task ownership/RBAC, soft delete, assignment notifications, refresh, and the currently pending logout contract. See postman/README.md before the first run.",
+    "description": "Gateway-only MVP verification for authentication, user activation, task ownership/RBAC, soft delete, Kafka-backed task-created in-app notifications, refresh, and the currently pending logout contract. Aligned with platform_240626_exclude.txt.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "event": [
