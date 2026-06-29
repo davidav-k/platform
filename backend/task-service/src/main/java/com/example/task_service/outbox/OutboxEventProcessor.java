@@ -3,6 +3,7 @@ package com.example.task_service.outbox;
 import com.example.task_service.entity.OutboxEventEntity;
 import com.example.task_service.enumeration.OutboxEventStatus;
 import com.example.task_service.repository.OutboxEventRepository;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;

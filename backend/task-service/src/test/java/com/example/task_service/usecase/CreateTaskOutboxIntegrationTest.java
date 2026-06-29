@@ -5,7 +5,6 @@ import com.example.task_service.dto.CreateTaskResponse;
 import com.example.task_service.entity.OutboxEventEntity;
 import com.example.task_service.enumeration.OutboxEventStatus;
 import com.example.task_service.enumeration.TaskPriority;
-import com.example.task_service.notification.TaskNotificationPublisher;
 import com.example.task_service.repository.OutboxEventRepository;
 import com.example.task_service.repository.TaskRepository;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -13,7 +12,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import java.util.UUID;
 
@@ -44,9 +42,6 @@ class CreateTaskOutboxIntegrationTest {
 
     @Autowired
     private ObjectMapper objectMapper;
-
-    @MockitoBean
-    private TaskNotificationPublisher taskNotificationPublisher;
 
     @Test
     void persistsTaskAndTaskCreatedOutboxEventTogether() throws Exception {

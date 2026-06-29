@@ -94,27 +94,18 @@ Example error body:
 
 ## Notification Integration
 
-Creating a task with an `assigneeUserId` prepares an internal synchronous REST
-request to notification-service. The request creates an `IN_APP`
-`TASK_ASSIGNED` notification after the task has been persisted. Unassigned
-and self-assigned tasks do not trigger the integration. The notification
-records `task-service`, `TASK`, and the task UUID as source metadata.
-
-Notification failures are logged using task and recipient identifiers and do
-not fail or roll back task creation. For the MVP, task-service forwards the
-initiating request's validated access JWT to the authenticated internal
-notification endpoint. Dedicated service credentials and durable delivery are
-not implemented yet.
+Creating a task persists the task and writes a `TASK_CREATED` event to
+`outbox_events` in the same transaction. The outbox publisher sends the event
+to Kafka topic `platform.task-events`, and notification-service consumes it to
+create an `IN_APP` `TASK_CREATED` notification when the event payload contains
+an `assigneeUserId`.
 
 Configuration variables:
 
-- `NOTIFICATION_SERVICE_ENABLED` (default `true` in the development Config Server profile)
-- `NOTIFICATION_SERVICE_BASE_URL` (default `http://notification-service:8087`)
-- `NOTIFICATION_SERVICE_CONNECT_TIMEOUT` (default `2s`)
-- `NOTIFICATION_SERVICE_READ_TIMEOUT` (default `2s`)
-
-Kafka and an outbox-based delivery flow are planned replacements for this MVP
-synchronous integration.
+- `OUTBOX_PUBLISHER_ENABLED` (default `true`)
+- `OUTBOX_PUBLISHER_ADAPTER` (default `kafka`)
+- `OUTBOX_PUBLISHER_KAFKA_BOOTSTRAP_SERVERS` (default `kafka:9092`)
+- `OUTBOX_PUBLISHER_KAFKA_TOPIC` (default `platform.task-events`)
 
 ## API
 

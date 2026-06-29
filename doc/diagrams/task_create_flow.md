@@ -140,27 +140,28 @@ end
 %% NOTIFICATION
 %% =========================
 
-subgraph NOTIFICATION [Notification Integration]
+subgraph NOTIFICATION [Outbox and Kafka Notification Integration]
 
 AO[CreateTaskResponse]
-AP[publishAssignmentNotification]
-
-AQ{assigneeUserId exists?}
-
-AR[Skip notification]
-
-AS[TaskNotificationPublisherImpl]
-AT[RestNotificationClient]
-AU[POST notification-service]
+AP[Save TASK_CREATED outbox event]
+AQ[OutboxEventPollingScheduler]
+AR[KafkaOutboxEventPublisher]
+AS[Kafka platform.task-events]
+AT[NotificationEventConsumer]
+AU[TaskEventNotificationProcessor]
+AV{assigneeUserId exists?}
+AW[Skip notification]
+AX[Create IN_APP TASK_CREATED notification]
 
 AO --> AP
 AP --> AQ
-
-AQ -- No --> AR
-
-AQ -- Yes --> AS
+AQ --> AR
+AR --> AS
 AS --> AT
 AT --> AU
+AU --> AV
+AV -- No --> AW
+AV -- Yes --> AX
 
 end
 
@@ -170,17 +171,17 @@ end
 
 subgraph RESPONSE [Frontend Response]
 
-AV[HTTP 201 Created]
+AY[HTTP 201 Created]
 
-AW[apiClient.parseResponse]
+AZ[apiClient.parseResponse]
 
-AX[Extract taskId]
+BA[Extract taskId]
 
-AY[router.push task-details]
+BB[router.push task-details]
 
-AV --> AW
-AW --> AX
-AX --> AY
+AY --> AZ
+AZ --> BA
+BA --> BB
 
 end
 
@@ -198,6 +199,5 @@ AI --> AJ
 
 AN --> AO
 
-AR --> AV
-AU --> AV
+AP --> AY
 ```

@@ -1,7 +1,7 @@
 package com.example.task_service;
 
-import com.example.task_service.notification.NotificationClientProperties;
 import com.example.task_service.outbox.OutboxPublisherProperties;
+import com.example.task_service.outbox.kafka.KafkaOutboxPublisherProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -16,8 +16,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @SpringBootApplication
 @EnableScheduling
 @EnableConfigurationProperties({
-    NotificationClientProperties.class,
-    OutboxPublisherProperties.class
+    OutboxPublisherProperties.class,
+    KafkaOutboxPublisherProperties.class
 })
 public class TaskServiceApplication {
 

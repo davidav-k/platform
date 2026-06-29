@@ -5,8 +5,6 @@ import com.example.task_service.dto.CreateTaskResponse;
 import com.example.task_service.entity.TaskEntity;
 import com.example.task_service.enumeration.TaskPriority;
 import com.example.task_service.enumeration.TaskStatus;
-import com.example.task_service.notification.TaskNotificationContext;
-import com.example.task_service.notification.TaskNotificationPublisher;
 import com.example.task_service.outbox.OutboxEventService;
 import com.example.task_service.outbox.TaskOutboxPayloadFactory;
 import com.example.task_service.repository.TaskRepository;
@@ -16,7 +14,6 @@ import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,7 +22,6 @@ import java.util.UUID;
 
 @Service
 @Transactional
-@Slf4j
 @RequiredArgsConstructor
 public class CreateTaskUseCaseImpl implements CreateTaskUseCase {
 
@@ -34,7 +30,6 @@ public class CreateTaskUseCaseImpl implements CreateTaskUseCase {
 
     private final TaskRepository taskRepository;
     private final Validator validator;
-    private final TaskNotificationPublisher taskNotificationPublisher;
     private final OutboxEventService outboxEventService;
     private final TaskOutboxPayloadFactory taskOutboxPayloadFactory;
 
@@ -54,9 +49,7 @@ public class CreateTaskUseCaseImpl implements CreateTaskUseCase {
 
         TaskEntity saved = taskRepository.saveAndFlush(task);
         saveTaskCreatedOutboxEvent(saved);
-        CreateTaskResponse response = toResponse(saved);
-        publishAssignmentNotification(response);
-        return response;
+        return toResponse(saved);
     }
 
     private void saveTaskCreatedOutboxEvent(TaskEntity task) {
@@ -66,23 +59,6 @@ public class CreateTaskUseCaseImpl implements CreateTaskUseCase {
             TASK_CREATED_EVENT_TYPE,
             taskOutboxPayloadFactory.taskCreatedPayload(task)
         );
-    }
-
-    private void publishAssignmentNotification(CreateTaskResponse task) {
-        if (task.assigneeUserId() == null) {
-            return;
-        }
-        try {
-            taskNotificationPublisher.notifyTaskAssigned(new TaskNotificationContext(
-                    task.taskId(),
-                    task.title(),
-                    task.assigneeUserId(),
-                    task.createdByUserId()
-            ));
-        } catch (RuntimeException exception) {
-            log.warn("Task assignment notification failed for taskId={} and assigneeUserId={}",
-                    task.taskId(), task.assigneeUserId(), exception);
-        }
     }
 
     private void validate(CreateTaskRequest request, UUID createdByUserId) {

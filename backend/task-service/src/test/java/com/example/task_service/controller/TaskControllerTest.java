@@ -13,6 +13,7 @@ import com.example.task_service.enumeration.TaskPriority;
 import com.example.task_service.enumeration.TaskStatus;
 import com.example.task_service.exception.TaskNotFoundException;
 import com.example.task_service.security.AuthenticatedUser;
+import com.example.task_service.security.CustomAuthenticationEntryPoint;
 import com.example.task_service.security.JwtAuthenticationFilter;
 import com.example.task_service.security.JwtTokenService;
 import com.example.task_service.security.SecurityConfig;
@@ -53,7 +54,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(TaskController.class)
-@Import({SecurityConfig.class, JwtAuthenticationFilter.class})
+@Import({SecurityConfig.class, JwtAuthenticationFilter.class, CustomAuthenticationEntryPoint.class})
 class TaskControllerTest {
 
     @Autowired

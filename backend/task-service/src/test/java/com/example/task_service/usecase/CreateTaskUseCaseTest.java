@@ -5,8 +5,6 @@ import com.example.task_service.dto.CreateTaskResponse;
 import com.example.task_service.entity.TaskEntity;
 import com.example.task_service.enumeration.TaskPriority;
 import com.example.task_service.enumeration.TaskStatus;
-import com.example.task_service.notification.TaskNotificationContext;
-import com.example.task_service.notification.TaskNotificationPublisher;
 import com.example.task_service.outbox.OutboxEventService;
 import com.example.task_service.repository.TaskRepository;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -26,7 +24,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 @SpringBootTest(properties = {
@@ -51,9 +48,6 @@ class CreateTaskUseCaseTest {
 
     @Autowired
     private ObjectMapper objectMapper;
-
-    @MockitoBean
-    private TaskNotificationPublisher taskNotificationPublisher;
 
     @MockitoBean
     private OutboxEventService outboxEventService;
@@ -106,40 +100,19 @@ class CreateTaskUseCaseTest {
         assertThat(payload.get("assigneeUserId").asText()).isEqualTo(assigneeUserId.toString());
         assertThat(payload.get("createdByUserId").asText()).isEqualTo(createdByUserId.toString());
         assertThat(OffsetDateTime.parse(payload.get("createdAt").asText())).isEqualTo(response.createdAt());
-
-        verify(taskNotificationPublisher).notifyTaskAssigned(new TaskNotificationContext(
-            response.taskId(), response.title(), assigneeUserId, createdByUserId
-        ));
     }
 
     @Test
-    void doesNotPublishNotificationWhenTaskHasNoAssignee() {
+    void createsOutboxEventWhenTaskHasNoAssignee() {
         CreateTaskRequest request = new CreateTaskRequest("Unassigned task", null, TaskPriority.LOW, null);
 
         createTaskUseCase.create(request, UUID.randomUUID());
 
         verify(outboxEventService).saveNewEvent(eq("TASK"), any(), eq("TASK_CREATED"), any());
-        verify(taskNotificationPublisher, never()).notifyTaskAssigned(any());
     }
 
     @Test
-    void persistsTaskWhenNotificationPublisherFails() {
-        UUID assigneeUserId = UUID.randomUUID();
-        doThrow(new IllegalStateException("notification unavailable"))
-            .when(taskNotificationPublisher).notifyTaskAssigned(any());
-
-        CreateTaskResponse response = createTaskUseCase.create(
-            new CreateTaskRequest("Persist despite notification failure", null, TaskPriority.HIGH, assigneeUserId),
-            UUID.randomUUID()
-        );
-
-        assertThat(response.taskId()).isNotNull();
-        assertThat(taskRepository.findByTaskId(response.taskId())).isPresent();
-        verify(outboxEventService).saveNewEvent(eq("TASK"), eq(response.taskId()), eq("TASK_CREATED"), any());
-    }
-
-    @Test
-    void outboxFailureRollsBackTaskAndSkipsAssignmentNotification() {
+    void outboxFailureRollsBackTask() {
         UUID assigneeUserId = UUID.randomUUID();
         long taskCountBeforeCreate = taskRepository.count();
         doThrow(new IllegalStateException("outbox unavailable"))
@@ -152,7 +125,6 @@ class CreateTaskUseCaseTest {
             .hasMessage("outbox unavailable");
 
         assertThat(taskRepository.count()).isEqualTo(taskCountBeforeCreate);
-        verify(taskNotificationPublisher, never()).notifyTaskAssigned(any());
     }
 
     @Test
