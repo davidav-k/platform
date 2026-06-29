@@ -12,11 +12,13 @@ import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Set;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -41,7 +43,15 @@ public class CreateSystemNotificationUseCaseImpl implements CreateSystemNotifica
             request.sourceEntityType().trim(),
             request.sourceEntityId()
         );
-        return NotificationMapper.toResponse(notificationRepository.save(notification));
+        NotificationEntity savedNotification = notificationRepository.save(notification);
+        log.info("Created system notification: notificationId={}, recipientUserId={}, type={}, sourceService={}, sourceEntityType={}, sourceEntityId={}",
+            savedNotification.getNotificationId(),
+            savedNotification.getRecipientUserId(),
+            savedNotification.getType(),
+            savedNotification.getSourceService(),
+            savedNotification.getSourceEntityType(),
+            savedNotification.getSourceEntityId());
+        return NotificationMapper.toResponse(savedNotification);
     }
 
     private void validate(CreateSystemNotificationRequest request) {

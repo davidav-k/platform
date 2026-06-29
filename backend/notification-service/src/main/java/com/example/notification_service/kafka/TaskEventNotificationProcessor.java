@@ -40,11 +40,16 @@ public class TaskEventNotificationProcessor {
 
     private void processTaskCreated(KafkaOutboxEventMessage event) {
         TaskCreatedEventPayload payload = deserialize(event.payload(), TaskCreatedEventPayload.class);
+        log.info("Received TASK_CREATED notification event: eventId={}, taskId={}, assigneeUserId={}",
+            event.eventId(), payload.taskId(), payload.assigneeUserId());
         if (payload.assigneeUserId() == null) {
-            log.debug("Skipping TASK_CREATED notification without assignee: eventId={}, taskId={}",
+            log.info("Skipping TASK_CREATED notification without assignee: eventId={}, taskId={}",
                 event.eventId(), payload.taskId());
             return;
         }
+
+        log.info("Creating task event notification: eventId={}, taskId={}, recipientUserId={}, eventType={}",
+            event.eventId(), payload.taskId(), payload.assigneeUserId(), event.eventType());
 
         createSystemNotificationUseCase.create(new CreateSystemNotificationRequest(
             payload.assigneeUserId(),
@@ -60,10 +65,13 @@ public class TaskEventNotificationProcessor {
     private void processTaskAssigned(KafkaOutboxEventMessage event) {
         TaskAssignedEventPayload payload = deserialize(event.payload(), TaskAssignedEventPayload.class);
         if (payload.newAssigneeUserId() == null) {
-            log.debug("Skipping TASK_ASSIGNED notification without new assignee: eventId={}, taskId={}",
+            log.info("Skipping TASK_ASSIGNED notification without new assignee: eventId={}, taskId={}",
                 event.eventId(), payload.taskId());
             return;
         }
+
+        log.info("Creating task event notification: eventId={}, taskId={}, recipientUserId={}, eventType={}",
+            event.eventId(), payload.taskId(), payload.newAssigneeUserId(), event.eventType());
 
         createSystemNotificationUseCase.create(new CreateSystemNotificationRequest(
             payload.newAssigneeUserId(),
@@ -79,10 +87,13 @@ public class TaskEventNotificationProcessor {
     private void processTaskStatusChanged(KafkaOutboxEventMessage event) {
         TaskStatusChangedEventPayload payload = deserialize(event.payload(), TaskStatusChangedEventPayload.class);
         if (payload.assigneeUserId() == null) {
-            log.debug("Skipping TASK_STATUS_CHANGED notification without assignee: eventId={}, taskId={}",
+            log.info("Skipping TASK_STATUS_CHANGED notification without assignee: eventId={}, taskId={}",
                 event.eventId(), payload.taskId());
             return;
         }
+
+        log.info("Creating task event notification: eventId={}, taskId={}, recipientUserId={}, eventType={}",
+            event.eventId(), payload.taskId(), payload.assigneeUserId(), event.eventType());
 
         createSystemNotificationUseCase.create(new CreateSystemNotificationRequest(
             payload.assigneeUserId(),

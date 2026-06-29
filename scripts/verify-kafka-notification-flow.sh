@@ -123,22 +123,22 @@ pass "Kafka broker is reachable"
 
 latest_event="$(
   psql_query "$TASK_POSTGRES_DB" "
-    SELECT event_id, aggregate_id, payload::jsonb->>'newAssigneeUserId'
+    SELECT event_id, aggregate_id, payload::jsonb->>'assigneeUserId'
     FROM outbox_events
-    WHERE event_type = 'TASK_ASSIGNED'
+    WHERE event_type = 'TASK_CREATED'
       AND status = 'PROCESSED'
     ORDER BY processed_at DESC NULLS LAST, created_at DESC
     LIMIT 1;
   "
 )"
 
-[ -n "$latest_event" ] || fail "No PROCESSED TASK_ASSIGNED outbox event found. Create or assign a task after enabling Kafka E2E mode."
+[ -n "$latest_event" ] || fail "No PROCESSED TASK_CREATED outbox event found. Create a task with assigneeUserId after enabling Kafka E2E mode."
 
 IFS='|' read -r event_id task_id assignee_user_id <<< "$latest_event"
 [ -n "$event_id" ] || fail "Latest processed event did not include event_id"
 [ -n "$task_id" ] || fail "Latest processed event did not include aggregate task_id"
-[ -n "$assignee_user_id" ] || fail "Latest processed TASK_ASSIGNED event did not include newAssigneeUserId"
-pass "Found processed TASK_ASSIGNED outbox event ${event_id} for task ${task_id}"
+[ -n "$assignee_user_id" ] || fail "Latest processed TASK_CREATED event did not include assigneeUserId"
+pass "Found processed TASK_CREATED outbox event ${event_id} for task ${task_id}"
 
 consumed_count="$(
   psql_query "$NOTIFICATION_POSTGRES_DB" "
@@ -160,13 +160,13 @@ notification_count="$(
       AND source_entity_type = 'TASK'
       AND source_entity_id = '${task_id}'::uuid
       AND recipient_user_id = '${assignee_user_id}'::uuid
-      AND type = 'TASK_ASSIGNED';
+      AND type = 'TASK_CREATED';
   "
 )"
 
 [ "$notification_count" = "1" ] ||
-  fail "Expected exactly one TASK_ASSIGNED notification for task ${task_id} and recipient ${assignee_user_id}; found ${notification_count}."
-pass "notifications contains exactly one Kafka-created TASK_ASSIGNED notification"
+  fail "Expected exactly one TASK_CREATED notification for task ${task_id} and recipient ${assignee_user_id}; found ${notification_count}."
+pass "notifications contains exactly one Kafka-created TASK_CREATED notification"
 
 if compose logs --no-color task-service 2>/dev/null |
   grep -q "Skipping synchronous REST assignment notification because assignment REST notifications are disabled"; then

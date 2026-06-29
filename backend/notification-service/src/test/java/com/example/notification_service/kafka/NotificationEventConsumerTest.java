@@ -92,6 +92,22 @@ class NotificationEventConsumerTest {
     }
 
     @Test
+    void taskCreatedWithAssigneeCreatesTaskCreatedNotification() throws Exception {
+        consumer.consume(objectMapper.writeValueAsString(taskEvent("TASK_CREATED", taskCreatedPayload(ASSIGNEE_ID))));
+
+        assertThat(createSystemNotificationUseCase.requests()).hasSize(1);
+        CreateSystemNotificationRequest request = createSystemNotificationUseCase.requests().get(0);
+        assertThat(request.recipientUserId()).isEqualTo(ASSIGNEE_ID);
+        assertThat(request.type()).isEqualTo(NotificationType.TASK_CREATED);
+        assertThat(request.title()).isEqualTo("Task created");
+        assertThat(request.message()).isEqualTo("Task \"Write tests\" was created");
+        assertThat(request.sourceService()).isEqualTo("task-service");
+        assertThat(request.sourceEntityType()).isEqualTo("TASK");
+        assertThat(request.sourceEntityId()).isEqualTo(TASK_ID);
+        assertThat(consumedEventRepository.savedEvents()).hasSize(1);
+    }
+
+    @Test
     void taskStatusChangedCreatesNotificationForAssignee() throws Exception {
         consumer.consume(objectMapper.writeValueAsString(taskEvent(
             "TASK_STATUS_CHANGED",

@@ -130,9 +130,9 @@ The script checks:
 - REST assignment notifications are disabled
 - Docker Compose services are running
 - Kafka broker is reachable
-- latest `TASK_ASSIGNED` outbox event is `PROCESSED`
+- latest `TASK_CREATED` outbox event is `PROCESSED`
 - `event_consumption_log` contains exactly one row for the event
-- `notifications` contains exactly one `TASK_ASSIGNED` notification for the
+- `notifications` contains exactly one `TASK_CREATED` notification for the
   task and recipient
 - task-service logs contain the REST-assignment skip message when available
 
@@ -194,12 +194,12 @@ Inspect the latest task assignment outbox event:
 ```bash
 docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" tsp_postgres \
   psql -U "$POSTGRES_USER" -d "${TASK_POSTGRES_DB:-tasks_db}" \
-  -c "SELECT event_id, aggregate_id, event_type, status, processed_at FROM outbox_events WHERE event_type = 'TASK_ASSIGNED' ORDER BY created_at DESC LIMIT 5;"
+  -c "SELECT event_id, aggregate_id, event_type, status, processed_at FROM outbox_events WHERE event_type = 'TASK_CREATED' ORDER BY created_at DESC LIMIT 5;"
 ```
 
 Expected:
 
-- `event_type = TASK_ASSIGNED`
+- `event_type = TASK_CREATED`
 - `status = PROCESSED`
 - `processed_at` is not null
 
@@ -214,7 +214,7 @@ docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" tsp_postgres \
 Expected:
 
 - exactly one row for the verified `event_id`
-- `event_type = TASK_ASSIGNED`
+- `event_type = TASK_CREATED`
 - `source = task-service`
 
 Inspect the notification row:
@@ -222,7 +222,7 @@ Inspect the notification row:
 ```bash
 docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" tsp_postgres \
   psql -U "$POSTGRES_USER" -d "${NOTIFICATION_POSTGRES_DB:-notifications_db}" \
-  -c "SELECT notification_id, recipient_user_id, type, source_service, source_entity_type, source_entity_id FROM notifications WHERE type = 'TASK_ASSIGNED' ORDER BY created_at DESC LIMIT 5;"
+  -c "SELECT notification_id, recipient_user_id, type, source_service, source_entity_type, source_entity_id FROM notifications WHERE type = 'TASK_CREATED' ORDER BY created_at DESC LIMIT 5;"
 ```
 
 Expected:
@@ -245,7 +245,7 @@ docker exec tsp_kafka /opt/kafka/bin/kafka-console-consumer.sh \
 Expected:
 
 - messages contain `eventType`
-- task assignment messages use `TASK_ASSIGNED`
+- create-task messages use `TASK_CREATED`
 - `eventId` matches the idempotency key stored by notification-service
 
 ## Duplicate Delivery Protection
@@ -282,9 +282,9 @@ If the log is absent, check that:
 - the task was created with an assignee in the create-task request
 - `NOTIFICATION_ASSIGNMENT_REST_ENABLED=false` is present in `.env`
 
-The assignment endpoint writes `TASK_ASSIGNED` outbox events, but the legacy
-synchronous REST assignment notification path currently runs from task
-creation with an assignee.
+The assignment endpoint writes `TASK_ASSIGNED` outbox events. Task creation
+with an assignee writes `TASK_CREATED` outbox events and is delivered through
+the Kafka notification path.
 
 ## Rollback Runbook
 
