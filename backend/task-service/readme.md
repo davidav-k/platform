@@ -94,11 +94,22 @@ Example error body:
 
 ## Notification Integration
 
-Creating a task persists the task and writes a `TASK_CREATED` event to
-`outbox_events` in the same transaction. The outbox publisher sends the event
-to Kafka topic `platform.task-events`, and notification-service consumes it to
-create an `IN_APP` `TASK_CREATED` notification when the event payload contains
-an `assigneeUserId`.
+Task mutations persist domain changes and write task events to `outbox_events`
+in the same transaction. The outbox publisher sends events to Kafka topic
+`platform.task-events`, and notification-service consumes them to create
+in-app notifications when the event payload contains a notification recipient.
+
+Implemented task events:
+
+| Use case | Outbox event |
+| --- | --- |
+| Create task | `TASK_CREATED` |
+| Assign/reassign/unassign task | `TASK_ASSIGNED` |
+| Change task status | `TASK_STATUS_CHANGED` |
+
+`TASK_CREATED` creates an `IN_APP` `TASK_CREATED` notification only when the
+created task payload contains `assigneeUserId`. Task-service does not call
+notification-service directly for task notifications.
 
 Configuration variables:
 
@@ -123,6 +134,7 @@ Creates an MVP task through `CreateTaskUseCase`.
 - Authentication: required
 - Ownership: `createdByUserId` is populated from the authenticated JWT subject
 - Gateway route: `POST /api/tasks`
+- Event side effect: writes `TASK_CREATED` to `outbox_events`
 
 Gateway example:
 
@@ -309,6 +321,7 @@ Changes a task status through `ChangeTaskStatusUseCase`.
 - Missing or inaccessible tasks return `404 NOT_FOUND`
 - Other task fields remain unchanged; `updatedAt` is managed by the service
 - Gateway route: `PATCH /api/tasks/{taskId}/status`
+- Event side effect: writes `TASK_STATUS_CHANGED` to `outbox_events`
 
 Gateway example:
 
@@ -350,6 +363,7 @@ Assigns, reassigns, or unassigns a task through `AssignTaskUseCase`.
 - User existence is not verified through `user-service` in this MVP endpoint
 - Other task fields remain unchanged; `updatedAt` is managed by the service
 - Gateway route: `PATCH /api/tasks/{taskId}/assignee`
+- Event side effect: writes `TASK_ASSIGNED` to `outbox_events`
 
 Gateway example:
 

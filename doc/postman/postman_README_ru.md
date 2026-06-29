@@ -8,7 +8,7 @@
 6. Получение, обновление, изменение статуса и soft delete задачи.
 7. Проверку ownership/RBAC.
 8. Создание задачи администратором с назначением обычного пользователя.
-9. Проверку Kafka/outbox notification flow
+9. Проверку Kafka/outbox notification flow для `TASK_CREATED` / `IN_APP`
 10. Refresh token flow.
 11. Текущий logout-контракт
 
@@ -33,6 +33,13 @@
 | `unrelatedTaskId` | UUID задачи администратора для RBAC/ownership checks. Заполняется автоматически. |
 | `notificationId` | UUID найденного уведомления. Заполняется автоматически. |
 | `notificationWaitMillis` | Пауза ожидания Kafka/outbox обработки. Рекомендуется `7000`. |
+
+Проверка уведомлений создаёт задачу с `assigneeUserId`, ждёт
+`notificationWaitMillis`, затем читает `GET /api/notifications` через Gateway
+и ожидает `TASK_CREATED` notification для назначенного пользователя. Пауза
+нужна, потому что task-service сначала пишет outbox event, а
+notification-service создаёт notification асинхронно после доставки через
+Kafka.
 
 
 ## Как запускать

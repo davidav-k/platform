@@ -9,18 +9,22 @@ Application Dockerfiles live next to each implemented Java module.
 | --- | --- |
 | `postgres` | Separate user, task, and notification databases |
 | `redis` | Independently running Redis container; not used for JWT storage |
+| `kafka` | Task event broker for outbox-backed notification delivery |
 | `mailhog` | Local SMTP capture |
 | `zipkin` | Local tracing infrastructure container |
 | `config-server` | Native Spring Cloud Config repository |
 | `eureka-server` | Service discovery |
 | `user-service` | User management and authentication |
-| `task-service` | Task lifecycle, ownership, assignment, and status changes |
-| `notification-service` | Notification persistence and delivery state |
+| `task-service` | Task lifecycle, ownership, assignment, status changes, and outbox event publishing |
+| `notification-service` | Notification persistence, Kafka task-event consumption, and delivery state |
 | `gateway` | External API entry point |
 | `frontend` | Vue production build served by nginx on host port `5173` |
 
 The frontend image uses a Node build stage and an nginx runtime stage. Its API
 Gateway URL is injected at image build time through `VITE_API_BASE_URL`.
+
+Task notifications are delivered through `task-service` outbox events, Kafka
+topic `platform.task-events`, and the notification-service Kafka consumer.
 
 ## Running The Project
 

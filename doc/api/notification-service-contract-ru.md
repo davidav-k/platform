@@ -1,146 +1,130 @@
-# Контракт API сервиса уведомлений
+# Контракт API notification-service
 
-## Область применения
+## Область
 
-В данном документе описываются уже реализованные интерфейсы взаимодействия `notification-service` , а также планы по разработке новых функций в будущем. Сервис обеспечивает хранение уведомлений, настроек пользователей, шаблонов и информации о процессе доставки данных, как это определено в описании функционала сервиса.
+Документ описывает реализованные HTTP endpoint-ы `notification-service` и
+Kafka-backed поток task notifications. Сервис владеет таблицами уведомлений и
+идемпотентностью обработки событий. Он не владеет задачами или профилями
+пользователей.
 
-Все внешние конечные точки:
+Все внешние endpoint-ы:
 
-*   Используйте конверт для ответов, предусмотренный стандартами API.
-*   Необходимо наличие действительного токена доступа JWT.
-*   Для идентификаторов уведомлений и общедоступных данных о пользователях следует использовать строки в формате UUID.
-*   Возвращаются только уведомления, принадлежащие авторизованному пользователю, если только позже не будет заключен соответствующий договор с администрацией.
+- используют общий response envelope;
+- требуют валидный access JWT;
+- используют UUID для notification identifiers и user references.
 
-## DTO-ы
+Фильтрация по владельцу на основе authenticated user и role-based
+authorization для notification API пока не реализованы.
 
-### УведомлениеОтвет
+## DTO
 
-| Поле | Тип | Описание |
+### NotificationResponse
+
+| Поле | Тип |
+| --- | --- |
+| `notificationId` | UUID |
+| `recipientUserId` | UUID |
+| `type` | `TASK_ASSIGNED`, `TASK_CREATED`, `SYSTEM` |
+| `channel` | `EMAIL`, `IN_APP` |
+| `subject` | string или null |
+| `body` | string |
+| `status` | `PENDING`, `SENT`, `FAILED` |
+| `createdAt` | timestamp |
+| `updatedAt` | timestamp |
+| `sentAt` | timestamp или null |
+| `failureReason` | string или null |
+
+### CreateNotificationRequest
+
+| Поле | Обязательное | Правило |
 | --- | --- | --- |
-| notificationId | Строка UUID | Идентификатор уведомления |
-| recipientUserId | Строка UUID | Публичный идентификатор получателя |
-| type | enum | SYSTEM или EMAIL |
-| subject | Строка или нулевой значок. | Отображаемый объект |
-| message | Строка | Отображаемый контент уведомления |
-| read | Булево значение | Состояние прочтения уведомлений системы |
-| readAt | Строка или нулевой значок. | Временная метка по стандарту ISO-8601 |
-| deliveryStatus | enum | PENDING , SENT , FAILED или NOT\_APPLICABLE |
-| createdAt | Строка | Временная метка по стандарту ISO-8601 |
+| `recipientUserId` | да | UUID |
+| `type` | да | `TASK_ASSIGNED`, `TASK_CREATED`, `SYSTEM` |
+| `channel` | да | `EMAIL`, `IN_APP` |
+| `subject` | нет | max 255 |
+| `body` | да | not blank, max 5000 |
 
-### УведомлениеPreferenceResponse
+### CreateSystemNotificationRequest
 
-| Поле | Тип | Описание |
+| Поле | Обязательное | Правило |
 | --- | --- | --- |
-| userId | Строка UUID | Публичный идентификатор владельца предпочтений |
-| emailEnabled | Булево значение | Включено ли доставление электронных писем через платформу |
-| systemEnabled | Булево значение | Включены ли уведомления внутри приложения |
-| taskCreatedEnabled | Булево значение | Включены ли уведомления, связанные с выполнением задач |
-| taskAssignedEnabled | Булево значение | Включены ли уведомления о выполнении задач |
-| taskStatusChangedEnabled | Булево значение | Включены ли уведомления о статусе |
-| taskCommentAddedEnabled | Булево значение | Включены ли уведомления о комментариях |
-| updatedAt | Строка | Временная метка по стандарту ISO-8601 |
+| `recipientUserId` | да | UUID |
+| `type` | да | `TASK_ASSIGNED`, `TASK_CREATED`, `SYSTEM` |
+| `title` | нет | max 255 |
+| `message` | да | not blank, max 5000 |
+| `sourceService` | да | not blank, max 100 |
+| `sourceEntityType` | да | not blank, max 100 |
+| `sourceEntityId` | да | UUID |
 
-### ЗапросНаОбновлениеПараметровУведомлений
+System notification use case всегда сохраняет `channel=IN_APP` и
+`status=PENDING`.
 
-Содержит все логические поля настроек из объекта `NotificationPreferenceResponse` . Все поля являются обязательными к заполнению. Поэтому `PUT` заменяет собой всю структуру настроек.
+## Внешние endpoint-ы
 
-### Запрос на отправку уведомления по электронной почте
+### `POST /api/v1/notifications`
 
-| Поле | Тип | Необходимо. | Подтверждение/Валидация |
-| --- | --- | --- | --- |
-| requestId | Строка UUID | Да. | Идентификатор идемпотентности |
-| recipientUserId | Строка UUID | Да. | Существующий идентификатор публичного пользователя |
-| templateKey | Строка | Да. | Идентификатор внутренней шаблонной структуры, известный системе |
-| templateParameters | Объект | Нет. | Значения, специфичные для данной шаблонной структуры; не должны содержать конфиденциальной информации. |
+Gateway route: `POST /api/notifications`.
 
-### ЗапросОтправкиСистемногоУведомления
-
-| Поле | Тип | Необходимо. | Подтверждение/Валидация |
-| --- | --- | --- | --- |
-| requestId | Строка UUID | Да. | Идентификатор идемпотентности |
-| recipientUserId | Строка UUID | Да. | Существующий идентификатор публичного пользователя |
-| subject | Строка | Нет. | Максимум 200 символов |
-| message | Строка | Да. | Не пустое поле; максимум 5000 символов. |
-| sourceType | Строка | Да. | Создание домена, например, TASK . |
-| sourceId | Строка UUID | Нет. | Связанный идентификатор агрегата |
-
-## Внешние точки приема уведомлений
-
-### `GET /api/v1/notifications`
-
-Возвращает уведомления авторизованного пользователя.
-
-*   Запрос в формате DTO: отсутствует
-*   Ответ: `200 OK` содержит `NotificationResponse` записей, а `data.page` содержит стандартные метаданные, связанные с форматом страницирования.
-*   Разрешение на доступ: только у авторизованного владельца.
-*   Нумерация страниц: стандартные варианты – `page` , `size` и `sort` . По умолчанию используется вариант `createdAt,desc .`
-*   Необязательные фильтры: `read` , `type` , `deliveryStatus`
-*   Проверка: в качестве значений для фильтров типа enum могут использоваться только допустимые значения.
+Создаёт запись уведомления. Email delivery не выполняется.
 
 ### `GET /api/v1/notifications/{notificationId}`
 
-Возвращает одно уведомление, принадлежащее авторизованному пользователю.
+Gateway route: `GET /api/notifications/{notificationId}`.
 
-*   Запрос в формате DTO: отсутствует
-*   Ответ: `200 OK` , в `data.notification` содержится `NotificationResponse .`
-*   Разрешение на доступ: только авторизованный владелец.
-*   Проверка: `notificationId` должен соответствовать формату UUID.
+Возвращает одно уведомление по UUID.
 
-### `PATCH /api/v1/notifications/{notificationId}/read`
+### `GET /api/v1/notifications`
 
-Отмечает уведомление от собственной системы как прочитанное. Повторное выполнение этой операции не имеет никаких последствий.
+Gateway route: `GET /api/notifications`.
 
-*   Запрос в формате DTO: отсутствует
-*   Ответ: `200 OK` , в `data.notification` содержится `NotificationResponse .`
-*   Разрешение на доступ: только у авторизованного владельца.
-*   Проверка: `notificationId` должен соответствовать формату UUID.
+Возвращает список уведомлений с фильтрами:
 
-## Внешние точки входа для настройки предпочтений пользователя
+- `recipientUserId`
+- `status`
+- `channel`
+- `type`
+- `page`
+- `size`
+- `sort`, по умолчанию `createdAt,desc`
 
-### `GET /api/v1/notification-preferences`
-
-Возвращаются настройки уведомлений для авторизованного пользователя. По умолчанию возвращаются значения, предустановленные изначально, если никакие другие настройки не сохранены.
-
-*   Запрос в формате DTO: отсутствует
-*   Ответ: `200 OK` , в `data.preferences` содержится `NotificationPreferenceResponse .`
-*   Разрешение на доступ: только авторизованный владелец.
-
-### `PUT /api/v1/notification-preferences`
-
-Заменяет настройки уведомлений пользователя, прошедшего аутентификацию.
-
-*   Запрос DTO: `UpdateNotificationPreferencesRequest`
-*   Ответ: `200 OK` , в `data.preferences` содержится `NotificationPreferenceResponse .`
-*   Разрешение на доступ: только у авторизованного владельца.
-*   Проверка: все поля, связанные с предпочтениями пользователя, должны иметь значение типа “логическое значение”.
-
-## Внутренние точки доставки данных
-
-Внутренние точки доступа предназначены исключительно для взаимодействия между сервисами. API-шлюз не должен пересылать такие запросы. Для обработки запросов используется ток доступа JWT, выданный платформой; автентификация пользователей и обеспечение идемпотентности операций являются задачами, которые будут реализованы в будущем. Внутренние запросы должны сопровождаться журналом операций, пригодным для аудита.
-
-### `POST /internal/api/v1/notifications/email`
-
-Запрашивается уведомление по электронной почте.
-
-*   Запрос DTO: `SendEmailNotificationRequest`
-*   Ответ: `202 ACCEPTED` , в `data.notification` содержится `NotificationResponse .`
-*   Звонящий: Только сервисы надежной платформы.
+## Internal endpoint
 
 ### `POST /internal/api/v1/notifications/system`
 
-Создает уведомление внутри приложения.
+Создаёт `IN_APP` system notification. API Gateway этот endpoint не
+маршрутизирует. `task-service` больше не использует его для `TASK_CREATED`;
+такие уведомления создаются через Kafka consumer.
 
-*   Запрос DTO: `CreateSystemNotificationRequest`
-*   Ответ: `201 CREATED` , в `data.notification` содержится `NotificationResponse .`
-*   Звонящий: Только сервисы надежной платформы.
-*   Аутентификация: действительный JWT для доступа к платформе; сервис обработки задач передает JWT инициатора запроса сервису MVP.
-*   Обязательные поля: `recipientUserId` , `type` , `message` , `sourceService` , `sourceEntityType` , `sourceEntityId`
-*   Необязательное поле: `title`
-*   Конечная точка всегда генерирует уведомление с кодом состояния `PENDING` .
+## Kafka task notifications
 
-## Условия доставки
+Поддерживаемый поток:
 
-*   Общая служба доставки электронных писем на платформе принадлежит `notification-service` .
-*   Электронная почта, используемая для верификации учетной записи `user-service` , остается в системе `user-service` на протяжении всего периода стабилизации функционала MVP.
-*   Функции передачи данных с использованием технологий Push и WebSocket не входят в рамки данного контракта.
-*   Потребители услуг в будущем смогут заменять внутренние запросы по протоколу REST, не меняя при этом внешние точки доступа для получения уведомлений.
+```text
+task-service -> outbox_events -> Kafka platform.task-events
+  -> notification-service -> notifications
+```
+
+`NotificationEventConsumer` включается через
+`notification.kafka.enabled=true`, читает `notification.kafka.topic` и пишет
+обработанные события в `event_consumption_log`. Уникальный `event_id` является
+idempotency key.
+
+`TaskEventNotificationProcessor` обрабатывает:
+
+| Event type | Результат |
+| --- | --- |
+| `TASK_CREATED` | `IN_APP` `TASK_CREATED` для `assigneeUserId`, если он есть |
+| `TASK_ASSIGNED` | `IN_APP` `TASK_ASSIGNED` для `newAssigneeUserId`, если он есть |
+| `TASK_STATUS_CHANGED` | `IN_APP` `SYSTEM` для `assigneeUserId`, если он есть |
+
+События без нужного recipient user ID считаются обработанными, но notification
+row не создаётся.
+
+## Не реализовано
+
+- Notification preferences HTTP API
+- Mark-as-read / read state
+- Delete notification endpoint
+- Notification status update endpoint
+- SMTP/email delivery из notification-service
+- WebSocket, push или realtime delivery

@@ -136,7 +136,7 @@ fixed in configuration and Compose:
 
 ## External Integrations
 
-### Kafka And Notification Cutover
+### Kafka Notification Flow
 
 | Name | Required | Default | Example | Consumed by | Description |
 | --- | --- | --- | --- | --- | --- |

@@ -8,7 +8,7 @@
 6. Retrieval, update, status change, and soft delete of a task.
 7. Ownership/RBAC check.
 8. Administrator task creation with regular user assignment.
-9. Kafka/Outbox notification flow check.
+9. Kafka/Outbox notification flow check for `TASK_CREATED` / `IN_APP`.
 10. Refresh token flow.
 11. Current logout contract.
 
@@ -32,6 +32,13 @@
 | `unrelatedTaskId` | UUID of the administrator task for RBAC/ownership checks. Automatically populated. |
 | `notificationId` | UUID of the found notification. Automatically populated. |
 | `notificationWaitMillis` | Kafka/outbox processing wait time. Recommended: 7000. |
+
+The notification check creates a task with `assigneeUserId`, waits
+`notificationWaitMillis`, then reads `GET /api/notifications` through the
+Gateway and expects a `TASK_CREATED` notification for the assigned recipient.
+The wait is required because task-service writes an outbox event and
+notification-service creates the notification asynchronously after Kafka
+delivery.
 
 ## How to run
 1. Import collection

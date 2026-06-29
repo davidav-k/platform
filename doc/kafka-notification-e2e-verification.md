@@ -87,7 +87,7 @@ from outbox_events
 order by created_at desc
 limit 10;
 
-select event_id, event_type, status, error_message
+select event_id, event_type, consumed_at, source
 from event_consumption_log
 order by consumed_at desc
 limit 10;
@@ -103,7 +103,8 @@ Expected database state:
 
 - `outbox_events.event_type = TASK_CREATED`
 - `outbox_events.status = PROCESSED`
-- `event_consumption_log.status = PROCESSED`
+- `event_consumption_log.event_type = TASK_CREATED`
+- `event_consumption_log.source = task-service`
 - `notifications.type = TASK_CREATED`
 - `notifications.channel = IN_APP`
 - `notifications.recipient_user_id` equals the task `assigneeUserId`

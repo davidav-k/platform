@@ -1,67 +1,82 @@
-# Платформа
+# Platform
 
-Платформа управления задачами на основе микросервисов, разработанная с использованием технологии Spring Boot.
+Микросервисная Task Management Platform на Spring Boot и Vue 3.
 
-> Нынешняя задача: стабилизация работы MVP. Сервисы, связанные с работой пользователей, выполнением задач и отправкой уведомлений, уже функционируют нормально.
+Текущая цель проекта - стабилизация MVP. Реализованы базовые сервисы пользователей,
+задач, уведомлений, API Gateway, Config Server, Eureka, Docker Compose окружение,
+frontend MVP и Kafka-based task notification flow.
 
-## Реализовано.
+## Реализовано
 
-### Услуги
+### Сервисы
 
-*   Пользовательский сервис
-    *   Регистрация
-    *   Аутентификация
-    *   Процесс получения/обновления доступа с использованием JWT
-    *   МФА
-    *   Управление профилями пользователей и жизненным циклом учетных записей
-*   task-service
-    *   Создание, получение, вывод в список, обновление, изменение статуса, назначение пользователю и временная удаление записей.
-    *   Права владения/механизмы контроля доступа, фильтрация данных и разделение информации на страницы
-    *   Аутентификация на основе JWT
-    *   Схема базы данных PostgreSQL, управляемая с использованием технологии Flyway
-*   Сервис уведомлений
-    *   Создавайте, получайте и отображайте уведомления с возможностью фильтрации и разделения на страницы.
-    *   Интеграция уведомлений, генерируемых в ходе выполнения задач
-    *   Аутентификация на основе JWT
-    *   Схема базы данных PostgreSQL, управляемая с использованием технологии Flyway
-    *   Интеграция Docker Compose и API Gateway
-*   API-шлюз
-    *   Маршрутизация
-    *   Проверка подлинности JWT-токенов
-    *   Интеграция механизмов обнаружения сервисов
-*   конфиг-сервер
-*   eureka-server
-*   Фронтенд на Vue 3
-    *   Вход в систему с использованием куки, загрузка профиля и восстановление информации сессии
-    *   Список задач с возможностью контроля за ними: детали задач, возможность их создания, редактирования, изменения статуса, назначения исполнителей и временного удаления задач.
-    *   Список уведомлений, на которые требуется разрешение для просмотра, а также подробная информация об этих уведомлениях.
-    *   Взаимодействие с пользователем при ситуациях загрузки данных, отсутствии данных, возникновении ошибок, попытках повторной загрузки и при сообщении об отсутствии нужного элемента интерфейса.
+- `user-service`
+  - регистрация, вход, refresh/logout;
+  - JWT access token и refresh-cookie flow;
+  - MFA;
+  - профиль пользователя и lifecycle учётной записи;
+  - PostgreSQL/Flyway схема.
+- `task-service`
+  - создание, просмотр, список, обновление, смена статуса, назначение и soft-delete задач;
+  - ownership/RBAC проверки для task operations;
+  - transactional outbox в таблице `outbox_events`;
+  - Kafka publication в topic `platform.task-events`.
+- `notification-service`
+  - создание и чтение уведомлений;
+  - Kafka consumer для task events;
+  - обработка `TASK_CREATED`, `TASK_ASSIGNED`, `TASK_STATUS_CHANGED`;
+  - идемпотентность через `event_consumption_log`;
+  - PostgreSQL/Flyway схема.
+- `api-gateway`
+  - маршруты `/api/users/**`, `/api/tasks/**`, `/api/notifications/**`;
+  - JWT validation;
+  - service discovery integration.
+- `frontend/vue-frontend`
+  - login/session restore;
+  - task list, task details, create/edit/status/assignment/delete flows;
+  - notifications page через `GET /api/notifications`.
 
 ### Инфраструктура
 
-*   PostgreSQL
-*   Redis
-*   MailHog
-*   Zipkin
-*   Docker Compose
+- PostgreSQL
+- Redis
+- Kafka
+- MailHog
+- Zipkin
+- Config Server
+- Eureka
+- Docker Compose
 
-## Планируется
+## Notification Flow
 
-*   Интеграция с Kafka и системой обработки сообщений в выходном канале
-*   Услуги по аудиту
-*   Развертывание приложений с использованием Kubernetes
+Task notifications создаются только через Outbox Pattern + Kafka:
 
-## Технологическая стек
+```text
+Frontend
+  -> API Gateway
+  -> task-service
+  -> TaskEntity + outbox_events
+  -> Kafka topic platform.task-events
+  -> notification-service
+  -> notifications
+  -> Frontend GET /api/notifications
+```
 
-*   Java 17
-*   Spring Boot 3.4.x
-*   Spring Cloud 2024.x
-*   Spring Security
-*   PostgreSQL и Flyway
-*   Редис
-*   Docker Compose
-*   Vue 3, Vite, Vue Router и встроенный API Fetch
-*   JUnit 5, Mockito, H2 и Testcontainers
+`task-service` не вызывает `notification-service` напрямую для task notifications.
+
+## Технологический стек
+
+- Java 17
+- Spring Boot 3.4.x
+- Spring Cloud 2024.x
+- Spring Security
+- PostgreSQL 16.x и Flyway
+- Redis
+- Kafka
+- Docker Compose
+- Vue 3, Vite, Vue Router
+- Maven
+- JUnit 5, Mockito, Testcontainers
 
 ## Структура проекта
 
@@ -74,7 +89,8 @@ backend/
 infrastructure/
 |-- api-gateway
 |-- config-server
-`-- eureka-server
+|-- eureka-server
+`-- redis
 
 frontend/
 `-- vue-frontend
@@ -83,16 +99,22 @@ config/
 doc/
 ```
 
-## Быстрая настройка
+## Быстрый старт
 
 ```bash
 cp .env.example .env
 docker compose --env-file .env -f compose.yml up -d --build
 ```
 
-API-шлюз: `http://localhost:8080` Фронтенд: `http://localhost:5173`
+Основные URL:
 
-Проверка процесса запуска:
+- API Gateway: `http://localhost:8080`
+- Frontend: `http://localhost:5173`
+- Eureka: `http://localhost:8761`
+- MailHog: `http://localhost:8025`
+- Zipkin: `http://localhost:9411`
+
+Проверка локального стека:
 
 ```bash
 ./scripts/check-local-stack.sh
@@ -104,7 +126,7 @@ Windows:
 .\scripts\check-local-stack.ps1
 ```
 
-Для разработки фронтенда с использованием Vite вместо контейнера nginx:
+Frontend development server:
 
 ```bash
 cd frontend/vue-frontend
@@ -112,19 +134,37 @@ npm install
 npm run dev
 ```
 
-В разделе README, предназначенном для пользователей веб-интерфейса, приведена информация о маршрутах передачи данных, функциональности приложения, настройках, ограничениях, а также список проверок, необходимых для подтверждения готовности продукта к использованию.
+## Postman
+
+Postman collection находится в `doc/postman`.
+
+Task notification checks создают задачу с `assigneeUserId`, ждут
+`notificationWaitMillis`, затем проверяют `TASK_CREATED` / `IN_APP` уведомление
+через `GET /api/notifications`. Задержка нужна из-за асинхронного Outbox + Kafka
+пути.
+
+## Планируется
+
+- audit-service;
+- production-grade deployment/Kubernetes;
+- расширенные настройки уведомлений;
+- email delivery из notification-service;
+- read state / mark-as-read для уведомлений.
 
 ## Документация
 
-*   Архитектура – `doc/architecture.md`
-*   Процесс разработки – `doc/development-workflow.md`
-*   Процесс аутентификации – `doc/security/auth-flow.md`
-*   Стратегия миграции базы данных – `doc/database/migration-strategy.md`
-*   Границы обслуживания – `doc/architecture/service-boundaries.md`
-*   Параметры окружающей среды – `doc/configuration/env-variables.md`
-*   Технический долг – `doc/technical-debt.md`
-*   Фронтенд-разработчик MVP – `frontend/vue-frontend/README.md`
+- Архитектура: `doc/architecture.md`
+- Service boundaries: `doc/architecture/service-boundaries.md`
+- Outbox Pattern: `doc/architecture/outbox-pattern-design.md`
+- Development workflow: `doc/development-workflow.md`
+- Auth flow: `doc/security/auth-flow.md`
+- Environment variables: `doc/configuration/env-variables.md`
+- Task API: `doc/api/task-service-contract.md`
+- Notification API: `doc/api/notification-service-contract.md`
+- Postman: `doc/postman/postman_README.md`
+- Frontend: `frontend/vue-frontend/README.md`
 
 ## Статус
 
-Проект находится на стадии активной разработки в рамках концепции MVP.
+Проект остаётся в стадии MVP stabilization. Текущая реализация использует Kafka
+и transactional outbox для task notification flow.

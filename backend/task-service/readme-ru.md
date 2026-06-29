@@ -74,7 +74,17 @@ curl -i http://localhost:8080/api/tasks
 
 ## Интеграция уведомлений
 
-При создании задачи task-service сохраняет задачу и в той же транзакции записывает событие `TASK_CREATED` в `outbox_events`. Outbox publisher отправляет событие в Kafka topic `platform.task-events`, а notification-service читает его и создает `IN_APP` уведомление `TASK_CREATED`, если в payload есть `assigneeUserId`.
+Task-service сохраняет изменения задач и в той же транзакции записывает task events в `outbox_events`. Outbox publisher отправляет события в Kafka topic `platform.task-events`, а notification-service читает их и создает `IN_APP` уведомления, если в payload есть получатель.
+
+Реализованные события:
+
+| Use case | Outbox event |
+| --- | --- |
+| Создание задачи | `TASK_CREATED` |
+| Назначение, переназначение или снятие исполнителя | `TASK_ASSIGNED` |
+| Изменение статуса | `TASK_STATUS_CHANGED` |
+
+`TASK_CREATED` создает `IN_APP` уведомление `TASK_CREATED` только если в payload есть `assigneeUserId`. Task-service не вызывает notification-service напрямую для task notifications.
 
 Параметры конфигурации:
 

@@ -1,135 +1,146 @@
-# Служба уведомлений
+# Notification Service
+
+Notification Service отвечает за хранение и чтение уведомлений платформы.
+Task notifications создаются через Kafka consumer, который читает события из
+Outbox Pattern task-service.
 
 ## Статус
 
-API MVP интегрирован в Docker Compose по порту `8087` . Доступ к этому API осуществляется через API-шлюз.
+Сервис интегрирован в Docker Compose на порту `8087` и доступен через API Gateway
+по `/api/notifications`. Runtime configuration приходит из
+`config/notification-service-dev.yml`, схема базы управляется Flyway.
 
-## Конфигурация и база данных
+## Доменная модель
 
-Настройки во время выполнения программы предоставляются сервером конфигурации `config/notification-service-dev.yml` . Функции по миграции схемы базы данных выполняется инструментом Flyway. Имя базы данных по умолчанию — `notifications_db` .
+`NotificationEntity` хранит:
 
-## Модель домена
+- `notificationId`
+- `recipientUserId`
+- `type`
+- `channel`
+- `subject`
+- `body`
+- `status`
+- `sourceService`
+- `sourceEntityType`
+- `sourceEntityId`
+- timestamps и failure metadata
 
-Для обработки уведомлений и настроек, связанных с уведомлениями, используются такие элементы архитектуры, как доменные объекты, объекты формата DTO для передачи данных, мапперы, а также репозитории данных, реализованные с использованием фреймворка Spring Data.
+Текущие enum значения:
+
+- `NotificationType`: `TASK_ASSIGNED`, `TASK_CREATED`, `SYSTEM`
+- `NotificationChannel`: `EMAIL`, `IN_APP`
+- `NotificationStatus`: `PENDING`, `SENT`, `FAILED`
 
 ## API
 
-`POST /api/v1/notifications` создает запись уведомления. Этот эндпойнт не отправляет электронные письма.
+Public API:
 
-`GET /api/v1/notifications/{notificationId}` позволяет получить одно уведомление по его публичному UUID.
+- `POST /api/v1/notifications` - создаёт notification row. Email не отправляется.
+- `GET /api/v1/notifications/{notificationId}` - читает одно уведомление.
+- `GET /api/v1/notifications` - список уведомлений с фильтрами
+  `recipientUserId`, `status`, `channel`, `type`, `page`, `size`, `sort`.
 
-`GET /api/v1/notifications` показывает уведомления с возможностью использования фильтров `recipientUserId` , `status` , `channel` и `type` . Для навигации по страницам используются `page` и `size` ; для сортировки — `sort=field,direction` . По умолчанию используется параметр `createdAt,desc` .
+Internal API:
 
-`POST /internal/api/v1/notifications/system` генерирует уведомления внутри приложения для другого сервиса на данной платформе. Для работы с этим функционалом необходимы следующие параметры: идентификатор сервиса источника, тип объекта источника и его уникальный идентификатор. API-шлюз не обрабатывает запросы, поступающие через этот эндпоинт.
+- `POST /internal/api/v1/notifications/system` - внутренний endpoint для system
+  notifications. API Gateway его не публикует наружу.
 
-Пример запроса:
+Task-service не использует internal REST endpoint для task notifications.
 
-```json
-{
-  "recipientUserId": "88d3eecf-8199-4677-9664-aa8574074c16",
-  "type": "TASK_ASSIGNED",
-  "channel": "EMAIL",
-  "subject": "Task assigned",
-  "body": "A task was assigned to you."
-}
-```
+## Kafka Task Event Processing
 
-Пример ответа:
-
-```json
-{
-  "code": 201,
-  "status": "CREATED",
-  "message": "Notification created successfully.",
-  "data": {
-    "notification": {
-      "notificationId": "cd970e48-eb47-4c62-b983-2ade6ba203ef",
-      "recipientUserId": "88d3eecf-8199-4677-9664-aa8574074c16",
-      "type": "TASK_ASSIGNED",
-      "channel": "EMAIL",
-      "subject": "Task assigned",
-      "body": "A task was assigned to you.",
-      "status": "PENDING"
-    }
-  }
-}
-```
-
-Пример запроса на чтение:
+Единственный текущий механизм доставки task notifications:
 
 ```text
-GET /api/v1/notifications/cd970e48-eb47-4c62-b983-2ade6ba203ef
+task-service
+  -> outbox_events
+  -> Kafka topic platform.task-events
+  -> NotificationEventConsumer
+  -> TaskEventNotificationProcessor
+  -> CreateSystemNotificationUseCase
+  -> notifications
 ```
 
-Пример запроса на получение списка:
+Consumer включается настройкой `notification.kafka.enabled=true`.
 
-```text
-GET /api/v1/notifications?status=PENDING&channel=EMAIL&page=0&size=20&sort=createdAt,desc
-```
+Поддерживаемые события:
 
-В результате выполнения запроса возвращаются данные в формате DTO, а также метаданные, связанные с пагинацией:
+| Event type | Notification behavior |
+| --- | --- |
+| `TASK_CREATED` | создаёт `IN_APP` notification type `TASK_CREATED`, если `assigneeUserId != null` |
+| `TASK_ASSIGNED` | создаёт `IN_APP` notification type `TASK_ASSIGNED`, если `newAssigneeUserId != null` |
+| `TASK_STATUS_CHANGED` | создаёт `IN_APP` notification type `SYSTEM`, если `assigneeUserId != null` |
 
-```json
-{
-  "data": {
-    "items": [],
-    "page": {
-      "number": 0,
-      "size": 20,
-      "totalElements": 0,
-      "totalPages": 0
-    }
-  }
-}
-```
+Payload fields, ожидаемые от task-service:
 
-Создание уведомлений по-прежнему не влечет за собой их доставки по электронной почте.
+- `taskId`
+- `title`
+- `description` для `TASK_CREATED`
+- `status`
+- `priority`
+- `assigneeUserId` для `TASK_CREATED` / `TASK_STATUS_CHANGED`
+- `previousAssigneeUserId` и `newAssigneeUserId` для `TASK_ASSIGNED`
+- `previousStatus` и `newStatus` для `TASK_STATUS_CHANGED`
+- `createdByUserId`
+- `createdAt` или `updatedAt`
 
-## Местные стартапы и механизмы маршрутизации
+## Идемпотентность
 
-Запустите сервис и все необходимые ему компоненты с помощью Docker Compose:
+`event_consumption_log` защищает consumer от повторной обработки одного Kafka
+event. Таблица хранит:
+
+- `event_id`
+- `event_type`
+- `consumed_at`
+- `source`
+
+Если `event_id` уже присутствует в журнале, notification повторно не создаётся.
+
+## Локальный запуск
 
 ```bash
 docker compose --env-file .env -f compose.yml up -d --build notification-service
 ```
 
-Проверка состояния здоровья:
+Health check:
 
 ```text
 GET http://localhost:8087/actuator/health
 ```
 
-Маршрут прохождения через шлюз:
+Gateway route:
 
 ```text
 http://localhost:8080/api/notifications
 ```
 
-Внутренний маршрут обслуживания:
+Direct service route:
 
 ```text
 http://localhost:8087/api/v1/notifications
 ```
 
-Запросы через API уведомлений по любому из маршрутов требуют наличия действительного токена доступа JWT. Непроверенные запросы возвращают значение `401 Unauthorized` .
+## Аутентификация
 
-## Создание и тестирование
+Public notification API требует JWT:
+
+- `Authorization: Bearer <token>`
+- cookie `access-token`
+
+`/actuator/health` и `/actuator/info` остаются публичными.
+
+## Тесты
 
 ```bash
 mvn -B -f backend/notification-service/pom.xml test
 ```
 
-Тесты на интеграцию с хранилищами данных, процедурами миграции, различными сценариями использования и аспектами безопасности выполняются с использованием PostgreSQL 16.1 в рамках инструмента Testcontainers. Для выполнения всех тестов необходимо, чтобы Docker был запущен. Инструмент Maven Surefire устанавливает версию API Docker как `1.44` , чтобы обеспечить совместимость с Docker Engine 29.
+## Не реализовано
 
-## Аутентификация
-
-Для работы с точками входа API уведомлений необходимо наличие действительного токена доступа в формате JWT. Сервис проверяет токены независимо и принимает их от любого источника.
-
-*   `Authorization: Bearer <token>`
-*   Куки `access-token`
-
-При наличии обоих элементов приоритет имеет заголовок, содержащий информацию о носителе данных. Параметры `/actuator/health` и `/actuator/info` остаются общедоступными. Механизмы авторизации, основанные на ролях пользователей или принадлежности к определенным группам, не реализованы.
-
-## Еще не реализовано
-
-Кафка, доставка электронных писем, интеграция с сервисами обработки задач, API для настройки настроек уведомлений, механизмы авторизации на основе ролей, фильтрация данных в зависимости от их владельца, обновление статуса элементов данных, возможность их удаления и отметки как прочитанных – все это останется в рамках будущих обновлений.
+- SMTP/email delivery;
+- preferences API;
+- read state / mark-as-read;
+- delete notification endpoint;
+- status transition API;
+- RBAC/ownership filtering внутри notification-service.

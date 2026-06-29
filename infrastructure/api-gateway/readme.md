@@ -26,13 +26,14 @@ The API Gateway currently defines:
 | `/api/users/**` | `/api/v1/user/**` | Implemented and routed to `user-service` |
 | `/api/tasks` | `/api/v1/tasks` | Implemented and routed to `task-service` |
 | `/api/tasks/**` | `/api/v1/tasks/**` | Implemented and routed to `task-service` |
+| `/api/notifications` | `/api/v1/notifications` | Implemented and routed to `notification-service` |
+| `/api/notifications/**` | `/api/v1/notifications/**` | Implemented and routed to `notification-service` |
 
 The user route forwards `POST`, `GET`, `PUT`, `PATCH`, `DELETE`, and `OPTIONS`.
 Password changes are exposed as `PATCH /api/users/password/{userId}`.
 
-Notification routes do not exist yet. The future routing contract is
-documented in
-[Service boundaries](../../doc/architecture/service-boundaries.md).
+The gateway does not route notification-service internal endpoints such as
+`/internal/api/v1/notifications/system`.
 
 ### Authentication
 Protected requests are validated using JWT tokens. The gateway accepts the
@@ -47,6 +48,7 @@ apply the endpoint-specific checks.
 ### API Routes
 - User Service: http://localhost:8080/api/users/**
 - Task Service: http://localhost:8080/api/tasks and http://localhost:8080/api/tasks/**
+- Notification Service: http://localhost:8080/api/notifications and http://localhost:8080/api/notifications/**
 
 Use [Health checks](../../doc/operations/health-checks.md) to verify Gateway
 health and the read-only user-service routing probe.

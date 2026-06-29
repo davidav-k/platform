@@ -16,11 +16,10 @@ task-service transaction
   -> notifications
 ```
 
-Task-service no longer calls notification-service directly for task assignment
-notifications. The old synchronous REST task-notification integration and its
-task-service client classes were removed. Notification-service may still expose
-internal notification endpoints for other system use cases, but task creation
-notifications are produced through Kafka only.
+Task-service publishes task notification intent through `outbox_events` and
+Kafka. Notification-service may still expose internal notification endpoints for
+other system use cases, but task creation notifications are produced through
+Kafka only.
 
 ## Ownership
 
@@ -30,11 +29,20 @@ notifications are produced through Kafka only.
 - Each service owns its database; no cross-service repositories or foreign keys
   are used.
 
-## Task Created Event
+## Task Events
 
-When `CreateTaskUseCaseImpl` creates a task, it saves the `TaskEntity` and the
-`TASK_CREATED` outbox event in the same transaction. The payload contains the
-task fields needed by downstream consumers:
+Task-service currently writes these outbox events:
+
+| Use case | Event type | Producer |
+| --- | --- | --- |
+| Create task | `TASK_CREATED` | `CreateTaskUseCaseImpl` |
+| Assign, reassign, or unassign task | `TASK_ASSIGNED` | `AssignTaskUseCaseImpl` |
+| Change task status | `TASK_STATUS_CHANGED` | `ChangeTaskStatusUseCaseImpl` |
+
+Each use case saves the task mutation and its outbox event in the same
+transaction.
+
+`TASK_CREATED` payload contains:
 
 - `taskId`
 - `title`
@@ -45,9 +53,18 @@ task fields needed by downstream consumers:
 - `createdByUserId`
 - `createdAt`
 
-Notification-service creates an `IN_APP` `TASK_CREATED` notification only when
-`assigneeUserId` is present. Unassigned task creation events are consumed and
-logged, but they do not create notification rows.
+`TASK_ASSIGNED` payload contains `taskId`, `title`, `status`, `priority`,
+`previousAssigneeUserId`, `newAssigneeUserId`, `createdByUserId`, and
+`updatedAt`.
+
+`TASK_STATUS_CHANGED` payload contains `taskId`, `title`, `previousStatus`,
+`newStatus`, `priority`, `assigneeUserId`, `createdByUserId`, and `updatedAt`.
+
+Notification-service creates notification rows only when the event payload
+contains the recipient required by the processor. Unassigned task creation
+events, assignment events without `newAssigneeUserId`, and status events
+without `assigneeUserId` are consumed and logged but do not create notification
+rows.
 
 ## Publisher Configuration
 
@@ -105,7 +122,7 @@ from outbox_events
 order by created_at desc
 limit 10;
 
-select event_id, event_type, status, error_message
+select event_id, event_type, consumed_at, source
 from event_consumption_log
 order by consumed_at desc
 limit 10;

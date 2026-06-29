@@ -2,18 +2,20 @@
 
 ## Scope
 
-This document describes implemented `notification-service` endpoints and
-planned contracts for future work. The service owns notifications,
-preferences, templates, and delivery tracking as defined in
-[Service boundaries](../architecture/service-boundaries.md).
+This document describes the implemented `notification-service` HTTP endpoints
+and the Kafka-backed task notification flow. The service owns notification
+persistence and event-consumption idempotency. It does not own task state or
+user profiles.
 
 All external endpoints:
 
 - use the response envelope from [API contract standards](api-contract-standards.md)
 - require a valid access JWT
 - use UUID strings for notification identifiers and public user references
-- return only notifications owned by the authenticated user unless an
-  administration contract is added later
+
+The current implementation does not enforce recipient ownership filtering based
+on the authenticated user. Role-based notification authorization is not
+implemented yet.
 
 ## DTOs
 
@@ -23,142 +25,120 @@ All external endpoints:
 | --- | --- | --- |
 | `notificationId` | UUID string | Notification identifier |
 | `recipientUserId` | UUID string | Public identifier of recipient |
-| `type` | enum | `SYSTEM` or `EMAIL` |
+| `type` | enum | `TASK_ASSIGNED`, `TASK_CREATED`, or `SYSTEM` |
+| `channel` | enum | `EMAIL` or `IN_APP` |
 | `subject` | string or null | Display subject |
-| `message` | string | Rendered notification content |
-| `read` | boolean | System-notification read state |
-| `readAt` | string or null | ISO-8601 timestamp |
-| `deliveryStatus` | enum | `PENDING`, `SENT`, `FAILED`, or `NOT_APPLICABLE` |
+| `body` | string | Notification content |
+| `status` | enum | `PENDING`, `SENT`, or `FAILED` |
 | `createdAt` | string | ISO-8601 timestamp |
-
-### NotificationPreferenceResponse
-
-| Field | Type | Description |
-| --- | --- | --- |
-| `userId` | UUID string | Public identifier of preference owner |
-| `emailEnabled` | boolean | Whether platform email delivery is enabled |
-| `systemEnabled` | boolean | Whether in-application notifications are enabled |
-| `taskCreatedEnabled` | boolean | Whether task-created notifications are enabled |
-| `taskAssignedEnabled` | boolean | Whether task-assigned notifications are enabled |
-| `taskStatusChangedEnabled` | boolean | Whether status notifications are enabled |
-| `taskCommentAddedEnabled` | boolean | Whether comment notifications are enabled |
 | `updatedAt` | string | ISO-8601 timestamp |
+| `sentAt` | string or null | ISO-8601 timestamp for sent notifications |
+| `failureReason` | string or null | Failure reason when status is `FAILED` |
 
-### UpdateNotificationPreferencesRequest
-
-Contains all boolean preference fields from `NotificationPreferenceResponse`.
-All fields are required so `PUT` replaces the preference representation.
-
-### SendEmailNotificationRequest
+### CreateNotificationRequest
 
 | Field | Type | Required | Validation |
 | --- | --- | --- | --- |
-| `requestId` | UUID string | yes | Idempotency identifier |
-| `recipientUserId` | UUID string | yes | Existing public user identifier |
-| `templateKey` | string | yes | Known internal template identifier |
-| `templateParameters` | object | no | Template-specific values; must not contain secrets |
+| `recipientUserId` | UUID string | yes | Recipient public user identifier |
+| `type` | enum | yes | `TASK_ASSIGNED`, `TASK_CREATED`, or `SYSTEM` |
+| `channel` | enum | yes | `EMAIL` or `IN_APP` |
+| `subject` | string | no | Maximum 255 characters |
+| `body` | string | yes | Not blank; maximum 5000 characters |
 
-### SendSystemNotificationRequest
+### CreateSystemNotificationRequest
 
 | Field | Type | Required | Validation |
 | --- | --- | --- | --- |
-| `requestId` | UUID string | yes | Idempotency identifier |
-| `recipientUserId` | UUID string | yes | Existing public user identifier |
-| `subject` | string | no | Maximum 200 characters |
+| `recipientUserId` | UUID string | yes | Recipient public user identifier |
+| `type` | enum | yes | `TASK_ASSIGNED`, `TASK_CREATED`, or `SYSTEM` |
+| `title` | string | no | Maximum 255 characters |
 | `message` | string | yes | Not blank; maximum 5000 characters |
-| `sourceType` | string | yes | Producing domain, for example `TASK` |
-| `sourceId` | UUID string | no | Related aggregate identifier |
+| `sourceService` | string | yes | Not blank; maximum 100 characters |
+| `sourceEntityType` | string | yes | Not blank; maximum 100 characters |
+| `sourceEntityId` | UUID string | yes | Related source entity identifier |
+
+The system notification use case always persists `channel=IN_APP` and
+`status=PENDING`.
 
 ## External Notification Endpoints
 
-### `GET /api/v1/notifications`
+### `POST /api/v1/notifications`
 
-Returns the authenticated user's notifications.
+Creates a notification record. This endpoint persists the row only; it does not
+send email.
 
-- Request DTO: none
-- Response: `200 OK`, `data.items` contains `NotificationResponse` entries and
-  `data.page` contains standard pagination metadata
-- Authorization: authenticated owner only
-- Pagination: standard `page`, `size`, and `sort`; default sort is
-  `createdAt,desc`
-- Optional filters: `read`, `type`, `deliveryStatus`
-- Validation: enum filters must be supported values
+- Gateway route: `POST /api/notifications`
+- Request DTO: `CreateNotificationRequest`
+- Response: `201 CREATED`, `data.notification` contains `NotificationResponse`
+- Authentication: required
 
 ### `GET /api/v1/notifications/{notificationId}`
 
-Returns one notification owned by the authenticated user.
+Returns one notification by public UUID.
 
+- Gateway route: `GET /api/notifications/{notificationId}`
 - Request DTO: none
 - Response: `200 OK`, `data.notification` contains `NotificationResponse`
-- Authorization: authenticated owner only
+- Authentication: required
 - Validation: `notificationId` must be a UUID
 
-### `PATCH /api/v1/notifications/{notificationId}/read`
+### `GET /api/v1/notifications`
 
-Marks an owned system notification as read. Repeating the operation is
-idempotent.
+Returns a filtered, paginated notification list.
 
+- Gateway route: `GET /api/notifications`
 - Request DTO: none
-- Response: `200 OK`, `data.notification` contains `NotificationResponse`
-- Authorization: authenticated owner only
-- Validation: `notificationId` must be a UUID
+- Response: `200 OK`, `data.items` contains `NotificationResponse` entries and
+  `data.page` contains pagination metadata
+- Authentication: required
+- Optional filters: `recipientUserId`, `status`, `channel`, `type`
+- Pagination: `page` defaults to `0`; `size` defaults to `20` and is capped at `100`
+- Sorting: `sort` defaults to `createdAt,desc`
 
-## External Preference Endpoints
-
-### `GET /api/v1/notification-preferences`
-
-Returns the authenticated user's notification preferences. Defaults are
-returned when no stored override exists.
-
-- Request DTO: none
-- Response: `200 OK`, `data.preferences` contains
-  `NotificationPreferenceResponse`
-- Authorization: authenticated owner only
-
-### `PUT /api/v1/notification-preferences`
-
-Replaces the authenticated user's notification preferences.
-
-- Request DTO: `UpdateNotificationPreferencesRequest`
-- Response: `200 OK`, `data.preferences` contains
-  `NotificationPreferenceResponse`
-- Authorization: authenticated owner only
-- Validation: all preference fields are required booleans
-
-## Internal Delivery Endpoints
-
-Internal endpoints are for service-to-service calls only. API Gateway must not
-route them. The implemented system endpoint uses a delegated platform access
-JWT for the MVP; dedicated service authentication and idempotency remain future
-work. Internal calls require audit-safe logging.
-
-### `POST /internal/api/v1/notifications/email`
-
-Requests email notification delivery.
-
-- Request DTO: `SendEmailNotificationRequest`
-- Response: `202 ACCEPTED`, `data.notification` contains
-  `NotificationResponse`
-- Caller: trusted platform service only
+## Internal Notification Endpoint
 
 ### `POST /internal/api/v1/notifications/system`
 
-Creates an in-application notification.
+Creates an in-application system notification for platform services. API
+Gateway does not route this endpoint.
 
 - Request DTO: `CreateSystemNotificationRequest`
-- Response: `201 CREATED`, `data.notification` contains
-  `NotificationResponse`
-- Caller: trusted platform service only
-- Authentication: valid platform access JWT; task-service delegates the initiating user's JWT for the MVP
-- Required fields: `recipientUserId`, `type`, `message`, `sourceService`, `sourceEntityType`, `sourceEntityId`
-- Optional field: `title`
-- The endpoint always creates an `IN_APP` notification with `PENDING` status
+- Response: `201 CREATED`, `data.notification` contains `NotificationResponse`
+- Authentication: valid access JWT according to notification-service security
+- Persisted values: `channel=IN_APP`, `status=PENDING`
 
-## Delivery Notes
+Task-service no longer uses this REST endpoint for task-created notifications.
+Those notifications are created by Kafka event processing.
 
-- General platform email delivery belongs to `notification-service`.
-- Existing `user-service` account-verification email remains in
-  `user-service` during MVP stabilization.
-- Push and WebSocket delivery are outside this initial contract.
-- Future event consumers may replace internal REST calls without changing
-  external notification endpoints.
+## Kafka Task Notifications
+
+The supported task notification path is:
+
+```text
+task-service -> outbox_events -> Kafka topic platform.task-events
+  -> notification-service -> notifications
+```
+
+`NotificationEventConsumer` listens to `notification.kafka.topic` when
+`notification.kafka.enabled=true`. It stores each accepted Kafka event ID in
+`event_consumption_log`; the unique `event_id` acts as the idempotency key.
+
+`TaskEventNotificationProcessor` currently handles:
+
+| Event type | Notification result |
+| --- | --- |
+| `TASK_CREATED` | Creates `IN_APP` `TASK_CREATED` for `assigneeUserId` when present |
+| `TASK_ASSIGNED` | Creates `IN_APP` `TASK_ASSIGNED` for `newAssigneeUserId` when present |
+| `TASK_STATUS_CHANGED` | Creates `IN_APP` `SYSTEM` for `assigneeUserId` when present |
+
+Events missing the required recipient user ID are consumed and logged, but no
+notification row is created.
+
+## Not Implemented
+
+- Notification preferences HTTP API
+- Mark-as-read or read state
+- Delete notification endpoint
+- Notification status update endpoint
+- SMTP/email delivery from notification-service
+- WebSocket, push, or realtime notification delivery

@@ -164,6 +164,8 @@ Supported priorities are `LOW`, `MEDIUM`, and `HIGH`.
 - View notification details
 - Display notification type, channel, delivery status, timestamps, and failure
   information when provided by the backend
+- Read Kafka-backed task-created notifications through
+  `GET /api/notifications`
 
 The implemented notification API does not expose read state or a mark-as-read
 operation.
@@ -193,8 +195,9 @@ Views and components do not call `fetch` directly.
 - Notification mark-as-read, polling, WebSocket, and realtime updates are not
   implemented or exposed by current backend contracts.
 - There is no audit UI, advanced dashboard, bulk task workflow, or task restore UI.
-- Kafka and the transactional outbox are design work only; the frontend does
-  not expose event-delivery controls.
+- Kafka and the transactional outbox run in the backend. The frontend does not
+  expose event-delivery controls and only reads persisted notifications through
+  the Gateway.
 - Automated frontend component and browser tests are not configured yet.
 
 ## MVP Verification Checklist
@@ -208,6 +211,8 @@ Views and components do not call `fetch` directly.
 - [ ] Edit the task.
 - [ ] Change its status.
 - [ ] Assign, reassign, or unassign it using a valid user UUID.
+- [ ] Create a task with a valid assignee UUID, wait for backend Kafka/outbox
+      processing, and verify a `TASK_CREATED` notification appears.
 - [ ] Soft delete it and verify return to the task list.
 - [ ] Open the notifications list and notification details.
 - [ ] Logout and verify protected routes redirect to login.
