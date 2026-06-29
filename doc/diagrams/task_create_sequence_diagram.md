@@ -18,8 +18,11 @@ sequenceDiagram
     participant Repository as TaskRepository
     participant Hibernate as Hibernate/JPA
     participant DB as PostgreSQL tasks
-    participant Publisher as TaskNotificationPublisher
-    participant NotifClient as RestNotificationClient
+    participant Outbox as OutboxEventRepository
+    participant OutboxPublisher as KafkaOutboxEventPublisher
+    participant Kafka as Kafka platform.task-events
+    participant Consumer as NotificationEventConsumer
+    participant Processor as TaskEventNotificationProcessor
     participant NotifService as notification-service
     participant Router as Vue Router
 
@@ -72,19 +75,11 @@ sequenceDiagram
     Hibernate-->>Repository: managed TaskEntity
     Repository-->>UseCase: saved TaskEntity
 
+    UseCase->>Outbox: save TASK_CREATED outbox event
+    Outbox->>DB: INSERT INTO outbox_events (...)
+    DB-->>Outbox: inserted row
+    Outbox-->>UseCase: saved event
     UseCase->>UseCase: map TaskEntity -> CreateTaskResponse
-    UseCase->>Publisher: publishAssignmentNotification(response)
-
-    alt assigneeUserId отсутствует
-        Publisher-->>UseCase: notification skipped
-    else assigneeUserId есть
-        Publisher->>NotifClient: notifyTaskAssigned(context)
-        NotifClient->>NotifClient: extract current access-token
-        NotifClient->>NotifService: POST /internal/api/v1/notifications/system
-        NotifService-->>NotifClient: 201 Created
-        NotifClient-->>Publisher: ok
-        Publisher-->>UseCase: notification published
-    end
 
     UseCase-->>Controller: CreateTaskResponse
     Controller-->>TaskApp: ResponseEntity 201 Created
@@ -98,4 +93,17 @@ sequenceDiagram
     View->>View: extract response.data.task.taskId
     View->>Router: router.push({ name: 'task-details', id: taskId })
     Router-->>User: Открывает страницу деталей задачи
+
+    OutboxPublisher->>DB: poll NEW/FAILED outbox_events
+    DB-->>OutboxPublisher: TASK_CREATED event
+    OutboxPublisher->>Kafka: publish event
+    Kafka-->>Consumer: consume event
+    Consumer->>Processor: process TASK_CREATED
+
+    alt assigneeUserId отсутствует
+        Processor-->>Consumer: notification skipped
+    else assigneeUserId есть
+        Processor->>NotifService: create IN_APP TASK_CREATED notification
+        NotifService-->>Processor: saved notification
+    end
 ```

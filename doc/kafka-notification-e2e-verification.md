@@ -1,47 +1,23 @@
-# Kafka Notification E2E Verification And Cutover
+# Kafka Notification E2E Verification
 
-This document verifies the default local Kafka notification path without
-removing the existing synchronous REST notification code.
-
-The default runtime is Kafka-based notification delivery:
-
-- task-service outbox publisher is enabled
-- task-service outbox publisher adapter is `kafka`
-- notification-service Kafka consumer is enabled
-- task-service REST assignment notifications are disabled
-
-Use this flow for local/dev verification and rollback validation.
-
-Kafka notification mode is the recommended runtime mode after verification:
+This document verifies the supported task notification path:
 
 ```text
-Task Assignment
--> Task Service
--> Outbox Event
--> Kafka
--> Notification Consumer
--> Notification Created
+task-service
+  -> outbox_events
+  -> Kafka topic platform.task-events
+  -> notification-service
+  -> notifications
 ```
 
-The synchronous REST assignment notification code remains available for
-configuration-only rollback.
+Task-service no longer sends task assignment notifications directly to
+notification-service over REST. Notifications for newly created assigned tasks
+are created only from the `TASK_CREATED` outbox event consumed by
+notification-service.
 
-## Prerequisites
+## Required Configuration
 
-- Docker Desktop or a local Docker daemon is running.
-- `.env` exists at the repository root.
-- Local stack can pass:
-
-```bash
-./scripts/check-local-stack.sh
-```
-
-- A verified regular user exists for the Postman MVP flow, or you are ready to
-  complete registration verification through MailHog.
-
-## Runtime Modes
-
-Default Kafka notification mode:
+Local Docker configuration should keep the Kafka path enabled:
 
 ```text
 OUTBOX_PUBLISHER_ENABLED=true
@@ -50,259 +26,91 @@ OUTBOX_PUBLISHER_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
 OUTBOX_PUBLISHER_KAFKA_TOPIC=platform.task-events
 NOTIFICATION_KAFKA_ENABLED=true
 NOTIFICATION_KAFKA_TOPIC=platform.task-events
-NOTIFICATION_ASSIGNMENT_REST_ENABLED=false
-```
-
-Rollback mode:
-
-```text
-OUTBOX_PUBLISHER_ENABLED=false
-OUTBOX_PUBLISHER_ADAPTER=logging
-NOTIFICATION_KAFKA_ENABLED=false
-NOTIFICATION_ASSIGNMENT_REST_ENABLED=true
-```
-
-Keep these defaults unless you intentionally need different local ports or
-topic names:
-
-```text
-KAFKA_LOCAL_PORT=9092
-KAFKA_BOOTSTRAP_SERVERS=kafka:9092
 KAFKA_TASK_EVENTS_TOPIC=platform.task-events
 ```
 
-Start or recreate the local stack:
+Inside Docker, Kafka bootstrap servers must use `kafka:9092`, not
+`localhost:9092`.
+
+## Manual Check
+
+1. Start the stack:
 
 ```bash
-docker compose --env-file .env -f compose.yml up -d --build
-./scripts/check-local-stack.sh
+docker compose --env-file .env -f compose.yml up -d --build task-service notification-service
 ```
 
-`NOTIFICATION_ASSIGNMENT_REST_ENABLED=false` disables only the task-service
-synchronous REST assignment notification call. It does not remove
-`RestNotificationClient`, `TaskNotificationPublisher`, or the
-notification-service internal REST endpoint.
-
-If task-service starts with Kafka publishing enabled and REST assignment
-notifications disabled while `NOTIFICATION_KAFKA_ENABLED=false`, it logs a
-warning. Startup is not blocked, but task assignment notifications may not be
-delivered until the notification-service Kafka consumer is enabled.
-
-## Create A Verifiable Event
-
-Use the existing Postman MVP flow documented 
-
-The relevant step is the request that creates an assigned task:
-
-```text
-POST /api/tasks
-```
-
-with an `assigneeUserId` different from the creator. The existing collection
-creates an assigned task for the admin recipient after the regular user is
-logged in.
-
-A manual request through Gateway is also valid if you already have a session:
-
-```http
-POST http://localhost:8080/api/tasks
-Content-Type: application/json
-
-{
-  "title": "Kafka E2E assigned task",
-  "description": "Verifies Kafka notification flow",
-  "priority": "HIGH",
-  "assigneeUserId": "<recipient-user-id>"
-}
-```
-
-## Run The Verification Script
-
-After creating the assigned task, run:
+2. Create a task through the Gateway with a non-null `assigneeUserId`:
 
 ```bash
-./scripts/verify-kafka-notification-flow.sh
+curl -i -X POST http://localhost:8080/api/tasks \
+  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Kafka notification smoke test",
+    "description": "Verify TASK_CREATED notification",
+    "priority": "HIGH",
+    "assigneeUserId": "11111111-1111-1111-1111-111111111111"
+  }'
 ```
 
-The script checks:
+3. Confirm task-service wrote and published the outbox event:
 
-- default Kafka notification env values are enabled
-- REST assignment notifications are disabled
-- Docker Compose services are running
-- Kafka broker is reachable
-- latest `TASK_CREATED` outbox event is `PROCESSED`
-- `event_consumption_log` contains exactly one row for the event
-- `notifications` contains exactly one `TASK_CREATED` notification for the
-  task and recipient
-- task-service logs contain the REST-assignment skip message when available
-
-The script does not perform login or create users/tasks. It intentionally does
-not hardcode local credentials or depend on mutable user state.
-
-## Operational Runbook
-
-Phase A: verify Kafka consumer is enabled.
-
-```text
-NOTIFICATION_KAFKA_ENABLED=true
-NOTIFICATION_KAFKA_TOPIC=platform.task-events
+```bash
+docker logs tsp_task_service
 ```
 
-Start or recreate notification-service and verify startup logs show
-`kafkaConsumerEnabled=true`.
+Expected log indicators:
 
-Phase B: verify Kafka producer is enabled.
+- `Published outbox event to Kafka`
+- `eventType=TASK_CREATED`
+- `topic=platform.task-events`
 
-```text
-OUTBOX_PUBLISHER_ENABLED=true
-OUTBOX_PUBLISHER_ADAPTER=kafka
-OUTBOX_PUBLISHER_KAFKA_TOPIC=platform.task-events
-OUTBOX_PUBLISHER_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+4. Confirm notification-service consumed the task event and saved a
+   notification:
+
+```bash
+docker logs tsp_notification_service
 ```
 
-Create or update a task and verify new outbox events move to `PROCESSED`.
+Expected log indicators:
 
-Phase C: verify REST assignment notifications are disabled.
+- `Received TASK_CREATED event`
+- `Creating task event notification`
+- `Created system notification`
 
-```text
-NOTIFICATION_ASSIGNMENT_REST_ENABLED=false
+5. Check PostgreSQL:
+
+```sql
+select event_id, event_type, aggregate_id, status, error_message
+from outbox_events
+order by created_at desc
+limit 10;
+
+select event_id, event_type, status, error_message
+from event_consumption_log
+order by consumed_at desc
+limit 10;
+
+select notification_id, recipient_user_id, type, channel, status,
+       source_service, source_entity_type, source_entity_id
+from notifications
+order by created_at desc
+limit 10;
 ```
 
-This skips only synchronous REST assignment notification sending from
-task-service. REST code and notification-service internal endpoints remain in
-place.
+Expected database state:
 
-Phase D: observe notification creation.
-
-Verify:
-
+- `outbox_events.event_type = TASK_CREATED`
 - `outbox_events.status = PROCESSED`
-- Kafka topic receives `platform.task-events` messages
-- `event_consumption_log` has exactly one row for the `event_id`
-- `notifications` has exactly one notification for the task/recipient pair
-- task-service logs show the REST assignment notification path was skipped
+- `event_consumption_log.status = PROCESSED`
+- `notifications.type = TASK_CREATED`
+- `notifications.channel = IN_APP`
+- `notifications.recipient_user_id` equals the task `assigneeUserId`
+- `notifications.source_service = task-service`
+- `notifications.source_entity_type = TASK`
+- `notifications.source_entity_id` equals the task id
 
-Phase E: roll back if necessary.
-
-Use the rollback mode values below and recreate affected services. No code
-change is required.
-
-## Operational Verification
-
-Inspect the latest task assignment outbox event:
-
-```bash
-docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" tsp_postgres \
-  psql -U "$POSTGRES_USER" -d "${TASK_POSTGRES_DB:-tasks_db}" \
-  -c "SELECT event_id, aggregate_id, event_type, status, processed_at FROM outbox_events WHERE event_type = 'TASK_CREATED' ORDER BY created_at DESC LIMIT 5;"
-```
-
-Expected:
-
-- `event_type = TASK_CREATED`
-- `status = PROCESSED`
-- `processed_at` is not null
-
-Inspect the notification consumer idempotency log:
-
-```bash
-docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" tsp_postgres \
-  psql -U "$POSTGRES_USER" -d "${NOTIFICATION_POSTGRES_DB:-notifications_db}" \
-  -c "SELECT event_id, event_type, consumed_at, source FROM event_consumption_log ORDER BY consumed_at DESC LIMIT 5;"
-```
-
-Expected:
-
-- exactly one row for the verified `event_id`
-- `event_type = TASK_CREATED`
-- `source = task-service`
-
-Inspect the notification row:
-
-```bash
-docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" tsp_postgres \
-  psql -U "$POSTGRES_USER" -d "${NOTIFICATION_POSTGRES_DB:-notifications_db}" \
-  -c "SELECT notification_id, recipient_user_id, type, source_service, source_entity_type, source_entity_id FROM notifications WHERE type = 'TASK_CREATED' ORDER BY created_at DESC LIMIT 5;"
-```
-
-Expected:
-
-- exactly one notification for the verified task/recipient pair
-- `source_service = task-service`
-- `source_entity_type = TASK`
-- `source_entity_id` equals the task ID from the outbox event
-
-Inspect Kafka topic traffic:
-
-```bash
-docker exec tsp_kafka /opt/kafka/bin/kafka-console-consumer.sh \
-  --bootstrap-server localhost:9092 \
-  --topic platform.task-events \
-  --from-beginning \
-  --max-messages 5
-```
-
-Expected:
-
-- messages contain `eventType`
-- create-task messages use `TASK_CREATED`
-- `eventId` matches the idempotency key stored by notification-service
-
-## Duplicate Delivery Protection
-
-Duplicate Kafka delivery is expected under at-least-once delivery. The
-notification-service consumer uses `event_id` as the durable idempotency key.
-
-Verification options:
-
-- Run the Docker-backed integration test:
-
-```bash
-mvn -B -f backend/notification-service/pom.xml -Dtest=NotificationKafkaDuplicateDeliveryIntegrationTest test
-```
-
-- Or verify manually that `event_consumption_log` has one row for the event and
-  `notifications` has one matching notification for the same task/recipient.
-
-## REST Assignment Path Verification
-
-With `NOTIFICATION_ASSIGNMENT_REST_ENABLED=false`, task-service should skip the
-synchronous REST assignment notification path while still writing outbox events.
-
-Check task-service logs:
-
-```bash
-docker compose --env-file .env -f compose.yml logs task-service \
-  | grep "Skipping synchronous REST assignment notification"
-```
-
-If the log is absent, check that:
-
-- the stack was recreated after changing `.env`
-- the task was created with an assignee in the create-task request
-- `NOTIFICATION_ASSIGNMENT_REST_ENABLED=false` is present in `.env`
-
-The assignment endpoint writes `TASK_ASSIGNED` outbox events. Task creation
-with an assignee writes `TASK_CREATED` outbox events and is delivered through
-the Kafka notification path.
-
-## Rollback Runbook
-
-Set these values in `.env`:
-
-```text
-OUTBOX_PUBLISHER_ENABLED=false
-OUTBOX_PUBLISHER_ADAPTER=logging
-NOTIFICATION_KAFKA_ENABLED=false
-NOTIFICATION_ASSIGNMENT_REST_ENABLED=true
-```
-
-Then recreate the stack:
-
-```bash
-docker compose --env-file .env -f compose.yml up -d --build
-```
-
-This returns local behavior to the REST fallback: synchronous REST assignment
-notifications are active, Kafka notification consumption is disabled, and
-Kafka publishing is not used.
+If the task is created without `assigneeUserId`, notification-service should log
+that the `TASK_CREATED` notification was skipped and no notification row should
+be inserted for that event.

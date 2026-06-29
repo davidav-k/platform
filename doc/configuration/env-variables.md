@@ -149,12 +149,6 @@ fixed in configuration and Compose:
 | `OUTBOX_PUBLISHER_KAFKA_TOPIC` | No | `platform.task-events` | `platform.task-events` | task-service | Explicit Kafka topic for the task-service outbox publisher. Falls back to `KAFKA_TASK_EVENTS_TOPIC`. |
 | `NOTIFICATION_KAFKA_ENABLED` | No | `true` | `false` | notification-service | Enables notification-service Kafka consumer processing. Default notification delivery keeps this true. |
 | `NOTIFICATION_KAFKA_TOPIC` | No | `platform.task-events` | `platform.task-events` | notification-service | Explicit Kafka topic consumed by notification-service. Falls back to `KAFKA_TASK_EVENTS_TOPIC`. |
-| `NOTIFICATION_SERVICE_ENABLED` | No | `true` | `true` | task-service | Enables task-service calls to notification-service. |
-| `NOTIFICATION_ASSIGNMENT_REST_ENABLED` | No | `false` | `true` | task-service | Preferred rollback flag controlling synchronous REST assignment notifications. Default Kafka notification delivery keeps this false. |
-| `NOTIFICATION_SERVICE_ASSIGNMENT_REST_ENABLED` | No | `false` | `true` | task-service | Backward-compatible alias controlling only synchronous REST assignment notifications. Set true for REST rollback. |
-| `NOTIFICATION_SERVICE_BASE_URL` | No | `http://notification-service:8087` | `http://notification-service:8087` | task-service | Base URL for internal notification-service REST calls. |
-| `NOTIFICATION_SERVICE_CONNECT_TIMEOUT` | No | `2s` | `2s` | task-service | Connection timeout for internal notification-service REST calls. |
-| `NOTIFICATION_SERVICE_READ_TIMEOUT` | No | `2s` | `2s` | task-service | Read timeout for internal notification-service REST calls. |
 
 Default Kafka notification delivery uses:
 
@@ -162,17 +156,16 @@ Default Kafka notification delivery uses:
 OUTBOX_PUBLISHER_ENABLED=true
 OUTBOX_PUBLISHER_ADAPTER=kafka
 NOTIFICATION_KAFKA_ENABLED=true
-NOTIFICATION_ASSIGNMENT_REST_ENABLED=false
 ```
 
-Kafka notification mode is the supported runtime path. It remains reversible:
+Kafka notification mode is the supported runtime path:
 
-- Default mode sets `OUTBOX_PUBLISHER_ENABLED=true`,
+- Task-service writes task domain events to `outbox_events`.
+- The outbox publisher uses `OUTBOX_PUBLISHER_ENABLED=true`,
   `OUTBOX_PUBLISHER_ADAPTER=kafka`, `NOTIFICATION_KAFKA_ENABLED=true`, and
-  `NOTIFICATION_ASSIGNMENT_REST_ENABLED=false`.
-- Rollback mode restores `NOTIFICATION_ASSIGNMENT_REST_ENABLED=true` and
-  `NOTIFICATION_KAFKA_ENABLED=false`; disabling the outbox publisher or
-  returning to the logging adapter is also supported.
+  the configured Kafka task event topic.
+- Notification-service consumes that topic and creates notifications from
+  task events.
 
 ### Mail
 
@@ -206,7 +199,7 @@ required `.env` contract:
 | `.env.example` | All required local values and optional service overrides |
 | `compose.yml` | `POSTGRES_USER`, `POSTGRES_DB`, `SPRING_CLOUD_CONFIG_SERVER_NATIVE_SEARCH_LOCATIONS`, `APPLICATION_PORT` for task-service; commented fallback toggles |
 | `config/user-service-dev.yml` | PostgreSQL, mail, JWT, admin, and `APPLICATION_PORT` variables |
-| `config/task-service-dev.yml` | PostgreSQL (`TASK_POSTGRES_DB`), JWT, Eureka, `APPLICATION_PORT`, task-service notification REST variables, and outbox publisher variables |
+| `config/task-service-dev.yml` | PostgreSQL (`TASK_POSTGRES_DB`), JWT, Eureka, `APPLICATION_PORT`, and outbox publisher variables |
 | `config/notification-service-dev.yml` | PostgreSQL (`NOTIFICATION_POSTGRES_DB`), Eureka, `APPLICATION_PORT`, and notification Kafka variables |
 | `backend/user-service/src/main/resources/application.yml` | `spring.application.name` only |
 | `backend/user-service/src/main/resources/bootstrap.yml` | `ACTIVE_PROFILE` and optional `CONFIG_SERVER_URI` override |
