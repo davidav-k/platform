@@ -6,6 +6,7 @@ import com.example.task_service.repository.TaskRepository;
 import com.example.task_service.security.CurrentUserAccessProvider;
 import com.example.task_service.security.CurrentUserAccessProvider.CurrentUserAccess;
 import com.example.task_service.usecase.DeleteTaskUseCase;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,17 +15,12 @@ import java.time.ZoneOffset;
 import java.util.UUID;
 
 @Service
+@RequiredArgsConstructor
 @Transactional
 public class DeleteTaskUseCaseImpl implements DeleteTaskUseCase {
 
     private final TaskRepository taskRepository;
     private final CurrentUserAccessProvider currentUserAccessProvider;
-
-    public DeleteTaskUseCaseImpl(TaskRepository taskRepository,
-                                 CurrentUserAccessProvider currentUserAccessProvider) {
-        this.taskRepository = taskRepository;
-        this.currentUserAccessProvider = currentUserAccessProvider;
-    }
 
     @Override
     public void delete(UUID taskId) {

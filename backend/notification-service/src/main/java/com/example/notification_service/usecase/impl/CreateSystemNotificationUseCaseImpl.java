@@ -11,23 +11,21 @@ import com.example.notification_service.usecase.CreateSystemNotificationUseCase;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Validator;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Set;
 
+@Slf4j
 @Service
+@RequiredArgsConstructor
 @Transactional
 public class CreateSystemNotificationUseCaseImpl implements CreateSystemNotificationUseCase {
 
     private final NotificationRepository notificationRepository;
     private final Validator validator;
-
-    public CreateSystemNotificationUseCaseImpl(NotificationRepository notificationRepository,
-                                               Validator validator) {
-        this.notificationRepository = notificationRepository;
-        this.validator = validator;
-    }
 
     @Override
     public NotificationResponse create(CreateSystemNotificationRequest request) {
@@ -35,17 +33,25 @@ public class CreateSystemNotificationUseCaseImpl implements CreateSystemNotifica
 
         NotificationEntity notification = new NotificationEntity(
             null,
-            request.getRecipientUserId(),
-            request.getType(),
+            request.recipientUserId(),
+            request.type(),
             NotificationChannel.IN_APP,
-            trimNullable(request.getTitle()),
-            request.getMessage().trim(),
+            trimNullable(request.title()),
+            request.message().trim(),
             NotificationStatus.PENDING,
-            request.getSourceService().trim(),
-            request.getSourceEntityType().trim(),
-            request.getSourceEntityId()
+            request.sourceService().trim(),
+            request.sourceEntityType().trim(),
+            request.sourceEntityId()
         );
-        return NotificationMapper.toResponse(notificationRepository.save(notification));
+        NotificationEntity savedNotification = notificationRepository.save(notification);
+        log.info("Created system notification: notificationId={}, recipientUserId={}, type={}, sourceService={}, sourceEntityType={}, sourceEntityId={}",
+            savedNotification.getNotificationId(),
+            savedNotification.getRecipientUserId(),
+            savedNotification.getType(),
+            savedNotification.getSourceService(),
+            savedNotification.getSourceEntityType(),
+            savedNotification.getSourceEntityId());
+        return NotificationMapper.toResponse(savedNotification);
     }
 
     private void validate(CreateSystemNotificationRequest request) {
@@ -59,6 +65,6 @@ public class CreateSystemNotificationUseCaseImpl implements CreateSystemNotifica
     }
 
     private String trimNullable(String value) {
-        return value == null ? null : value.trim();
+        return value == null ? null : value.strip();
     }
 }

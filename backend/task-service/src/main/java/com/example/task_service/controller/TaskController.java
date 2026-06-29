@@ -24,6 +24,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -44,6 +45,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/tasks")
+@RequiredArgsConstructor
 @Validated
 public class TaskController {
 
@@ -55,19 +57,6 @@ public class TaskController {
     private final DeleteTaskUseCase deleteTaskUseCase;
     private final AssignTaskUseCase assignTaskUseCase;
 
-    public TaskController(CreateTaskUseCase createTaskUseCase, GetTaskUseCase getTaskUseCase,
-                          ListTasksUseCase listTasksUseCase, UpdateTaskUseCase updateTaskUseCase,
-                          ChangeTaskStatusUseCase changeTaskStatusUseCase,
-                          DeleteTaskUseCase deleteTaskUseCase,
-                          AssignTaskUseCase assignTaskUseCase) {
-        this.createTaskUseCase = createTaskUseCase;
-        this.getTaskUseCase = getTaskUseCase;
-        this.listTasksUseCase = listTasksUseCase;
-        this.updateTaskUseCase = updateTaskUseCase;
-        this.changeTaskStatusUseCase = changeTaskStatusUseCase;
-        this.deleteTaskUseCase = deleteTaskUseCase;
-        this.assignTaskUseCase = assignTaskUseCase;
-    }
 
 @PostMapping
 public ResponseEntity<Response> createTask(@RequestBody @Valid CreateTaskRequest createTaskRequest,
@@ -80,7 +69,7 @@ public ResponseEntity<Response> createTask(@RequestBody @Valid CreateTaskRequest
         "Task created successfully.",
         HttpStatus.CREATED
     );
-    return ResponseEntity.created(URI.create(task.getTaskId().toString())).body(response);
+    return ResponseEntity.created(URI.create(task.taskId().toString())).body(response);
 }
 
     @GetMapping("/{taskId}")
@@ -165,7 +154,7 @@ public ResponseEntity<Response> createTask(@RequestBody @Valid CreateTaskRequest
         TaskListResponse tasks = listTasksUseCase.list(query);
         return ResponseEntity.ok(RequestUtils.getResponse(
             request,
-            Map.of("items", tasks.getItems(), "page", tasks.getPage()),
+            Map.of("items", tasks.items(), "page", tasks.page()),
             "Tasks retrieved successfully.",
             HttpStatus.OK
         ));

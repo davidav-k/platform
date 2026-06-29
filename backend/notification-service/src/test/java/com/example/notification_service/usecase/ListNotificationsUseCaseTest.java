@@ -82,42 +82,42 @@ class ListNotificationsUseCaseTest {
     void listsAllNotificationsWithPaginationMetadata() {
         NotificationListResponse response = list(query(null, null, null, null, 0, 2, null));
 
-        assertThat(response.getItems()).hasSize(2);
-        assertThat(response.getPage().getNumber()).isZero();
-        assertThat(response.getPage().getSize()).isEqualTo(2);
-        assertThat(response.getPage().getTotalElements()).isEqualTo(3);
-        assertThat(response.getPage().getTotalPages()).isEqualTo(2);
+        assertThat(response.items()).hasSize(2);
+        assertThat(response.page().number()).isZero();
+        assertThat(response.page().size()).isEqualTo(2);
+        assertThat(response.page().totalElements()).isEqualTo(3);
+        assertThat(response.page().totalPages()).isEqualTo(2);
     }
 
     @Test
     void filtersByRecipientUserId() {
-        assertThat(list(query(firstRecipient, null, null, null, 0, 20, null)).getItems())
+        assertThat(list(query(firstRecipient, null, null, null, 0, 20, null)).items())
                 .hasSize(2)
-                .allMatch(item -> firstRecipient.equals(item.getRecipientUserId()));
+                .allMatch(item -> firstRecipient.equals(item.recipientUserId()));
     }
 
     @Test
     void filtersByStatus() {
         assertSingleMatch(query(null, NotificationStatus.SENT, null, null, 0, 20, null),
-                item -> item.getStatus() == NotificationStatus.SENT);
+                item -> item.status() == NotificationStatus.SENT);
     }
 
     @Test
     void filtersByChannel() {
         assertSingleMatch(query(null, null, NotificationChannel.IN_APP, null, 0, 20, null),
-                item -> item.getChannel() == NotificationChannel.IN_APP);
+                item -> item.channel() == NotificationChannel.IN_APP);
     }
 
     @Test
     void filtersByType() {
         assertSingleMatch(query(null, null, null, NotificationType.TASK_CREATED, 0, 20, null),
-                item -> item.getType() == NotificationType.TASK_CREATED);
+                item -> item.type() == NotificationType.TASK_CREATED);
     }
 
     @Test
     void supportsSortingByAllowedFields() {
         for (String field : List.of("createdAt", "updatedAt", "status", "channel", "type")) {
-            assertThat(list(query(null, null, null, null, 0, 20, field + ",asc")).getItems()).hasSize(3);
+            assertThat(list(query(null, null, null, null, 0, 20, field + ",asc")).items()).hasSize(3);
         }
     }
 
@@ -181,6 +181,6 @@ class ListNotificationsUseCaseTest {
 
     private void assertSingleMatch(NotificationListQuery query,
                                    java.util.function.Predicate<NotificationResponse> predicate) {
-        assertThat(list(query).getItems()).singleElement().matches(predicate);
+        assertThat(list(query).items()).singleElement().matches(predicate);
     }
 }

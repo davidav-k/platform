@@ -26,12 +26,13 @@ contribute to the aggregate status.
 
 ## Container Inventory
 
-The local stack expects ten containers:
+The local stack expects eleven containers:
 
 | Container | Published port | Docker health check |
 | --- | --- | --- |
 | `tsp_postgres` | `5432` | `pg_isready` |
 | `tsp_redis` | `6379` | `redis-cli ping` |
+| `tsp_kafka` | `9092` | `kafka-topics.sh --list` |
 | `tsp_zipkin` | `9411` | none |
 | `mailhog` | `1025`, `8025` | none |
 | `tsp_config` | `8888` | `/actuator/health` |
@@ -53,6 +54,7 @@ already exist:
 | SMTP | User Service mail health indicator |
 | Config repository | Spring Cloud Config Server repository health indicator |
 | Redis | Docker `redis-cli ping` health check |
+| Kafka | Docker Kafka topic-list health check |
 | Eureka | Eureka Server health endpoint plus dependent service registration |
 
 User Service currently uses an in-process Guava cache and has no Spring Data
@@ -63,16 +65,18 @@ Compose rather than reported as a User Service health component.
 
 Docker Compose uses health-aware startup dependencies:
 
-1. PostgreSQL and Redis start with native probes.
+1. PostgreSQL, Redis, and Kafka start with native probes.
 2. Config Server starts and must report `UP`.
 3. Eureka Server starts after Config Server and must report `UP`.
 4. User Service starts after PostgreSQL, Config Server, and Eureka Server. Its
    health endpoint reports `UP` only when its datasource and configured SMTP
    server are healthy.
-5. Task Service starts after PostgreSQL, Config Server, and Eureka Server. Its
-   health endpoint reports `UP` when its datasource is healthy.
-6. Notification Service starts after PostgreSQL, Config Server, and Eureka
-   Server. Its health endpoint reports `UP` when its datasource is healthy.
+5. Task Service starts after PostgreSQL, Kafka, Config Server, Eureka Server,
+   and Notification Service. Its health endpoint reports `UP` when its
+   datasource is healthy.
+6. Notification Service starts after PostgreSQL, Kafka, Config Server, and
+   Eureka Server. Its health endpoint reports `UP` when its datasource is
+   healthy.
 7. API Gateway starts after Config Server, Eureka Server, User Service, Task
    Service, and Notification Service. It must report `UP`.
 
@@ -109,9 +113,10 @@ Local platform stack verification passed.
 The script verifies:
 
 1. Docker CLI, Docker Compose v2, the Docker daemon, `.env`, and `compose.yml`.
-2. All ten expected Compose containers are running.
-3. The eight containers with Docker health checks report `healthy`.
-4. PostgreSQL accepts connections and Redis responds with `PONG`.
+2. All eleven expected Compose containers are running.
+3. The nine containers with Docker health checks report `healthy`.
+4. PostgreSQL accepts connections, Redis responds with `PONG`, and Kafka can
+   list topics.
 5. Config Server health and mounted-repository access.
 6. Eureka Server health and registry access.
 7. User Service, Task Service, Notification Service, and API Gateway health.
@@ -133,7 +138,7 @@ Inspect health status:
 ```bash
 docker inspect --format '{{.Name}} {{.State.Health.Status}}' \
   tsp_config tsp_eureka tsp_user_service tsp_task_service \
-  tsp_notification_service tsp_gateway tsp_postgres tsp_redis
+  tsp_notification_service tsp_gateway tsp_postgres tsp_redis tsp_kafka
 ```
 
 Verify endpoints directly:
@@ -186,6 +191,15 @@ Redis is independently unhealthy when `redis-cli ping` does not return
 
 ```bash
 docker compose --env-file .env -f compose.yml logs redis
+```
+
+### Kafka unavailable
+
+Task Service and Notification Service depend on Kafka health for the
+outbox-backed notification flow. Check:
+
+```bash
+docker compose --env-file .env -f compose.yml logs kafka task-service notification-service
 ```
 
 ### SMTP unavailable

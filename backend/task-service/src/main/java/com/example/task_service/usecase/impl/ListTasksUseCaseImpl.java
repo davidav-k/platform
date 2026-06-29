@@ -12,6 +12,7 @@ import com.example.task_service.usecase.ListTasksUseCase;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -26,6 +27,7 @@ import java.util.Set;
 import java.util.UUID;
 
 @Service
+@RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class ListTasksUseCaseImpl implements ListTasksUseCase {
 
@@ -40,11 +42,6 @@ public class ListTasksUseCaseImpl implements ListTasksUseCase {
 
     private final TaskRepository taskRepository;
     private final CurrentUserAccessProvider currentUserAccessProvider;
-
-    public ListTasksUseCaseImpl(TaskRepository taskRepository, CurrentUserAccessProvider currentUserAccessProvider) {
-        this.taskRepository = taskRepository;
-        this.currentUserAccessProvider = currentUserAccessProvider;
-    }
 
     @Override
     public TaskListResponse list(TaskListQuery query) {
@@ -66,16 +63,16 @@ public class ListTasksUseCaseImpl implements ListTasksUseCase {
         if (query == null) {
             throw new IllegalArgumentException("Task list query is required");
         }
-        if (query.getPage() < 0) {
+        if (query.page() < 0) {
             throw new IllegalArgumentException("Page must be greater than or equal to 0");
         }
-        if (query.getSize() < 1 || query.getSize() > 100) {
+        if (query.size() < 1 || query.size() > 100) {
             throw new IllegalArgumentException("Size must be between 1 and 100");
         }
     }
 
     private Pageable toPageable(TaskListQuery query) {
-        return PageRequest.of(query.getPage(), query.getSize(), toSort(query.getSort()));
+        return PageRequest.of(query.page(), query.size(), toSort(query.sort()));
     }
 
     private Sort toSort(String sortValue) {
@@ -107,17 +104,17 @@ public class ListTasksUseCaseImpl implements ListTasksUseCase {
             if (!access.admin()) {
                 predicates.add(visibleToUser(root, criteriaBuilder, access.userId()));
             }
-            if (query.getStatus() != null) {
-                predicates.add(criteriaBuilder.equal(root.get("status"), query.getStatus()));
+            if (query.status() != null) {
+                predicates.add(criteriaBuilder.equal(root.get("status"), query.status()));
             }
-            if (query.getPriority() != null) {
-                predicates.add(criteriaBuilder.equal(root.get("priority"), query.getPriority()));
+            if (query.priority() != null) {
+                predicates.add(criteriaBuilder.equal(root.get("priority"), query.priority()));
             }
-            if (query.getAssigneeUserId() != null) {
-                predicates.add(criteriaBuilder.equal(root.get("assigneeUserId"), query.getAssigneeUserId()));
+            if (query.assigneeUserId() != null) {
+                predicates.add(criteriaBuilder.equal(root.get("assigneeUserId"), query.assigneeUserId()));
             }
-            if (query.getCreatedByUserId() != null) {
-                predicates.add(criteriaBuilder.equal(root.get("createdByUserId"), query.getCreatedByUserId()));
+            if (query.createdByUserId() != null) {
+                predicates.add(criteriaBuilder.equal(root.get("createdByUserId"), query.createdByUserId()));
             }
             return criteriaBuilder.and(predicates.toArray(Predicate[]::new));
         };

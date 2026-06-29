@@ -16,6 +16,58 @@ database name defaults to `notifications_db`.
 Domain entities, response DTOs, mappers, and Spring Data repositories are
 implemented for notifications and notification preferences.
 
+`NotificationEntity` is stored in `notifications` and contains:
+
+- `notificationId`
+- `recipientUserId`
+- `type`
+- `channel`
+- `subject`
+- `body`
+- `status`
+- `createdAt`, `updatedAt`, `sentAt`
+- `failureReason`
+- source metadata: `sourceService`, `sourceEntityType`, `sourceEntityId`
+
+Implemented enum values:
+
+| Enum | Values |
+| --- | --- |
+| `NotificationType` | `TASK_ASSIGNED`, `TASK_CREATED`, `SYSTEM` |
+| `NotificationChannel` | `EMAIL`, `IN_APP` |
+| `NotificationStatus` | `PENDING`, `SENT`, `FAILED` |
+
+The current use cases persist notification rows. Email sending, read state,
+mark-as-read, delete, and status transition APIs are not implemented.
+
+## Kafka Task Event Processing
+
+The supported task notification delivery path is Outbox Pattern + Kafka:
+
+```text
+task-service -> outbox_events -> Kafka platform.task-events
+  -> NotificationEventConsumer -> TaskEventNotificationProcessor
+  -> CreateSystemNotificationUseCase -> notifications
+```
+
+`NotificationEventConsumer` is enabled by `notification.kafka.enabled=true` and
+listens to `notification.kafka.topic`, which defaults to
+`platform.task-events`. It stores accepted event IDs in
+`event_consumption_log`; `event_id` is unique and is used as the idempotency
+key for at-least-once Kafka delivery. Duplicate event IDs are ignored.
+
+`TaskEventNotificationProcessor` handles these task event types:
+
+| Event type | Notification behavior |
+| --- | --- |
+| `TASK_CREATED` | Creates `IN_APP` `TASK_CREATED` for `assigneeUserId` when present. Events without assignee are consumed but skipped for notification creation. |
+| `TASK_ASSIGNED` | Creates `IN_APP` `TASK_ASSIGNED` for `newAssigneeUserId` when present. |
+| `TASK_STATUS_CHANGED` | Creates `IN_APP` `SYSTEM` notification for `assigneeUserId` when present. |
+
+All task-event notifications use source metadata
+`sourceService=task-service`, `sourceEntityType=TASK`, and
+`sourceEntityId=<taskId>`.
+
 ## API
 
 `POST /api/v1/notifications` creates a notification record. This endpoint does
@@ -32,7 +84,8 @@ public UUID.
 `POST /internal/api/v1/notifications/system` creates an authenticated internal
 in-application notification for another platform service. It accepts source
 service, source entity type, and source entity UUID metadata. The API Gateway
-does not route this endpoint.
+does not route this endpoint. Task-created notifications from task-service do
+not use this REST endpoint; they are created from Kafka task events.
 
 Example request:
 
@@ -95,7 +148,9 @@ List responses return notification DTOs and pagination metadata:
 }
 ```
 
-Notification creation still does not perform email delivery.
+Notification creation still does not perform email delivery. `EMAIL` is a
+persistable channel value, but no SMTP delivery use case is implemented in this
+service.
 
 ## Local Startup and Routing
 
@@ -150,6 +205,6 @@ not implemented.
 
 ## Not Implemented Yet
 
-Kafka, email delivery, task-service integration, notification preferences API,
-role-based authorization, ownership filtering, status updates, delete, and
+Email delivery, notification preferences API, role-based authorization,
+ownership filtering by authenticated user, status updates, delete, and
 mark-as-read remain for later branches.

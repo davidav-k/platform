@@ -94,27 +94,29 @@ Example error body:
 
 ## Notification Integration
 
-Creating a task with an `assigneeUserId` prepares an internal synchronous REST
-request to notification-service. The request creates an `IN_APP`
-`TASK_ASSIGNED` notification after the task has been persisted. Unassigned
-and self-assigned tasks do not trigger the integration. The notification
-records `task-service`, `TASK`, and the task UUID as source metadata.
+Task mutations persist domain changes and write task events to `outbox_events`
+in the same transaction. The outbox publisher sends events to Kafka topic
+`platform.task-events`, and notification-service consumes them to create
+in-app notifications when the event payload contains a notification recipient.
 
-Notification failures are logged using task and recipient identifiers and do
-not fail or roll back task creation. For the MVP, task-service forwards the
-initiating request's validated access JWT to the authenticated internal
-notification endpoint. Dedicated service credentials and durable delivery are
-not implemented yet.
+Implemented task events:
+
+| Use case | Outbox event |
+| --- | --- |
+| Create task | `TASK_CREATED` |
+| Assign/reassign/unassign task | `TASK_ASSIGNED` |
+| Change task status | `TASK_STATUS_CHANGED` |
+
+`TASK_CREATED` creates an `IN_APP` `TASK_CREATED` notification only when the
+created task payload contains `assigneeUserId`. Task-service does not call
+notification-service directly for task notifications.
 
 Configuration variables:
 
-- `NOTIFICATION_SERVICE_ENABLED` (default `true` in the development Config Server profile)
-- `NOTIFICATION_SERVICE_BASE_URL` (default `http://notification-service:8087`)
-- `NOTIFICATION_SERVICE_CONNECT_TIMEOUT` (default `2s`)
-- `NOTIFICATION_SERVICE_READ_TIMEOUT` (default `2s`)
-
-Kafka and an outbox-based delivery flow are planned replacements for this MVP
-synchronous integration.
+- `OUTBOX_PUBLISHER_ENABLED` (default `true`)
+- `OUTBOX_PUBLISHER_ADAPTER` (default `kafka`)
+- `OUTBOX_PUBLISHER_KAFKA_BOOTSTRAP_SERVERS` (default `kafka:9092`)
+- `OUTBOX_PUBLISHER_KAFKA_TOPIC` (default `platform.task-events`)
 
 ## API
 
@@ -132,6 +134,7 @@ Creates an MVP task through `CreateTaskUseCase`.
 - Authentication: required
 - Ownership: `createdByUserId` is populated from the authenticated JWT subject
 - Gateway route: `POST /api/tasks`
+- Event side effect: writes `TASK_CREATED` to `outbox_events`
 
 Gateway example:
 
@@ -318,6 +321,7 @@ Changes a task status through `ChangeTaskStatusUseCase`.
 - Missing or inaccessible tasks return `404 NOT_FOUND`
 - Other task fields remain unchanged; `updatedAt` is managed by the service
 - Gateway route: `PATCH /api/tasks/{taskId}/status`
+- Event side effect: writes `TASK_STATUS_CHANGED` to `outbox_events`
 
 Gateway example:
 
@@ -359,6 +363,7 @@ Assigns, reassigns, or unassigns a task through `AssignTaskUseCase`.
 - User existence is not verified through `user-service` in this MVP endpoint
 - Other task fields remain unchanged; `updatedAt` is managed by the service
 - Gateway route: `PATCH /api/tasks/{taskId}/assignee`
+- Event side effect: writes `TASK_ASSIGNED` to `outbox_events`
 
 Gateway example:
 

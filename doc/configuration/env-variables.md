@@ -136,6 +136,37 @@ fixed in configuration and Compose:
 
 ## External Integrations
 
+### Kafka Notification Flow
+
+| Name | Required | Default | Example | Consumed by | Description |
+| --- | --- | --- | --- | --- | --- |
+| `KAFKA_LOCAL_PORT` | No | `9092` | `9092` | Docker Compose | Local host port exposed by the Kafka broker. |
+| `KAFKA_BOOTSTRAP_SERVERS` | No | `kafka:9092` | `kafka:9092` | task-service, notification-service | Kafka bootstrap server list for service-to-service broker access. |
+| `KAFKA_TASK_EVENTS_TOPIC` | No | `platform.task-events` | `platform.task-events` | task-service, notification-service | Topic for task domain events. |
+| `OUTBOX_PUBLISHER_ENABLED` | No | `true` | `false` | task-service | Enables task-service outbox polling. Default Kafka notification delivery keeps this true. |
+| `OUTBOX_PUBLISHER_ADAPTER` | No | `kafka` | `logging` | task-service | Selects the outbox publisher adapter. Use `logging` only for rollback or local no-op delivery. |
+| `OUTBOX_PUBLISHER_KAFKA_BOOTSTRAP_SERVERS` | No | `kafka:9092` | `kafka:9092` | task-service | Explicit Kafka bootstrap server list for the task-service outbox publisher. Falls back to `KAFKA_BOOTSTRAP_SERVERS`. |
+| `OUTBOX_PUBLISHER_KAFKA_TOPIC` | No | `platform.task-events` | `platform.task-events` | task-service | Explicit Kafka topic for the task-service outbox publisher. Falls back to `KAFKA_TASK_EVENTS_TOPIC`. |
+| `NOTIFICATION_KAFKA_ENABLED` | No | `true` | `false` | notification-service | Enables notification-service Kafka consumer processing. Default notification delivery keeps this true. |
+| `NOTIFICATION_KAFKA_TOPIC` | No | `platform.task-events` | `platform.task-events` | notification-service | Explicit Kafka topic consumed by notification-service. Falls back to `KAFKA_TASK_EVENTS_TOPIC`. |
+
+Default Kafka notification delivery uses:
+
+```text
+OUTBOX_PUBLISHER_ENABLED=true
+OUTBOX_PUBLISHER_ADAPTER=kafka
+NOTIFICATION_KAFKA_ENABLED=true
+```
+
+Kafka notification mode is the supported runtime path:
+
+- Task-service writes task domain events to `outbox_events`.
+- The outbox publisher uses `OUTBOX_PUBLISHER_ENABLED=true`,
+  `OUTBOX_PUBLISHER_ADAPTER=kafka`, `NOTIFICATION_KAFKA_ENABLED=true`, and
+  the configured Kafka task event topic.
+- Notification-service consumes that topic and creates notifications from
+  task events.
+
 ### Mail
 
 | Name | Required | Default | Example | Consumed by | Description |
@@ -148,7 +179,7 @@ fixed in configuration and Compose:
 
 ### Future Integrations
 
-No active environment variable contract exists for Kafka, Prometheus, Grafana,
+No active environment variable contract exists for Prometheus, Grafana,
 production mail providers, or OpenAI integration.
 
 ## Commented Fallback Toggles
@@ -168,8 +199,8 @@ required `.env` contract:
 | `.env.example` | All required local values and optional service overrides |
 | `compose.yml` | `POSTGRES_USER`, `POSTGRES_DB`, `SPRING_CLOUD_CONFIG_SERVER_NATIVE_SEARCH_LOCATIONS`, `APPLICATION_PORT` for task-service; commented fallback toggles |
 | `config/user-service-dev.yml` | PostgreSQL, mail, JWT, admin, and `APPLICATION_PORT` variables |
-| `config/task-service-dev.yml` | PostgreSQL (`TASK_POSTGRES_DB`), JWT, Eureka, `APPLICATION_PORT`, and `NOTIFICATION_SERVICE_ENABLED`, `NOTIFICATION_SERVICE_BASE_URL`, `NOTIFICATION_SERVICE_CONNECT_TIMEOUT`, `NOTIFICATION_SERVICE_READ_TIMEOUT` variables |
-| `config/notification-service-dev.yml` | PostgreSQL (`NOTIFICATION_POSTGRES_DB`), Eureka, and `APPLICATION_PORT` variables |
+| `config/task-service-dev.yml` | PostgreSQL (`TASK_POSTGRES_DB`), JWT, Eureka, `APPLICATION_PORT`, and outbox publisher variables |
+| `config/notification-service-dev.yml` | PostgreSQL (`NOTIFICATION_POSTGRES_DB`), Eureka, `APPLICATION_PORT`, and notification Kafka variables |
 | `backend/user-service/src/main/resources/application.yml` | `spring.application.name` only |
 | `backend/user-service/src/main/resources/bootstrap.yml` | `ACTIVE_PROFILE` and optional `CONFIG_SERVER_URI` override |
 | `backend/user-service/src/main/resources/application-dev.yml` | Retained development-profile marker only |

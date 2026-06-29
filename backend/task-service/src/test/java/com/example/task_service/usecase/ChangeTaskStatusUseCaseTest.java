@@ -6,11 +6,15 @@ import com.example.task_service.entity.TaskEntity;
 import com.example.task_service.enumeration.TaskPriority;
 import com.example.task_service.enumeration.TaskStatus;
 import com.example.task_service.exception.TaskNotFoundException;
+import com.example.task_service.outbox.OutboxEventService;
 import com.example.task_service.repository.TaskRepository;
 import com.example.task_service.security.CurrentUserAccessProvider;
 import com.example.task_service.security.CurrentUserAccessProvider.CurrentUserAccess;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -20,6 +24,11 @@ import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @SpringBootTest(properties = {
@@ -42,8 +51,14 @@ class ChangeTaskStatusUseCaseTest {
     @Autowired
     private TaskRepository taskRepository;
 
+    @Autowired
+    private ObjectMapper objectMapper;
+
     @MockitoBean
     private CurrentUserAccessProvider currentUserAccessProvider;
+
+    @MockitoBean
+    private OutboxEventService outboxEventService;
 
     @BeforeEach
     void setUp() {
@@ -51,7 +66,7 @@ class ChangeTaskStatusUseCaseTest {
     }
 
     @Test
-    void adminChangesStatusOfAnyTask() {
+    void adminChangesStatusOfAnyTaskAndWritesTaskStatusChangedOutboxEvent() throws Exception {
         TaskEntity task = saveTask(UUID.randomUUID(), UUID.randomUUID());
         when(currentUserAccessProvider.currentUserAccess())
             .thenReturn(new CurrentUserAccess(UUID.randomUUID(), true));
@@ -61,7 +76,25 @@ class ChangeTaskStatusUseCaseTest {
             new UpdateTaskStatusRequest(TaskStatus.DONE)
         );
 
-        assertThat(response.getStatus()).isEqualTo(TaskStatus.DONE);
+        assertThat(response.status()).isEqualTo(TaskStatus.DONE);
+
+        ArgumentCaptor<String> payloadCaptor = ArgumentCaptor.forClass(String.class);
+        verify(outboxEventService).saveNewEvent(
+            eq("TASK"),
+            eq(task.getTaskId()),
+            eq("TASK_STATUS_CHANGED"),
+            payloadCaptor.capture()
+        );
+
+        JsonNode payload = objectMapper.readTree(payloadCaptor.getValue());
+        assertThat(payload.get("taskId").asText()).isEqualTo(task.getTaskId().toString());
+        assertThat(payload.get("title").asText()).isEqualTo("Original title");
+        assertThat(payload.get("previousStatus").asText()).isEqualTo("NEW");
+        assertThat(payload.get("newStatus").asText()).isEqualTo("DONE");
+        assertThat(payload.get("priority").asText()).isEqualTo("MEDIUM");
+        assertThat(payload.get("assigneeUserId").asText()).isEqualTo(task.getAssigneeUserId().toString());
+        assertThat(payload.get("createdByUserId").asText()).isEqualTo(task.getCreatedByUserId().toString());
+        assertThat(OffsetDateTime.parse(payload.get("updatedAt").asText())).isEqualTo(response.updatedAt());
     }
 
     @Test
@@ -76,7 +109,8 @@ class ChangeTaskStatusUseCaseTest {
             new UpdateTaskStatusRequest(TaskStatus.IN_PROGRESS)
         );
 
-        assertThat(response.getStatus()).isEqualTo(TaskStatus.IN_PROGRESS);
+        assertThat(response.status()).isEqualTo(TaskStatus.IN_PROGRESS);
+        verify(outboxEventService).saveNewEvent(eq("TASK"), eq(task.getTaskId()), eq("TASK_STATUS_CHANGED"), any());
     }
 
     @Test
@@ -91,7 +125,8 @@ class ChangeTaskStatusUseCaseTest {
             new UpdateTaskStatusRequest(TaskStatus.CANCELLED)
         );
 
-        assertThat(response.getStatus()).isEqualTo(TaskStatus.CANCELLED);
+        assertThat(response.status()).isEqualTo(TaskStatus.CANCELLED);
+        verify(outboxEventService).saveNewEvent(eq("TASK"), eq(task.getTaskId()), eq("TASK_STATUS_CHANGED"), any());
     }
 
     @Test
@@ -107,6 +142,7 @@ class ChangeTaskStatusUseCaseTest {
 
         assertThat(taskRepository.findByTaskId(task.getTaskId()).orElseThrow().getStatus())
             .isEqualTo(TaskStatus.NEW);
+        verify(outboxEventService, never()).saveNewEvent(any(), any(), any(), any());
     }
 
     @Test
@@ -138,8 +174,35 @@ class ChangeTaskStatusUseCaseTest {
         assertThat(updated.getAssigneeUserId()).isEqualTo(assigneeUserId);
         assertThat(updated.getCreatedByUserId()).isEqualTo(creatorUserId);
         assertThat(updated.getCreatedAt()).isCloseTo(createdAt, within(1, ChronoUnit.MICROS));
+        verify(outboxEventService).saveNewEvent(eq("TASK"), eq(taskId), eq("TASK_STATUS_CHANGED"), any());
+    }
 
+    @Test
+    void settingSameStatusStillSavesAndWritesOutboxEvent() throws Exception {
+        UUID assigneeUserId = UUID.randomUUID();
+        UUID creatorUserId = UUID.randomUUID();
+        TaskEntity task = saveTask(assigneeUserId, creatorUserId);
+        when(currentUserAccessProvider.currentUserAccess())
+            .thenReturn(new CurrentUserAccess(creatorUserId, false));
 
+        TaskResponse response = changeTaskStatusUseCase.changeStatus(
+            task.getTaskId(),
+            new UpdateTaskStatusRequest(TaskStatus.NEW)
+        );
+
+        assertThat(response.status()).isEqualTo(TaskStatus.NEW);
+
+        ArgumentCaptor<String> payloadCaptor = ArgumentCaptor.forClass(String.class);
+        verify(outboxEventService).saveNewEvent(
+            eq("TASK"),
+            eq(task.getTaskId()),
+            eq("TASK_STATUS_CHANGED"),
+            payloadCaptor.capture()
+        );
+
+        JsonNode payload = objectMapper.readTree(payloadCaptor.getValue());
+        assertThat(payload.get("previousStatus").asText()).isEqualTo("NEW");
+        assertThat(payload.get("newStatus").asText()).isEqualTo("NEW");
     }
 
     @Test
@@ -150,6 +213,27 @@ class ChangeTaskStatusUseCaseTest {
         ))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessage("Status is required");
+        verify(outboxEventService, never()).saveNewEvent(any(), any(), any(), any());
+    }
+
+    @Test
+    void outboxFailureRollsBackStatusChange() {
+        UUID assigneeUserId = UUID.randomUUID();
+        UUID creatorUserId = UUID.randomUUID();
+        TaskEntity task = saveTask(assigneeUserId, creatorUserId);
+        when(currentUserAccessProvider.currentUserAccess())
+            .thenReturn(new CurrentUserAccess(creatorUserId, false));
+        doThrow(new IllegalStateException("outbox unavailable"))
+            .when(outboxEventService).saveNewEvent(any(), any(), any(), any());
+
+        assertThatThrownBy(() -> changeTaskStatusUseCase.changeStatus(
+            task.getTaskId(),
+            new UpdateTaskStatusRequest(TaskStatus.DONE)
+        )).isInstanceOf(IllegalStateException.class)
+            .hasMessage("outbox unavailable");
+
+        assertThat(taskRepository.findByTaskId(task.getTaskId()).orElseThrow().getStatus())
+            .isEqualTo(TaskStatus.NEW);
     }
 
     private TaskEntity saveTask(UUID assigneeUserId, UUID createdByUserId) {

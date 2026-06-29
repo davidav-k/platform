@@ -5,74 +5,60 @@ import com.example.task_service.dto.CreateTaskResponse;
 import com.example.task_service.entity.TaskEntity;
 import com.example.task_service.enumeration.TaskPriority;
 import com.example.task_service.enumeration.TaskStatus;
-import com.example.task_service.notification.TaskNotificationContext;
-import com.example.task_service.notification.TaskNotificationPublisher;
+import com.example.task_service.outbox.OutboxEventService;
+import com.example.task_service.outbox.TaskOutboxPayloadFactory;
 import com.example.task_service.repository.TaskRepository;
 import com.example.task_service.usecase.CreateTaskUseCase;
 
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Validator;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Set;
 import java.util.UUID;
 
 @Service
 @Transactional
+@RequiredArgsConstructor
 public class CreateTaskUseCaseImpl implements CreateTaskUseCase {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(CreateTaskUseCaseImpl.class);
+    private static final String TASK_AGGREGATE_TYPE = "TASK";
+    private static final String TASK_CREATED_EVENT_TYPE = "TASK_CREATED";
 
     private final TaskRepository taskRepository;
     private final Validator validator;
-    private final TaskNotificationPublisher taskNotificationPublisher;
-
-    public CreateTaskUseCaseImpl(TaskRepository taskRepository, Validator validator,
-                                 TaskNotificationPublisher taskNotificationPublisher) {
-        this.taskRepository = taskRepository;
-        this.validator = validator;
-        this.taskNotificationPublisher = taskNotificationPublisher;
-    }
+    private final OutboxEventService outboxEventService;
+    private final TaskOutboxPayloadFactory taskOutboxPayloadFactory;
 
     @Override
     public CreateTaskResponse create(CreateTaskRequest request, UUID createdByUserId) {
         validate(request, createdByUserId);
 
         TaskEntity task = new TaskEntity(
-            UUID.randomUUID(),
-            request.getTitle().trim(),
-            request.getDescription(),
-            TaskStatus.NEW,
-            priorityOrDefault(request),
-            request.getAssigneeUserId(),
-            createdByUserId
+                UUID.randomUUID(),
+                request.getTitle().trim(),
+                request.getDescription(),
+                TaskStatus.NEW,
+                priorityOrDefault(request),
+                request.getAssigneeUserId(),
+                createdByUserId
         );
 
         TaskEntity saved = taskRepository.saveAndFlush(task);
-        CreateTaskResponse response = toResponse(saved);
-        publishAssignmentNotification(response);
-        return response;
+        saveTaskCreatedOutboxEvent(saved);
+        return toResponse(saved);
     }
 
-    private void publishAssignmentNotification(CreateTaskResponse task) {
-        if (task.getAssigneeUserId() == null) {
-            return;
-        }
-        try {
-            taskNotificationPublisher.notifyTaskAssigned(new TaskNotificationContext(
-                task.getTaskId(),
-                task.getTitle(),
-                task.getAssigneeUserId(),
-                task.getCreatedByUserId()
-            ));
-        } catch (RuntimeException exception) {
-            LOGGER.warn("Task assignment notification failed for taskId={} and assigneeUserId={}",
-                task.getTaskId(), task.getAssigneeUserId(), exception);
-        }
+    private void saveTaskCreatedOutboxEvent(TaskEntity task) {
+        outboxEventService.saveNewEvent(
+            TASK_AGGREGATE_TYPE,
+            task.getTaskId(),
+            TASK_CREATED_EVENT_TYPE,
+            taskOutboxPayloadFactory.taskCreatedPayload(task)
+        );
     }
 
     private void validate(CreateTaskRequest request, UUID createdByUserId) {
@@ -94,14 +80,14 @@ public class CreateTaskUseCaseImpl implements CreateTaskUseCase {
 
     private CreateTaskResponse toResponse(TaskEntity task) {
         return new CreateTaskResponse(
-            task.getTaskId(),
-            task.getTitle(),
-            task.getDescription(),
-            task.getStatus(),
-            task.getPriority(),
-            task.getAssigneeUserId(),
-            task.getCreatedByUserId(),
-            task.getCreatedAt()
+                task.getTaskId(),
+                task.getTitle(),
+                task.getDescription(),
+                task.getStatus(),
+                task.getPriority(),
+                task.getAssigneeUserId(),
+                task.getCreatedByUserId(),
+                task.getCreatedAt()
         );
     }
 }

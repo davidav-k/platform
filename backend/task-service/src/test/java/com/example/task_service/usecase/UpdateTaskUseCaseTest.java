@@ -60,7 +60,7 @@ class UpdateTaskUseCaseTest {
 
         TaskResponse response = updateTaskUseCase.update(task.getTaskId(), request);
 
-        assertThat(response.getTitle()).isEqualTo("Admin update");
+        assertThat(response.title()).isEqualTo("Admin update");
     }
 
     @Test
@@ -73,7 +73,7 @@ class UpdateTaskUseCaseTest {
 
         TaskResponse response = updateTaskUseCase.update(task.getTaskId(), request);
 
-        assertThat(response.getTitle()).isEqualTo("Creator update");
+        assertThat(response.title()).isEqualTo("Creator update");
     }
 
     @Test
@@ -87,7 +87,7 @@ class UpdateTaskUseCaseTest {
 
         TaskResponse response = updateTaskUseCase.update(task.getTaskId(), request);
 
-        assertThat(response.getPriority()).isEqualTo(TaskPriority.HIGH);
+        assertThat(response.priority()).isEqualTo(TaskPriority.HIGH);
     }
 
     @Test
@@ -114,14 +114,14 @@ class UpdateTaskUseCaseTest {
 
         TaskResponse response = updateTaskUseCase.update(task.getTaskId(), requestWithTitle("Only title changed"));
 
-        assertThat(response.getTitle()).isEqualTo("Only title changed");
-        assertThat(response.getDescription()).isEqualTo(originalDescription);
-        assertThat(response.getPriority()).isEqualTo(originalPriority);
-        assertThat(response.getStatus()).isEqualTo(originalStatus);
-        assertThat(response.getAssigneeUserId()).isEqualTo(assigneeUserId);
-        assertThat(response.getCreatedByUserId()).isEqualTo(creatorUserId);
-        assertThat(response.getCreatedAt()).isCloseTo(originalCreatedAt, within(1, ChronoUnit.MILLIS));
-        assertThat(response.getUpdatedAt()).isNotNull();
+        assertThat(response.title()).isEqualTo("Only title changed");
+        assertThat(response.description()).isEqualTo(originalDescription);
+        assertThat(response.priority()).isEqualTo(originalPriority);
+        assertThat(response.status()).isEqualTo(originalStatus);
+        assertThat(response.assigneeUserId()).isEqualTo(assigneeUserId);
+        assertThat(response.createdByUserId()).isEqualTo(creatorUserId);
+        assertThat(response.createdAt()).isCloseTo(originalCreatedAt, within(1, ChronoUnit.MILLIS));
+        assertThat(response.updatedAt()).isNotNull();
     }
 
     @Test
@@ -136,8 +136,8 @@ class UpdateTaskUseCaseTest {
 
         TaskResponse response = updateTaskUseCase.update(task.getTaskId(), request);
 
-        assertThat(response.getDescription()).isNull();
-        assertThat(response.getAssigneeUserId()).isNull();
+        assertThat(response.description()).isNull();
+        assertThat(response.assigneeUserId()).isNull();
     }
 
     @Test

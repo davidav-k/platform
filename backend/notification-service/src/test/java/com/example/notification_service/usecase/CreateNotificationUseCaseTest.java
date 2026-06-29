@@ -67,15 +67,15 @@ class CreateNotificationUseCaseTest {
 
         NotificationResponse response = createNotificationUseCase.create(request);
 
-        assertThat(response.getNotificationId()).isNotNull();
-        assertThat(response.getRecipientUserId()).isEqualTo(recipientUserId);
-        assertThat(response.getType()).isEqualTo(NotificationType.TASK_ASSIGNED);
-        assertThat(response.getChannel()).isEqualTo(NotificationChannel.EMAIL);
-        assertThat(response.getSubject()).isEqualTo("Task assigned");
-        assertThat(response.getBody()).isEqualTo("A task was assigned to you.");
-        assertThat(response.getStatus()).isEqualTo(NotificationStatus.PENDING);
+        assertThat(response.notificationId()).isNotNull();
+        assertThat(response.recipientUserId()).isEqualTo(recipientUserId);
+        assertThat(response.type()).isEqualTo(NotificationType.TASK_ASSIGNED);
+        assertThat(response.channel()).isEqualTo(NotificationChannel.EMAIL);
+        assertThat(response.subject()).isEqualTo("Task assigned");
+        assertThat(response.body()).isEqualTo("A task was assigned to you.");
+        assertThat(response.status()).isEqualTo(NotificationStatus.PENDING);
 
-        NotificationEntity persisted = notificationRepository.findByNotificationId(response.getNotificationId())
+        NotificationEntity persisted = notificationRepository.findByNotificationId(response.notificationId())
                 .orElseThrow();
         assertThat(persisted.getRecipientUserId()).isEqualTo(recipientUserId);
         assertThat(persisted.getType()).isEqualTo(NotificationType.TASK_ASSIGNED);
@@ -94,8 +94,8 @@ class CreateNotificationUseCaseTest {
 
     @Test
     void rejectsMissingRecipientUserId() {
-        CreateNotificationRequest request = validRequest();
-        request.setRecipientUserId(null);
+        CreateNotificationRequest request = validRequest().withRecipientUserId(null);
+
 
         assertThatThrownBy(() -> createNotificationUseCase.create(request))
                 .isInstanceOf(ConstraintViolationException.class);
@@ -103,8 +103,7 @@ class CreateNotificationUseCaseTest {
 
     @Test
     void rejectsBlankBody() {
-        CreateNotificationRequest request = validRequest();
-        request.setBody("   ");
+        CreateNotificationRequest request = validRequest().withBody("  ");
 
         assertThatThrownBy(() -> createNotificationUseCase.create(request))
                 .isInstanceOf(ConstraintViolationException.class);
@@ -112,8 +111,7 @@ class CreateNotificationUseCaseTest {
 
     @Test
     void rejectsBodyLongerThanFiveThousandCharacters() {
-        CreateNotificationRequest request = validRequest();
-        request.setBody("a".repeat(5001));
+        CreateNotificationRequest request = validRequest().withBody("a".repeat(5001));
 
         assertThatThrownBy(() -> createNotificationUseCase.create(request))
                 .isInstanceOf(ConstraintViolationException.class);

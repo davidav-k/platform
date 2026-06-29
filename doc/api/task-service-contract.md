@@ -25,9 +25,10 @@ the JWT subject and is ignored if supplied in the request payload.
 - Request DTO: `CreateTaskRequest`
 - Response: `201 CREATED`, `data.task` contains `CreateTaskResponse`
 - Authentication: required
-- Notification side effect: an assigned, non-self-assigned task triggers a
-  best-effort `TASK_ASSIGNED` notification after persistence; notification
-  delivery failure does not change the task response
+- Event side effect: task creation writes a `TASK_CREATED` row to
+  `outbox_events` in the same transaction as the task. Notification delivery is
+  asynchronous through Kafka; task-service does not call notification-service
+  directly.
 
 ### `GET /api/v1/tasks/{taskId}`
 
@@ -80,6 +81,8 @@ Changes the task status independently from generic task updates.
 - Missing or inaccessible task: `404 NOT_FOUND`
 - All valid `TaskStatus` enum-to-enum changes are allowed for the MVP
 - Other task fields remain unchanged; `updatedAt` is managed by the service
+- Event side effect: writes `TASK_STATUS_CHANGED` to `outbox_events` in the
+  same transaction as the status update
 - Task history and workflow transition rules are not implemented yet
 
 ### `DELETE /api/v1/tasks/{taskId}`
@@ -110,6 +113,8 @@ Assigns, reassigns, or unassigns an active task.
 - `assigneeUserId` must be present and contain a UUID or explicit `null` to unassign
 - The service does not synchronously verify user existence in this endpoint
 - Other task fields remain unchanged; `updatedAt` is managed by the service
+- Event side effect: writes `TASK_ASSIGNED` to `outbox_events` in the same
+  transaction as the assignment update
 
 ## Implemented DTOs
 
