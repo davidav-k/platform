@@ -3,8 +3,8 @@
 ## Purpose
 
 Platform is an MVP-stage Task Management Platform. The current runnable system
-delivers user management, task management, notifications, and shared
-infrastructure.
+delivers user management, task management, notifications, an audit-service
+infrastructure bootstrap, and shared infrastructure.
 
 For aggregate ownership and future service rules, see
 [Service boundaries](architecture/service-boundaries.md).
@@ -26,11 +26,12 @@ The Docker Compose stack currently runs:
 | `user-service` | Users, roles, authentication, JWT issuance and validation, MFA, profiles, and account lifecycle | `8085` |
 | `task-service` | Task lifecycle, ownership, assignment, status changes, filtering, pagination, and soft delete | `8086` |
 | `notification-service` | Notification persistence, create, get, list, filtering, pagination, and Kafka-backed task notification processing | `8087` |
+| `audit-service` | Infrastructure bootstrap only: Config Client, Eureka registration, PostgreSQL/Flyway connectivity, and Actuator health | `8088` |
 | `api-gateway` | External entry point, JWT early rejection, routing, CORS, and circuit breaker fallback | `8080` |
 | `frontend` | Vue 3 production bundle served by nginx with SPA route fallback | `5173` |
 | `config-server` | Spring Cloud Config native repository mounted from `./config` | `8888` |
 | `eureka-server` | Service registration and discovery | `8761` |
-| PostgreSQL 16.1 | User, task, and notification persistence in separate databases | `5432` |
+| PostgreSQL 16.1 | User, task, notification, and audit persistence in separate databases | `5432` |
 | Redis 7 | Independently running and health-checked; not integrated into user-service | `6379` |
 | Kafka 3.7.1 | Task event transport for outbox-backed notifications | `9092` |
 | MailHog | Local SMTP capture and UI | `1025`, `8025` |
@@ -76,7 +77,7 @@ The notification API contract is documented in
 
 The following items are roadmap direction, not implemented functionality:
 
-- audit service
+- audit event consumption, persistence model, and REST API
 - OpenAI-backed task automation
 - Prometheus and Grafana monitoring stack
 
@@ -85,7 +86,8 @@ The following items are roadmap direction, not implemented functionality:
 - `user-service` owns its PostgreSQL schema (`users_db` by default).
 - `task-service` owns its PostgreSQL schema (`tasks_db` by default).
 - `notification-service` owns its PostgreSQL schema (`notifications_db` by default).
-- Flyway migrations are authoritative for all three service schemas.
+- `audit-service` owns its PostgreSQL schema (`audits_db` by default); no audit tables exist yet.
+- Flyway migrations are authoritative for all service schemas.
 - Hibernate uses `ddl-auto=validate`; it does not create or update schema.
 - Future services must also own separate schemas or databases.
 - Services must not access another service's database directly.

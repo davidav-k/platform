@@ -7,7 +7,7 @@ Application Dockerfiles live next to each implemented Java module.
 
 | Service | Purpose |
 | --- | --- |
-| `postgres` | Separate user, task, and notification databases |
+| `postgres` | Separate user, task, notification, and audit databases |
 | `redis` | Independently running Redis container; not used for JWT storage |
 | `kafka` | Task event broker for outbox-backed notification delivery |
 | `mailhog` | Local SMTP capture |
@@ -17,6 +17,7 @@ Application Dockerfiles live next to each implemented Java module.
 | `user-service` | User management and authentication |
 | `task-service` | Task lifecycle, ownership, assignment, status changes, and outbox event publishing |
 | `notification-service` | Notification persistence, Kafka task-event consumption, and delivery state |
+| `audit-service` | Audit-service bootstrap, service discovery, database connectivity, and health reporting |
 | `gateway` | External API entry point |
 | `frontend` | Vue production build served by nginx on host port `5173` |
 

@@ -3,8 +3,9 @@
 ## Configuration Ownership
 
 Config Server is the primary source of truth for service runtime
-configuration. For `user-service`, the active development runtime settings are
-served from `config/user-service-dev.yml`.
+configuration. Each service's active development runtime settings are served
+from its `config/<service-name>-dev.yml` file, including
+`config/audit-service-dev.yml` for the Audit Service bootstrap.
 
 Configuration precedence for local development is:
 
@@ -19,7 +20,7 @@ Eureka, logging, feature flags, and service-specific behavior settings to the
 appropriate Config Server file. Reference environment variables rather than
 committing secrets.
 
-The user-service bundled resources intentionally contain:
+Service bundled resources intentionally contain:
 
 - `application.yml`: `spring.application.name`.
 - `bootstrap.yml`: the default `dev` profile, Config Server client settings,
@@ -64,9 +65,9 @@ for runtime settings during an IDE launch.
 
 ## Adding Properties
 
-When adding a new user-service runtime property:
+When adding a new service runtime property:
 
-1. Add it to `config/user-service-dev.yml`.
+1. Add it to the matching `config/<service-name>-dev.yml`.
 2. Use an environment-variable placeholder when the value is secret or differs
    by environment.
 3. Add the variable to `.env.example` and

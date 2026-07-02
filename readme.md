@@ -6,7 +6,7 @@ Microservice-based Task Management Platform built with Spring Boot.
 
 ## Planned
 
-- Audit service
+- Audit event pipeline and API
 - Prometheus/Grafana monitoring
 
 ## Technology Stack
@@ -28,7 +28,8 @@ Microservice-based Task Management Platform built with Spring Boot.
 backend/
 |-- user-service
 |-- task-service
-`-- notification-service
+|-- notification-service
+`-- audit-service
 
 infrastructure/
 |-- api-gateway
@@ -58,6 +59,7 @@ Core local ports:
 | User Service | `8085` |
 | Task Service | `8086` |
 | Notification Service | `8087` |
+| Audit Service | `8088` |
 | Frontend | `5173` |
 | Config Server | `8888` |
 | Eureka Server | `8761` |

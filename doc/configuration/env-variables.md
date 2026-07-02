@@ -52,6 +52,7 @@ credentials, mail credentials, or externally managed service credentials.
 | `POSTGRES_DB` | Yes | None | `users_db` | postgres, user-service, Compose healthcheck | Local user-service database name. |
 | `TASK_POSTGRES_DB` | No | `tasks_db` | `tasks_db` | postgres init, task-service | Local task-service database name. |
 | `NOTIFICATION_POSTGRES_DB` | No | `notifications_db` | `notifications_db` | postgres init, notification-service | Local notification-service database name. |
+| `AUDIT_POSTGRES_DB` | No | `audits_db` | `audits_db` | postgres init, audit-service | Local audit-service database name. |
 | `POSTGRES_USER` | Yes | None | `user` | postgres, user-service, Compose healthcheck | PostgreSQL username. |
 | `POSTGRES_PASSWORD` | Yes | None | `dev_example_postgres_password_change_me` | postgres, user-service | Development-only PostgreSQL password placeholder. |
 
@@ -72,7 +73,7 @@ container.
 
 | Name | Required | Default | Example | Consumed by | Description |
 | --- | --- | --- | --- | --- | --- |
-| `CONFIG_SERVER_URI` | No | `http://config-server:8888` | `http://localhost:8888` | user-service | Overrides the Config Server client URL for IDE launches. |
+| `CONFIG_SERVER_URI` | No | `http://config-server:8888` | `http://localhost:8888` | application services | Overrides the Config Server client URL for IDE launches. |
 
 ### Eureka
 
@@ -82,7 +83,7 @@ for an IDE launch.
 
 | Name | Required | Default | Example | Consumed by | Description |
 | --- | --- | --- | --- | --- | --- |
-| `EUREKA_URL` | No | `http://eureka-server:8761/eureka` | `http://localhost:8761/eureka` | user-service | Overrides the Config Server-owned Eureka URL for IDE launches. |
+| `EUREKA_URL` | No | `http://eureka-server:8761/eureka` | `http://localhost:8761/eureka` | application services | Overrides the Config Server-owned Eureka URL for IDE launches. |
 
 ## Security
 
@@ -114,8 +115,8 @@ No separate encryption-secret environment variable is active.
 
 | Name | Required | Default | Example | Consumed by | Description |
 | --- | --- | --- | --- | --- | --- |
-| `ACTIVE_PROFILE` | No | `dev` | `dev` | user-service, task-service | Active Spring profile override. |
-| `APPLICATION_PORT` | No | service-specific | `8085` (user), `8086` (task), `8087` (notification) | user-service, task-service, notification-service | HTTP port override. Compose sets `APPLICATION_PORT=8086` for task-service explicitly. Changing this alone breaks routing and health checks. |
+| `ACTIVE_PROFILE` | No | `dev` | `dev` | application services | Active Spring profile override. |
+| `APPLICATION_PORT` | No | service-specific | `8085` (user), `8086` (task), `8087` (notification), `8088` (audit) | application services | HTTP port override. Compose sets service-specific ports where required. Changing this alone breaks routing and health checks. |
 
 No logging environment variable is active. Infrastructure service ports are
 fixed in configuration and Compose:
@@ -126,6 +127,7 @@ fixed in configuration and Compose:
 | User Service | `8085` |
 | Task Service | `8086` |
 | Notification Service | `8087` |
+| Audit Service | `8088` |
 | Config Server | `8888` |
 | Eureka Server | `8761` |
 | PostgreSQL | `5432` |
@@ -201,6 +203,7 @@ required `.env` contract:
 | `config/user-service-dev.yml` | PostgreSQL, mail, JWT, admin, and `APPLICATION_PORT` variables |
 | `config/task-service-dev.yml` | PostgreSQL (`TASK_POSTGRES_DB`), JWT, Eureka, `APPLICATION_PORT`, and outbox publisher variables |
 | `config/notification-service-dev.yml` | PostgreSQL (`NOTIFICATION_POSTGRES_DB`), Eureka, `APPLICATION_PORT`, and notification Kafka variables |
+| `config/audit-service-dev.yml` | PostgreSQL (`AUDIT_POSTGRES_DB`), Flyway, Eureka, `APPLICATION_PORT`, and Actuator exposure |
 | `backend/user-service/src/main/resources/application.yml` | `spring.application.name` only |
 | `backend/user-service/src/main/resources/bootstrap.yml` | `ACTIVE_PROFILE` and optional `CONFIG_SERVER_URI` override |
 | `backend/user-service/src/main/resources/application-dev.yml` | Retained development-profile marker only |
@@ -208,6 +211,8 @@ required `.env` contract:
 | `backend/task-service/src/main/resources/bootstrap.yml` | `ACTIVE_PROFILE` and optional `CONFIG_SERVER_URI` override |
 | `backend/notification-service/src/main/resources/application.yml` | `spring.application.name` only |
 | `backend/notification-service/src/main/resources/bootstrap.yml` | `ACTIVE_PROFILE` and optional `CONFIG_SERVER_URI` override |
+| `backend/audit-service/src/main/resources/application.yml` | `spring.application.name` only |
+| `backend/audit-service/src/main/resources/bootstrap.yml` | `ACTIVE_PROFILE` and optional `CONFIG_SERVER_URI` override |
 | `infrastructure/api-gateway/.../JwtUtil.java` | Direct `JWT_SECRET` lookup |
 | Dockerfiles | No environment variables |
 
