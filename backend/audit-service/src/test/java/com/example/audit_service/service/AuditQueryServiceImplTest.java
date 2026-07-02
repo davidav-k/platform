@@ -31,6 +31,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
         "spring.config.import=optional:configserver:",
         "eureka.client.enabled=false",
         "audit.kafka.enabled=false",
+        "jwt.secret=QUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQQ==",
         "spring.jpa.hibernate.ddl-auto=validate",
         "spring.jpa.open-in-view=false"
 })

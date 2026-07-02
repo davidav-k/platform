@@ -9,6 +9,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
         "spring.cloud.config.enabled=false",
         "eureka.client.enabled=false",
         "server.port=0",
+        "jwt.secret=QUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQQ==",
         "spring.autoconfigure.exclude=" +
                 "org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration," +
                 "org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration," +

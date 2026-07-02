@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "3e42b8cb-848a-4dc8-a73d-a588078ffcf1",
     "name": "Platform MVP End-to-End - API Gateway",
-    "description": "Gateway-only MVP verification for authentication, user activation, task ownership/RBAC, soft delete, Kafka-backed task-created in-app notifications, refresh, and the currently pending logout contract. Aligned with platform_240626_exclude.txt. Audit read API requests target Audit Service directly on port 8088.",
+    "description": "Gateway-only MVP verification for authentication, user activation, task ownership/RBAC, soft delete, Kafka-backed task-created in-app notifications, refresh, and the currently pending logout contract. Aligned with platform_240626_exclude.txt. Audit read API requests target Audit Service directly on port 8088. Admin authorization is required for Audit API reads; the audit folder verifies 401 and 403 handling first.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "event": [
@@ -1329,10 +1329,100 @@
       "name": "05 - Audit Read API",
       "item": [
         {
-          "name": "List Audit Records",
+          "name": "Unauthenticated Audit Request Is Rejected",
           "request": {
             "method": "GET",
             "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{auditBaseUrl}}/api/v1/audit",
+              "host": [
+                "{{auditBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "audit"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Unauthenticated audit request returns 401', function () { pm.response.to.have.status(401); });",
+                  "pm.test('Response uses the platform error envelope', function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.code).to.eql(401);",
+                  "  pm.expect(body.message).to.eql('Authentication is required');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Regular User Audit Request Is Forbidden",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{auditBaseUrl}}/api/v1/audit",
+              "host": [
+                "{{auditBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "audit"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Regular user audit request returns 403', function () { pm.response.to.have.status(403); });",
+                  "pm.test('Response uses the platform error envelope', function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.code).to.eql(403);",
+                  "  pm.expect(body.message).to.eql('Access denied');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin Lists Audit Records",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}",
+                "type": "text"
+              },
               {
                 "key": "Accept",
                 "value": "application/json"
@@ -1408,6 +1498,11 @@
             "method": "GET",
             "header": [
               {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}",
+                "type": "text"
+              },
+              {
                 "key": "Accept",
                 "value": "application/json"
               }
@@ -1455,6 +1550,11 @@
           "request": {
             "method": "GET",
             "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}",
+                "type": "text"
+              },
               {
                 "key": "Accept",
                 "value": "application/json"
@@ -1504,6 +1604,11 @@
             "method": "GET",
             "header": [
               {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}",
+                "type": "text"
+              },
+              {
                 "key": "Accept",
                 "value": "application/json"
               }
@@ -1551,6 +1656,11 @@
           "request": {
             "method": "GET",
             "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}",
+                "type": "text"
+              },
               {
                 "key": "Accept",
                 "value": "application/json"
@@ -1600,6 +1710,11 @@
             "method": "GET",
             "header": [
               {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}",
+                "type": "text"
+              },
+              {
                 "key": "Accept",
                 "value": "application/json"
               }
@@ -1647,6 +1762,11 @@
           "request": {
             "method": "GET",
             "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}",
+                "type": "text"
+              },
               {
                 "key": "Accept",
                 "value": "application/json"
@@ -1696,6 +1816,11 @@
             "method": "GET",
             "header": [
               {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}",
+                "type": "text"
+              },
+              {
                 "key": "Accept",
                 "value": "application/json"
               }
@@ -1744,6 +1869,11 @@
             "method": "GET",
             "header": [
               {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}",
+                "type": "text"
+              },
+              {
                 "key": "Accept",
                 "value": "application/json"
               }
@@ -1786,6 +1916,11 @@
           "request": {
             "method": "GET",
             "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}",
+                "type": "text"
+              },
               {
                 "key": "Accept",
                 "value": "application/json"

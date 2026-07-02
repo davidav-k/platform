@@ -5,10 +5,17 @@ import com.example.audit_service.dto.AuditListResponse;
 import com.example.audit_service.dto.AuditResponseDto;
 import com.example.audit_service.dto.PageResponse;
 import com.example.audit_service.exception.AuditRecordNotFoundException;
+import com.example.audit_service.security.AuditAccessDeniedHandler;
+import com.example.audit_service.security.AuditAuthenticationEntryPoint;
+import com.example.audit_service.security.JwtAuthenticationFilter;
+import com.example.audit_service.security.JwtTokenService;
+import com.example.audit_service.security.SecurityConfig;
 import com.example.audit_service.service.AuditQueryService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -24,8 +31,26 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(AuditController.class)
+@WebMvcTest(
+        controllers = AuditController.class,
+        properties = {
+                "spring.cloud.config.enabled=false",
+                "spring.config.import=optional:configserver:",
+                "jwt.secret=" + AuditControllerTest.TEST_SECRET
+        }
+)
+@Import({
+        SecurityConfig.class,
+        JwtAuthenticationFilter.class,
+        JwtTokenService.class,
+        AuditAuthenticationEntryPoint.class,
+        AuditAccessDeniedHandler.class
+})
+@WithMockUser(roles = "ADMIN")
 class AuditControllerTest {
+
+    static final String TEST_SECRET =
+            "QUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQQ==";
 
     private static final UUID AUDIT_ID = UUID.fromString("10000000-0000-0000-0000-000000000001");
     private static final UUID EVENT_ID = UUID.fromString("20000000-0000-0000-0000-000000000002");

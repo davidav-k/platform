@@ -15,6 +15,19 @@ The API is currently available directly from Audit Service:
 
     http://localhost:8088/api/v1/audit
 
+## Security
+
+Audit API access requires a valid platform access token with one of these
+authorities:
+
+- ROLE_ADMIN
+- ROLE_SUPER_ADMIN
+
+Tokens are accepted through the existing Authorization Bearer header or the
+existing HttpOnly access-token cookie. Unauthenticated requests return 401;
+authenticated users without an allowed role receive 403. The health and info
+actuator endpoints remain public.
+
 ### GET /api/v1/audit
 
 Returns audit records with pagination, sorting, and optional exact-match
@@ -55,6 +68,7 @@ Optional filters:
 Example:
 
     curl -fsS \
+      -H "Authorization: Bearer $ADMIN_ACCESS_TOKEN" \
       "http://localhost:8088/api/v1/audit?eventType=TASK_UPDATED&aggregateType=TASK&page=0&size=20&sort=occurredAt,desc"
 
 Successful responses use the platform response envelope:
@@ -81,7 +95,9 @@ stored event payloads are not returned.
 
 Returns one record by public auditId.
 
-    curl -fsS "http://localhost:8088/api/v1/audit/$AUDIT_ID"
+    curl -fsS \
+      -H "Authorization: Bearer $ADMIN_ACCESS_TOKEN" \
+      "http://localhost:8088/api/v1/audit/$AUDIT_ID"
 
 An unknown auditId returns 404 NOT_FOUND using the same response envelope.
 
@@ -91,10 +107,10 @@ Build Audit Service:
 
     mvn -B -f backend/audit-service/pom.xml clean verify
 
-Run the focused REST API tests:
+Run the focused REST API and security tests:
 
     mvn -B -f backend/audit-service/pom.xml \
-      -Dtest=AuditControllerTest,AuditQueryServiceImplTest test
+      -Dtest=AuditControllerTest,AuditQueryServiceImplTest,AuditSecurityIntegrationTest test
 
 The persistence tests use PostgreSQL 16.1 through Testcontainers and require
 Docker.
@@ -135,20 +151,35 @@ Allow the outbox publisher and Kafka consumer to process the events, then list
 the records:
 
     curl -fsS \
+      -H "Authorization: Bearer $ADMIN_ACCESS_TOKEN" \
       "http://localhost:8088/api/v1/audit?page=0&size=20&sort=occurredAt,desc"
 
 Capture an auditId from data.items, then verify a single record and 404:
 
-    curl -fsS "http://localhost:8088/api/v1/audit/$AUDIT_ID"
-    curl -i "http://localhost:8088/api/v1/audit/00000000-0000-0000-0000-000000000000"
+    curl -fsS -H "Authorization: Bearer $ADMIN_ACCESS_TOKEN" \
+      "http://localhost:8088/api/v1/audit/$AUDIT_ID"
+    curl -i -H "Authorization: Bearer $ADMIN_ACCESS_TOKEN" \
+      "http://localhost:8088/api/v1/audit/00000000-0000-0000-0000-000000000000"
+
+Verify the access policy:
+
+    curl -i "http://localhost:8088/api/v1/audit"
+    curl -i -H "Authorization: Bearer $USER_ACCESS_TOKEN" \
+      "http://localhost:8088/api/v1/audit"
+    curl -i -H "Authorization: Bearer $ADMIN_ACCESS_TOKEN" \
+      "http://localhost:8088/api/v1/audit"
 
 Filter examples:
 
-    curl -fsS "http://localhost:8088/api/v1/audit?eventType=TASK_UPDATED"
-    curl -fsS "http://localhost:8088/api/v1/audit?aggregateType=TASK"
-    curl -fsS "http://localhost:8088/api/v1/audit?aggregateId=$TASK_ID"
-    curl -fsS "http://localhost:8088/api/v1/audit?sourceService=task-service"
-    curl -fsS "http://localhost:8088/api/v1/audit?actorUserId=$USER_ID"
-    curl -fsS "http://localhost:8088/api/v1/audit?action=UPDATE_TASK"
-    curl -fsS \
+    audit_get() {
+      curl -fsS -H "Authorization: Bearer $ADMIN_ACCESS_TOKEN" "$1"
+    }
+
+    audit_get "http://localhost:8088/api/v1/audit?eventType=TASK_UPDATED"
+    audit_get "http://localhost:8088/api/v1/audit?aggregateType=TASK"
+    audit_get "http://localhost:8088/api/v1/audit?aggregateId=$TASK_ID"
+    audit_get "http://localhost:8088/api/v1/audit?sourceService=task-service"
+    audit_get "http://localhost:8088/api/v1/audit?actorUserId=$USER_ID"
+    audit_get "http://localhost:8088/api/v1/audit?action=UPDATE_TASK"
+    audit_get \
       "http://localhost:8088/api/v1/audit?from=2026-07-01T00:00:00Z&to=2026-07-31T23:59:59Z"

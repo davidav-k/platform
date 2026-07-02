@@ -32,6 +32,9 @@ management:
       exposure:
         include: health,info
 
+jwt:
+  secret: ${JWT_SECRET}
+
 audit:
   kafka:
     enabled: ${AUDIT_KAFKA_ENABLED:true}

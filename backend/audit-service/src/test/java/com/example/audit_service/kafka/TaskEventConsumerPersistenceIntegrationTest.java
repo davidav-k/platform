@@ -29,7 +29,8 @@ import static org.assertj.core.api.Assertions.assertThat;
         "eureka.client.enabled=false",
         "spring.jpa.hibernate.ddl-auto=validate",
         "spring.jpa.open-in-view=false",
-        "audit.kafka.enabled=false"
+        "audit.kafka.enabled=false",
+        "jwt.secret=QUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQQ=="
 })
 @ActiveProfiles("test")
 @Testcontainers
