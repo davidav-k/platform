@@ -19,6 +19,8 @@ public class TaskAuditEventNormalizer {
     private static final String TASK_CREATED = "TASK_CREATED";
     private static final String TASK_ASSIGNED = "TASK_ASSIGNED";
     private static final String TASK_STATUS_CHANGED = "TASK_STATUS_CHANGED";
+    private static final String TASK_UPDATED = "TASK_UPDATED";
+    private static final String TASK_DELETED = "TASK_DELETED";
     private static final String SOURCE_SERVICE = "task-service";
 
     private final ObjectMapper objectMapper;
@@ -58,6 +60,8 @@ public class TaskAuditEventNormalizer {
             case TASK_CREATED -> "CREATE_TASK";
             case TASK_ASSIGNED -> "ASSIGN_TASK";
             case TASK_STATUS_CHANGED -> "CHANGE_TASK_STATUS";
+            case TASK_UPDATED -> "UPDATE_TASK";
+            case TASK_DELETED -> "DELETE_TASK";
             default -> null;
         };
     }
@@ -66,6 +70,9 @@ public class TaskAuditEventNormalizer {
         UUID actorUserId = uuidOrNull(payload, "actorUserId");
         if (actorUserId == null && TASK_CREATED.equals(eventType)) {
             return uuidOrNull(payload, "createdByUserId");
+        }
+        if (actorUserId == null && TASK_DELETED.equals(eventType)) {
+            return uuidOrNull(payload, "deletedByUserId");
         }
         return actorUserId;
     }

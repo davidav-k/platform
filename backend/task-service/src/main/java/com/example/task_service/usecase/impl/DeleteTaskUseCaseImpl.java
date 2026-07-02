@@ -2,6 +2,8 @@ package com.example.task_service.usecase.impl;
 
 import com.example.task_service.entity.TaskEntity;
 import com.example.task_service.exception.TaskNotFoundException;
+import com.example.task_service.outbox.OutboxEventService;
+import com.example.task_service.outbox.TaskOutboxPayloadFactory;
 import com.example.task_service.repository.TaskRepository;
 import com.example.task_service.security.CurrentUserAccessProvider;
 import com.example.task_service.security.CurrentUserAccessProvider.CurrentUserAccess;
@@ -19,8 +21,13 @@ import java.util.UUID;
 @Transactional
 public class DeleteTaskUseCaseImpl implements DeleteTaskUseCase {
 
+    private static final String TASK_AGGREGATE_TYPE = "TASK";
+    private static final String TASK_DELETED_EVENT_TYPE = "TASK_DELETED";
+
     private final TaskRepository taskRepository;
     private final CurrentUserAccessProvider currentUserAccessProvider;
+    private final OutboxEventService outboxEventService;
+    private final TaskOutboxPayloadFactory taskOutboxPayloadFactory;
 
     @Override
     public void delete(UUID taskId) {
@@ -37,6 +44,16 @@ public class DeleteTaskUseCaseImpl implements DeleteTaskUseCase {
 
         task.setDeletedAt(OffsetDateTime.now(ZoneOffset.UTC));
         task.setDeletedByUserId(access.userId());
-        taskRepository.saveAndFlush(task);
+        TaskEntity deletedTask = taskRepository.saveAndFlush(task);
+        saveTaskDeletedOutboxEvent(deletedTask);
+    }
+
+    private void saveTaskDeletedOutboxEvent(TaskEntity task) {
+        outboxEventService.saveNewEvent(
+            TASK_AGGREGATE_TYPE,
+            task.getTaskId(),
+            TASK_DELETED_EVENT_TYPE,
+            taskOutboxPayloadFactory.taskDeletedPayload(task)
+        );
     }
 }

@@ -4,17 +4,16 @@ import com.example.audit_service.entity.AuditRecordEntity;
 import com.example.audit_service.normalization.NormalizedAuditEvent;
 import com.example.audit_service.repository.AuditRecordRepository;
 import com.example.audit_service.usecase.CreateAuditRecordUseCase;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@RequiredArgsConstructor
 public class CreateAuditRecordUseCaseImpl implements CreateAuditRecordUseCase {
 
     private final AuditRecordRepository auditRecordRepository;
 
-    public CreateAuditRecordUseCaseImpl(AuditRecordRepository auditRecordRepository) {
-        this.auditRecordRepository = auditRecordRepository;
-    }
 
     @Override
     @Transactional

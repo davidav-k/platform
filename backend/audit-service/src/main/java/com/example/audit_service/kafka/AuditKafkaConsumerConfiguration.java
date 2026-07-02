@@ -1,5 +1,6 @@
 package com.example.audit_service.kafka;
 
+import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.serialization.StringDeserializer;
@@ -21,10 +22,10 @@ import java.util.Map;
 
 @EnableKafka
 @Configuration
+@Slf4j
 @ConditionalOnProperty(prefix = "audit.kafka", name = "enabled", havingValue = "true")
 public class AuditKafkaConsumerConfiguration {
 
-    private static final Logger log = LoggerFactory.getLogger(AuditKafkaConsumerConfiguration.class);
 
     @Bean
     public ConsumerFactory<String, String> auditKafkaConsumerFactory(

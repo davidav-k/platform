@@ -78,14 +78,38 @@ class TaskAuditEventNormalizerTest {
     }
 
     @Test
+    void normalizesTaskUpdated() {
+        String payload = "{\"actorUserId\":\"%s\"}".formatted(USER_ID);
+
+        NormalizedAuditEvent normalizedEvent = normalizer
+                .normalize(event("TASK_UPDATED", payload))
+                .orElseThrow();
+
+        assertThat(normalizedEvent.actorUserId()).isEqualTo(USER_ID);
+        assertThat(normalizedEvent.action()).isEqualTo("UPDATE_TASK");
+    }
+
+    @Test
+    void normalizesTaskDeletedAndUsesDeletingUserAsActor() {
+        String payload = "{\"deletedByUserId\":\"%s\"}".formatted(USER_ID);
+
+        NormalizedAuditEvent normalizedEvent = normalizer
+                .normalize(event("TASK_DELETED", payload))
+                .orElseThrow();
+
+        assertThat(normalizedEvent.actorUserId()).isEqualTo(USER_ID);
+        assertThat(normalizedEvent.action()).isEqualTo("DELETE_TASK");
+    }
+
+    @Test
     void logsAndIgnoresUnsupportedTaskEventType(CapturedOutput output) {
         Optional<NormalizedAuditEvent> normalizedEvent =
-                normalizer.normalize(event("TASK_DELETED", "{}"));
+                normalizer.normalize(event("TASK_ARCHIVED", "{}"));
 
         assertThat(normalizedEvent).isEmpty();
         assertThat(output)
                 .contains("Ignoring unsupported task audit event")
-                .contains("TASK_DELETED")
+                .contains("TASK_ARCHIVED")
                 .contains(EVENT_ID.toString());
     }
 
