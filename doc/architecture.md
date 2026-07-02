@@ -26,7 +26,7 @@ The Docker Compose stack currently runs:
 | `user-service` | Users, roles, authentication, JWT issuance and validation, MFA, profiles, and account lifecycle | `8085` |
 | `task-service` | Task lifecycle, ownership, assignment, status changes, filtering, pagination, and soft delete | `8086` |
 | `notification-service` | Notification persistence, create, get, list, filtering, pagination, and Kafka-backed task notification processing | `8087` |
-| `audit-service` | Infrastructure bootstrap only: Config Client, Eureka registration, PostgreSQL/Flyway connectivity, and Actuator health | `8088` |
+| `audit-service` | Audit record persistence model plus Config Client, Eureka registration, PostgreSQL/Flyway connectivity, and Actuator health; no consumer or API yet | `8088` |
 | `api-gateway` | External entry point, JWT early rejection, routing, CORS, and circuit breaker fallback | `8080` |
 | `frontend` | Vue 3 production bundle served by nginx with SPA route fallback | `5173` |
 | `config-server` | Spring Cloud Config native repository mounted from `./config` | `8888` |
@@ -86,7 +86,7 @@ The following items are roadmap direction, not implemented functionality:
 - `user-service` owns its PostgreSQL schema (`users_db` by default).
 - `task-service` owns its PostgreSQL schema (`tasks_db` by default).
 - `notification-service` owns its PostgreSQL schema (`notifications_db` by default).
-- `audit-service` owns its PostgreSQL schema (`audits_db` by default); no audit tables exist yet.
+- `audit-service` owns its PostgreSQL schema (`audits_db` by default) and its `audit_records` table.
 - Flyway migrations are authoritative for all service schemas.
 - Hibernate uses `ddl-auto=validate`; it does not create or update schema.
 - Future services must also own separate schemas or databases.

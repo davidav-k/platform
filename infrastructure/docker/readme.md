@@ -17,7 +17,7 @@ Application Dockerfiles live next to each implemented Java module.
 | `user-service` | User management and authentication |
 | `task-service` | Task lifecycle, ownership, assignment, status changes, and outbox event publishing |
 | `notification-service` | Notification persistence, Kafka task-event consumption, and delivery state |
-| `audit-service` | Audit-service bootstrap, service discovery, database connectivity, and health reporting |
+| `audit-service` | Audit record persistence, service discovery, database connectivity, and health reporting; no consumer or API yet |
 | `gateway` | External API entry point |
 | `frontend` | Vue production build served by nginx on host port `5173` |
 
