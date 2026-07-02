@@ -172,7 +172,12 @@ services:
       - .env
     environment:
       - APPLICATION_PORT=8088
+      - KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
+      - AUDIT_KAFKA_ENABLED=${AUDIT_KAFKA_ENABLED:-true}
+      - AUDIT_KAFKA_TOPIC=${AUDIT_KAFKA_TOPIC:-${KAFKA_TASK_EVENTS_TOPIC:-platform.task-events}}
     depends_on:
+      kafka:
+        condition: service_healthy
       postgres:
         condition: service_healthy
       config-server:

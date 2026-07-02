@@ -3,8 +3,8 @@
 ## Purpose
 
 Platform is an MVP-stage Task Management Platform. The current runnable system
-delivers user management, task management, notifications, an audit-service
-infrastructure bootstrap, and shared infrastructure.
+delivers user management, task management, notifications, Task Service audit
+event persistence, and shared infrastructure.
 
 For aggregate ownership and future service rules, see
 [Service boundaries](architecture/service-boundaries.md).
@@ -26,14 +26,14 @@ The Docker Compose stack currently runs:
 | `user-service` | Users, roles, authentication, JWT issuance and validation, MFA, profiles, and account lifecycle | `8085` |
 | `task-service` | Task lifecycle, ownership, assignment, status changes, filtering, pagination, and soft delete | `8086` |
 | `notification-service` | Notification persistence, create, get, list, filtering, pagination, and Kafka-backed task notification processing | `8087` |
-| `audit-service` | Audit record persistence model plus Config Client, Eureka registration, PostgreSQL/Flyway connectivity, and Actuator health; no consumer or API yet | `8088` |
+| `audit-service` | Kafka-backed Task Service audit event consumption and audit record persistence; no API yet | `8088` |
 | `api-gateway` | External entry point, JWT early rejection, routing, CORS, and circuit breaker fallback | `8080` |
 | `frontend` | Vue 3 production bundle served by nginx with SPA route fallback | `5173` |
 | `config-server` | Spring Cloud Config native repository mounted from `./config` | `8888` |
 | `eureka-server` | Service registration and discovery | `8761` |
 | PostgreSQL 16.1 | User, task, notification, and audit persistence in separate databases | `5432` |
 | Redis 7 | Independently running and health-checked; not integrated into user-service | `6379` |
-| Kafka 3.7.1 | Task event transport for outbox-backed notifications | `9092` |
+| Kafka 3.7.1 | Task event transport for outbox-backed notifications and audit records | `9092` |
 | MailHog | Local SMTP capture and UI | `1025`, `8025` |
 | Zipkin | Local tracing infrastructure container | `9411` |
 
@@ -52,6 +52,13 @@ frontend -> api-gateway -> task-service -> tasks + outbox_events
   -> Kafka platform.task-events
   -> notification-service -> notifications
   -> frontend GET /api/notifications
+```
+
+The implemented task audit event path is:
+
+```text
+task-service -> outbox_events -> Kafka platform.task-events
+  -> audit-service -> audit_records
 ```
 
 
@@ -77,7 +84,7 @@ The notification API contract is documented in
 
 The following items are roadmap direction, not implemented functionality:
 
-- audit event consumption, persistence model, and REST API
+- audit REST API and search
 - OpenAI-backed task automation
 - Prometheus and Grafana monitoring stack
 

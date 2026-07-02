@@ -11,15 +11,16 @@ task-service transaction
   -> OutboxEventPollingScheduler
   -> KafkaOutboxEventPublisher
   -> Kafka topic platform.task-events
-  -> notification-service NotificationEventConsumer
-  -> TaskEventNotificationProcessor
-  -> notifications
+     -> notification-service NotificationEventConsumer -> notifications
+     -> audit-service TaskEventConsumer -> audit_records
 ```
 
 ## Ownership
 
 - `task-service` owns task persistence and task domain events.
 - `notification-service` owns notification persistence and delivery state.
+- `audit-service` owns audit record persistence and consumes Task Service
+  events independently from notification-service.
 - Kafka is the transport for task domain events between the services.
 - Each service owns its database; no cross-service repositories or foreign keys
   are used.
@@ -61,6 +62,11 @@ events, assignment events without `newAssigneeUserId`, and status events
 without `assigneeUserId` are consumed and logged but do not create notification
 rows.
 
+Audit-service stores all three supported Task Service event types. It preserves
+the source envelope metadata and JSON payload. `TASK_CREATED` uses
+`createdByUserId` as the actor; assignment and status events leave the actor
+null because their current payloads do not identify the acting user.
+
 ## Publisher Configuration
 
 Task-service outbox publishing is controlled by:
@@ -89,6 +95,16 @@ NOTIFICATION_KAFKA_TOPIC=platform.task-events
 
 `NOTIFICATION_KAFKA_TOPIC` falls back to `KAFKA_TASK_EVENTS_TOPIC`.
 
+Audit-service Kafka processing is controlled independently by:
+
+```text
+AUDIT_KAFKA_ENABLED=true
+AUDIT_KAFKA_TOPIC=platform.task-events
+```
+
+It uses consumer group `audit-service`, so notification and audit processing
+both receive every Task Service event.
+
 ## Failure Handling
 
 If publishing fails, task-service keeps the outbox event in a retryable state
@@ -102,3 +118,6 @@ and records the error message on the event. Publish diagnostics should include:
 Notification-service records consumed event status in
 `event_consumption_log`. Consumer diagnostics should identify the task event
 without logging JWTs, cookies, authorization headers, passwords, or secrets.
+Audit-service uses the unique `audit_records.event_id` constraint as its
+idempotency backstop and ignores events already present through the persistence
+use case.

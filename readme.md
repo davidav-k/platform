@@ -6,7 +6,7 @@ Microservice-based Task Management Platform built with Spring Boot.
 
 ## Planned
 
-- Audit event pipeline and API
+- Audit REST API and search
 - Prometheus/Grafana monitoring
 
 ## Technology Stack

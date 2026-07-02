@@ -17,7 +17,7 @@ Application Dockerfiles live next to each implemented Java module.
 | `user-service` | User management and authentication |
 | `task-service` | Task lifecycle, ownership, assignment, status changes, and outbox event publishing |
 | `notification-service` | Notification persistence, Kafka task-event consumption, and delivery state |
-| `audit-service` | Audit record persistence, service discovery, database connectivity, and health reporting; no consumer or API yet |
+| `audit-service` | Kafka task-event consumption, audit record persistence, service discovery, and health reporting; no API yet |
 | `gateway` | External API entry point |
 | `frontend` | Vue production build served by nginx on host port `5173` |
 
@@ -26,6 +26,8 @@ Gateway URL is injected at image build time through `VITE_API_BASE_URL`.
 
 Task notifications are delivered through `task-service` outbox events, Kafka
 topic `platform.task-events`, and the notification-service Kafka consumer.
+Audit Service independently consumes the same topic with its own consumer group
+and persists one audit record per source event.
 
 ## Running The Project
 

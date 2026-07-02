@@ -79,8 +79,9 @@ Docker Compose uses health-aware startup dependencies:
 6. Notification Service starts after PostgreSQL, Kafka, Config Server, and
    Eureka Server. Its health endpoint reports `UP` when its datasource is
    healthy.
-7. Audit Service starts after PostgreSQL, Config Server, and Eureka Server. Its
-   health endpoint reports `UP` when its datasource is healthy.
+7. Audit Service starts after PostgreSQL, Kafka, Config Server, and Eureka
+   Server. Its health endpoint reports `UP` when its datasource is healthy;
+   startup logs report the Kafka consumer configuration.
 8. API Gateway starts after Config Server, Eureka Server, User Service, Task
    Service, and Notification Service. It must report `UP`.
 
