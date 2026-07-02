@@ -12,7 +12,8 @@ task-service transaction
   -> KafkaOutboxEventPublisher
   -> Kafka topic platform.task-events
      -> notification-service NotificationEventConsumer -> notifications
-     -> audit-service TaskEventConsumer -> audit_records
+     -> audit-service TaskEventConsumer
+        -> TaskAuditEventNormalizer -> CreateAuditRecordUseCase -> audit_records
 ```
 
 ## Ownership
@@ -66,6 +67,18 @@ Audit-service stores all three supported Task Service event types. It preserves
 the source envelope metadata and JSON payload. `TASK_CREATED` uses
 `createdByUserId` as the actor; assignment and status events leave the actor
 null because their current payloads do not identify the acting user.
+
+Audit normalization uses these stable internal actions:
+
+| Event type | Audit action |
+| --- | --- |
+| `TASK_CREATED` | `CREATE_TASK` |
+| `TASK_ASSIGNED` | `ASSIGN_TASK` |
+| `TASK_STATUS_CHANGED` | `CHANGE_TASK_STATUS` |
+
+Unsupported task event types are logged and acknowledged without creating an
+audit record. `TASK_UPDATED` and `TASK_DELETED` are not normalized because
+task-service does not currently publish those events.
 
 ## Publisher Configuration
 

@@ -1,12 +1,13 @@
-package com.example.audit_service.usecase;
+package com.example.audit_service.normalization;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
 /**
- * Internal input model for persisting a normalized audit record.
+ * Internal representation shared by event-source normalizers and audit
+ * persistence. It is not an API contract.
  */
-public record CreateAuditRecordCommand(
+public record NormalizedAuditEvent(
         UUID eventId,
         String eventType,
         String aggregateType,

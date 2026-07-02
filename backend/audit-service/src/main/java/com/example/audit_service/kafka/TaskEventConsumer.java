@@ -1,6 +1,7 @@
 package com.example.audit_service.kafka;
 
-import com.example.audit_service.usecase.CreateAuditRecordCommand;
+import com.example.audit_service.normalization.NormalizedAuditEvent;
+import com.example.audit_service.normalization.TaskAuditEventNormalizer;
 import com.example.audit_service.usecase.CreateAuditRecordUseCase;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -10,6 +11,8 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
+import java.util.Optional;
+
 @Component
 @ConditionalOnProperty(prefix = "audit.kafka", name = "enabled", havingValue = "true")
 public class TaskEventConsumer {
@@ -17,13 +20,13 @@ public class TaskEventConsumer {
     private static final Logger log = LoggerFactory.getLogger(TaskEventConsumer.class);
 
     private final ObjectMapper objectMapper;
-    private final TaskEventAuditMapper taskEventAuditMapper;
+    private final TaskAuditEventNormalizer taskAuditEventNormalizer;
     private final CreateAuditRecordUseCase createAuditRecordUseCase;
 
-    public TaskEventConsumer(ObjectMapper objectMapper, TaskEventAuditMapper taskEventAuditMapper,
+    public TaskEventConsumer(ObjectMapper objectMapper, TaskAuditEventNormalizer taskAuditEventNormalizer,
                              CreateAuditRecordUseCase createAuditRecordUseCase) {
         this.objectMapper = objectMapper;
-        this.taskEventAuditMapper = taskEventAuditMapper;
+        this.taskAuditEventNormalizer = taskAuditEventNormalizer;
         this.createAuditRecordUseCase = createAuditRecordUseCase;
     }
 
@@ -34,8 +37,12 @@ public class TaskEventConsumer {
     )
     public void consume(String message) {
         KafkaOutboxEventMessage event = deserialize(message);
-        CreateAuditRecordCommand command = taskEventAuditMapper.toCommand(event);
-        boolean created = createAuditRecordUseCase.create(command);
+        Optional<NormalizedAuditEvent> normalizedEvent = taskAuditEventNormalizer.normalize(event);
+        if (normalizedEvent.isEmpty()) {
+            return;
+        }
+
+        boolean created = createAuditRecordUseCase.create(normalizedEvent.get());
 
         if (!created) {
             log.info("Ignoring duplicate audit event: eventId={}, eventType={}",

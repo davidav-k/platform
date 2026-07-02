@@ -1,6 +1,7 @@
 package com.example.audit_service.kafka;
 
-import com.example.audit_service.usecase.CreateAuditRecordCommand;
+import com.example.audit_service.normalization.NormalizedAuditEvent;
+import com.example.audit_service.normalization.TaskAuditEventNormalizer;
 import com.example.audit_service.usecase.CreateAuditRecordUseCase;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -14,6 +15,7 @@ import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 
 import java.time.OffsetDateTime;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -32,6 +34,9 @@ class TaskEventConsumerTest {
     @Mock
     private CreateAuditRecordUseCase createAuditRecordUseCase;
 
+    @Mock
+    private TaskAuditEventNormalizer taskAuditEventNormalizer;
+
     private ObjectMapper objectMapper;
     private TaskEventConsumer consumer;
 
@@ -42,19 +47,21 @@ class TaskEventConsumerTest {
                 .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
         consumer = new TaskEventConsumer(
                 objectMapper,
-                new TaskEventAuditMapper(objectMapper),
+                taskAuditEventNormalizer,
                 createAuditRecordUseCase
         );
     }
 
     @Test
     void delegatesValidTaskEventToPersistenceUseCase() throws Exception {
+        NormalizedAuditEvent normalizedEvent = normalizedEvent();
+        when(taskAuditEventNormalizer.normalize(any())).thenReturn(Optional.of(normalizedEvent));
         when(createAuditRecordUseCase.create(any())).thenReturn(true);
 
         consumer.consume(message());
 
-        ArgumentCaptor<CreateAuditRecordCommand> captor =
-                ArgumentCaptor.forClass(CreateAuditRecordCommand.class);
+        ArgumentCaptor<NormalizedAuditEvent> captor =
+                ArgumentCaptor.forClass(NormalizedAuditEvent.class);
         verify(createAuditRecordUseCase).create(captor.capture());
         assertThat(captor.getValue().eventId()).isEqualTo(EVENT_ID);
         assertThat(captor.getValue().aggregateId()).isEqualTo(TASK_ID);
@@ -63,6 +70,7 @@ class TaskEventConsumerTest {
 
     @Test
     void logsAndIgnoresDuplicateTaskEvent(CapturedOutput output) throws Exception {
+        when(taskAuditEventNormalizer.normalize(any())).thenReturn(Optional.of(normalizedEvent()));
         when(createAuditRecordUseCase.create(any())).thenReturn(false);
 
         consumer.consume(message());
@@ -71,6 +79,15 @@ class TaskEventConsumerTest {
         assertThat(output)
                 .contains("Ignoring duplicate audit event")
                 .contains(EVENT_ID.toString());
+    }
+
+    @Test
+    void ignoresEventRejectedByNormalizer() throws Exception {
+        when(taskAuditEventNormalizer.normalize(any())).thenReturn(Optional.empty());
+
+        consumer.consume(message());
+
+        verify(createAuditRecordUseCase, never()).create(any());
     }
 
     @Test
@@ -84,6 +101,7 @@ class TaskEventConsumerTest {
                 .hasMessage("Kafka task audit event envelope is not valid");
 
         verify(createAuditRecordUseCase, never()).create(any());
+        verify(taskAuditEventNormalizer, never()).normalize(any());
         assertThat(output).contains("Kafka task audit event envelope is not valid");
     }
 
@@ -97,5 +115,20 @@ class TaskEventConsumerTest {
                 1,
                 "{\"taskId\":\"%s\"}".formatted(TASK_ID)
         ));
+    }
+
+    private NormalizedAuditEvent normalizedEvent() {
+        return new NormalizedAuditEvent(
+                EVENT_ID,
+                "TASK_CREATED",
+                "TASK",
+                TASK_ID,
+                "task-service",
+                null,
+                null,
+                "CREATE_TASK",
+                "{\"taskId\":\"%s\"}".formatted(TASK_ID),
+                OffsetDateTime.parse("2026-07-02T08:30:00Z")
+        );
     }
 }

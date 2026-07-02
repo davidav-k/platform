@@ -58,7 +58,9 @@ The implemented task audit event path is:
 
 ```text
 task-service -> outbox_events -> Kafka platform.task-events
-  -> audit-service -> audit_records
+  -> audit-service TaskEventConsumer
+  -> TaskAuditEventNormalizer -> NormalizedAuditEvent
+  -> CreateAuditRecordUseCase -> audit_records
 ```
 
 

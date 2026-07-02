@@ -1,8 +1,8 @@
 package com.example.audit_service.usecase.impl;
 
 import com.example.audit_service.entity.AuditRecordEntity;
+import com.example.audit_service.normalization.NormalizedAuditEvent;
 import com.example.audit_service.repository.AuditRecordRepository;
-import com.example.audit_service.usecase.CreateAuditRecordCommand;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,13 +35,13 @@ class CreateAuditRecordUseCaseImplTest {
 
     @Test
     void createsNormalizedAuditRecordAndPreservesPayload() {
-        CreateAuditRecordCommand command = command();
-        String payload = command.payload();
-        when(auditRecordRepository.existsByEventId(command.eventId())).thenReturn(false);
+        NormalizedAuditEvent event = event();
+        String payload = event.payload();
+        when(auditRecordRepository.existsByEventId(event.eventId())).thenReturn(false);
         when(auditRecordRepository.save(any(AuditRecordEntity.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        boolean created = useCase.create(command);
+        boolean created = useCase.create(event);
 
         assertThat(created).isTrue();
         ArgumentCaptor<AuditRecordEntity> captor = ArgumentCaptor.forClass(AuditRecordEntity.class);
@@ -51,16 +51,16 @@ class CreateAuditRecordUseCaseImplTest {
         assertThat(saved.getAggregateType()).isEqualTo("TASK");
         assertThat(saved.getSourceService()).isEqualTo("task-service");
         assertThat(saved.getActorEmail()).isNull();
-        assertThat(saved.getAction()).isEqualTo("CREATE");
+        assertThat(saved.getAction()).isEqualTo("CREATE_TASK");
         assertThat(saved.getPayload()).isSameAs(payload);
     }
 
     @Test
     void skipsEventThatWasAlreadyStored() {
-        CreateAuditRecordCommand command = command();
-        when(auditRecordRepository.existsByEventId(command.eventId())).thenReturn(true);
+        NormalizedAuditEvent event = event();
+        when(auditRecordRepository.existsByEventId(event.eventId())).thenReturn(true);
 
-        boolean created = useCase.create(command);
+        boolean created = useCase.create(event);
 
         assertThat(created).isFalse();
         verify(auditRecordRepository, never()).save(any());
@@ -70,9 +70,9 @@ class CreateAuditRecordUseCaseImplTest {
     void rejectsMissingRequiredFields() {
         assertThatThrownBy(() -> useCase.create(null))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Create audit record command is required");
+                .hasMessage("Normalized audit event is required");
 
-        CreateAuditRecordCommand missingEventId = new CreateAuditRecordCommand(
+        NormalizedAuditEvent missingEventId = new NormalizedAuditEvent(
                 null,
                 "TASK_CREATED",
                 "TASK",
@@ -80,7 +80,7 @@ class CreateAuditRecordUseCaseImplTest {
                 "task-service",
                 null,
                 null,
-                "CREATE",
+                "CREATE_TASK",
                 "{}",
                 OffsetDateTime.now()
         );
@@ -89,7 +89,7 @@ class CreateAuditRecordUseCaseImplTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Event ID is required");
 
-        CreateAuditRecordCommand blankPayload = new CreateAuditRecordCommand(
+        NormalizedAuditEvent blankPayload = new NormalizedAuditEvent(
                 UUID.randomUUID(),
                 "TASK_CREATED",
                 "TASK",
@@ -97,7 +97,7 @@ class CreateAuditRecordUseCaseImplTest {
                 "task-service",
                 null,
                 null,
-                "CREATE",
+                "CREATE_TASK",
                 "  ",
                 OffsetDateTime.now()
         );
@@ -107,8 +107,8 @@ class CreateAuditRecordUseCaseImplTest {
                 .hasMessage("Payload is required");
     }
 
-    private CreateAuditRecordCommand command() {
-        return new CreateAuditRecordCommand(
+    private NormalizedAuditEvent event() {
+        return new NormalizedAuditEvent(
                 UUID.randomUUID(),
                 " TASK_CREATED ",
                 " TASK ",
@@ -116,7 +116,7 @@ class CreateAuditRecordUseCaseImplTest {
                 " task-service ",
                 UUID.randomUUID(),
                 "   ",
-                " CREATE ",
+                " CREATE_TASK ",
                 "  {\"title\":\"Keep original whitespace\"}  ",
                 OffsetDateTime.parse("2026-07-02T08:30:00Z")
         );

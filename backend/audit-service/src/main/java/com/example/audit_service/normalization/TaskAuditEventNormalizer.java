@@ -1,15 +1,20 @@
-package com.example.audit_service.kafka;
+package com.example.audit_service.normalization;
 
-import com.example.audit_service.usecase.CreateAuditRecordCommand;
+import com.example.audit_service.kafka.KafkaOutboxEventMessage;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
+import java.util.Optional;
 import java.util.UUID;
 
 @Component
-public class TaskEventAuditMapper {
+public class TaskAuditEventNormalizer {
+
+    private static final Logger log = LoggerFactory.getLogger(TaskAuditEventNormalizer.class);
 
     private static final String TASK_CREATED = "TASK_CREATED";
     private static final String TASK_ASSIGNED = "TASK_ASSIGNED";
@@ -18,13 +23,20 @@ public class TaskEventAuditMapper {
 
     private final ObjectMapper objectMapper;
 
-    public TaskEventAuditMapper(ObjectMapper objectMapper) {
+    public TaskAuditEventNormalizer(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
     }
 
-    public CreateAuditRecordCommand toCommand(KafkaOutboxEventMessage event) {
+    public Optional<NormalizedAuditEvent> normalize(KafkaOutboxEventMessage event) {
+        String action = actionOrNull(event.eventType());
+        if (action == null) {
+            log.warn("Ignoring unsupported task audit event: eventId={}, eventType={}",
+                    event.eventId(), event.eventType());
+            return Optional.empty();
+        }
+
         JsonNode payload = deserializePayload(event.payload());
-        return new CreateAuditRecordCommand(
+        return Optional.of(new NormalizedAuditEvent(
                 event.eventId(),
                 event.eventType(),
                 event.aggregateType(),
@@ -32,18 +44,21 @@ public class TaskEventAuditMapper {
                 SOURCE_SERVICE,
                 actorUserId(event.eventType(), payload),
                 textOrNull(payload, "actorEmail"),
-                action(event.eventType()),
+                action,
                 event.payload(),
                 event.occurredAt()
-        );
+        ));
     }
 
-    private String action(String eventType) {
+    private String actionOrNull(String eventType) {
+        if (eventType == null) {
+            return null;
+        }
         return switch (eventType) {
-            case TASK_CREATED -> "CREATE";
-            case TASK_ASSIGNED -> "ASSIGN";
-            case TASK_STATUS_CHANGED -> "STATUS_CHANGE";
-            default -> throw new IllegalArgumentException("Unsupported task event type: " + eventType);
+            case TASK_CREATED -> "CREATE_TASK";
+            case TASK_ASSIGNED -> "ASSIGN_TASK";
+            case TASK_STATUS_CHANGED -> "CHANGE_TASK_STATUS";
+            default -> null;
         };
     }
 

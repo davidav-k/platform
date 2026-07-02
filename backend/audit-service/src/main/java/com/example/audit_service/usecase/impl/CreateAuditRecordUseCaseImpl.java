@@ -1,8 +1,8 @@
 package com.example.audit_service.usecase.impl;
 
 import com.example.audit_service.entity.AuditRecordEntity;
+import com.example.audit_service.normalization.NormalizedAuditEvent;
 import com.example.audit_service.repository.AuditRecordRepository;
-import com.example.audit_service.usecase.CreateAuditRecordCommand;
 import com.example.audit_service.usecase.CreateAuditRecordUseCase;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,57 +18,57 @@ public class CreateAuditRecordUseCaseImpl implements CreateAuditRecordUseCase {
 
     @Override
     @Transactional
-    public boolean create(CreateAuditRecordCommand command) {
-        validate(command);
+    public boolean create(NormalizedAuditEvent event) {
+        validate(event);
 
-        if (auditRecordRepository.existsByEventId(command.eventId())) {
+        if (auditRecordRepository.existsByEventId(event.eventId())) {
             return false;
         }
 
         AuditRecordEntity auditRecord = new AuditRecordEntity(
                 null,
-                command.eventId(),
-                command.eventType().strip(),
-                command.aggregateType().strip(),
-                command.aggregateId(),
-                command.sourceService().strip(),
-                command.actorUserId(),
-                trimToNull(command.actorEmail()),
-                command.action().strip(),
-                command.payload(),
-                command.occurredAt()
+                event.eventId(),
+                event.eventType().strip(),
+                event.aggregateType().strip(),
+                event.aggregateId(),
+                event.sourceService().strip(),
+                event.actorUserId(),
+                trimToNull(event.actorEmail()),
+                event.action().strip(),
+                event.payload(),
+                event.occurredAt()
         );
 
         auditRecordRepository.save(auditRecord);
         return true;
     }
 
-    private void validate(CreateAuditRecordCommand command) {
-        if (command == null) {
-            throw new IllegalArgumentException("Create audit record command is required");
+    private void validate(NormalizedAuditEvent event) {
+        if (event == null) {
+            throw new IllegalArgumentException("Normalized audit event is required");
         }
-        if (command.eventId() == null) {
+        if (event.eventId() == null) {
             throw new IllegalArgumentException("Event ID is required");
         }
-        if (isBlank(command.eventType())) {
+        if (isBlank(event.eventType())) {
             throw new IllegalArgumentException("Event type is required");
         }
-        if (isBlank(command.aggregateType())) {
+        if (isBlank(event.aggregateType())) {
             throw new IllegalArgumentException("Aggregate type is required");
         }
-        if (command.aggregateId() == null) {
+        if (event.aggregateId() == null) {
             throw new IllegalArgumentException("Aggregate ID is required");
         }
-        if (isBlank(command.sourceService())) {
+        if (isBlank(event.sourceService())) {
             throw new IllegalArgumentException("Source service is required");
         }
-        if (isBlank(command.action())) {
+        if (isBlank(event.action())) {
             throw new IllegalArgumentException("Action is required");
         }
-        if (isBlank(command.payload())) {
+        if (isBlank(event.payload())) {
             throw new IllegalArgumentException("Payload is required");
         }
-        if (command.occurredAt() == null) {
+        if (event.occurredAt() == null) {
             throw new IllegalArgumentException("Occurred at is required");
         }
     }

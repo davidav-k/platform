@@ -1,6 +1,7 @@
 package com.example.audit_service.kafka;
 
 import com.example.audit_service.entity.AuditRecordEntity;
+import com.example.audit_service.normalization.TaskAuditEventNormalizer;
 import com.example.audit_service.repository.AuditRecordRepository;
 import com.example.audit_service.usecase.CreateAuditRecordUseCase;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -55,7 +56,7 @@ class TaskEventConsumerPersistenceIntegrationTest {
     private ObjectMapper objectMapper;
 
     @Autowired
-    private TaskEventAuditMapper taskEventAuditMapper;
+    private TaskAuditEventNormalizer taskAuditEventNormalizer;
 
     @Autowired
     private CreateAuditRecordUseCase createAuditRecordUseCase;
@@ -68,7 +69,7 @@ class TaskEventConsumerPersistenceIntegrationTest {
     @BeforeEach
     void setUp() {
         auditRecordRepository.deleteAll();
-        consumer = new TaskEventConsumer(objectMapper, taskEventAuditMapper, createAuditRecordUseCase);
+        consumer = new TaskEventConsumer(objectMapper, taskAuditEventNormalizer, createAuditRecordUseCase);
     }
 
     @Test
@@ -88,7 +89,7 @@ class TaskEventConsumerPersistenceIntegrationTest {
         assertThat(auditRecord.getSourceService()).isEqualTo("task-service");
         assertThat(auditRecord.getActorUserId()).isEqualTo(CREATED_BY_ID);
         assertThat(auditRecord.getActorEmail()).isNull();
-        assertThat(auditRecord.getAction()).isEqualTo("CREATE");
+        assertThat(auditRecord.getAction()).isEqualTo("CREATE_TASK");
         assertThat(auditRecord.getPayload()).contains(TASK_ID.toString());
     }
 
