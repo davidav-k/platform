@@ -17,7 +17,6 @@ authentication, authorization, task ownership, assignment, and validation.
 - Native Fetch API
 - Plain CSS
 
-The MVP does not use Axios, Pinia, Vuex, a UI framework, or a form library.
 
 ## Prerequisites
 
@@ -29,7 +28,6 @@ The MVP does not use Axios, Pinia, Vuex, a UI framework, or a form library.
 Start and verify the backend before running authenticated frontend flows:
 
 ```bash
-cp .env.example .env
 docker compose --env-file .env -f compose.yml up -d --build
 ./scripts/check-local-stack.sh
 ```
@@ -37,76 +35,6 @@ docker compose --env-file .env -f compose.yml up -d --build
 Docker Compose can run the complete MVP, including the production-style
 frontend container. Vite remains available for frontend development.
 
-## Configuration
-
-Copy the frontend environment example when a local override is needed:
-
-```bash
-cd frontend/vue-frontend
-cp .env.example .env
-```
-
-Default configuration:
-
-```dotenv
-VITE_API_BASE_URL=http://localhost:8080
-```
-
-`VITE_*` variables are embedded into the JavaScript bundle at build time. They
-are not runtime container environment variables. In Docker Compose mode,
-`VITE_API_BASE_URL` from the root `.env` file is passed as an image build
-argument; changing it requires rebuilding the frontend image.
-
-All browser API requests go through API Gateway. The shared native Fetch client
-sets `credentials: "include"` so backend-issued HttpOnly access and refresh
-cookies are sent with requests. Tokens are not stored in local storage or
-session storage and are not logged by the frontend.
-
-## Running Locally
-
-From `frontend/vue-frontend`:
-
-```bash
-npm install
-npm run dev
-```
-
-Open the local URL printed by Vite.
-
-## Running With Docker Compose
-
-From the repository root, start the complete MVP:
-
-```bash
-cp .env.example .env
-docker compose --env-file .env -f compose.yml up -d --build
-./scripts/check-local-stack.sh
-```
-
-URLs:
-
-- Frontend: `http://localhost:5173`
-- API Gateway: `http://localhost:8080`
-
-The frontend image is built with Node and served by nginx. Nginx falls back to
-`index.html` for Vue Router paths, so browser refreshes work on task,
-notification, and unknown frontend routes.
-
-To build only the frontend image:
-
-```bash
-docker compose --env-file .env -f compose.yml build frontend
-```
-
-## Production Build
-
-```bash
-npm run build
-```
-
-The generated bundle is written to `dist/`. Non-nginx production hosting must serve
-`index.html` for unknown paths so Vue Router history-mode URLs work after a
-browser refresh.
 
 ## Available Pages
 
@@ -200,24 +128,6 @@ Views and components do not call `fetch` directly.
   the Gateway.
 - Automated frontend component and browser tests are not configured yet.
 
-## MVP Verification Checklist
-
-- [ ] Start the backend stack and verify API Gateway at `http://localhost:8080`.
-- [ ] Start Vite with `npm run dev`.
-- [ ] Login with an existing enabled user and verify profile loading.
-- [ ] Refresh a protected route and verify cookie-based session restoration.
-- [ ] List and filter tasks.
-- [ ] Create a task and open its details page.
-- [ ] Edit the task.
-- [ ] Change its status.
-- [ ] Assign, reassign, or unassign it using a valid user UUID.
-- [ ] Create a task with a valid assignee UUID, wait for backend Kafka/outbox
-      processing, and verify a `TASK_CREATED` notification appears.
-- [ ] Soft delete it and verify return to the task list.
-- [ ] Open the notifications list and notification details.
-- [ ] Logout and verify protected routes redirect to login.
-- [ ] Open an unknown URL and verify the Page Not Found view.
-- [ ] Run `npm run build` successfully.
 
 For backend endpoint verification, seeded users, and the broader service E2E
 workflow

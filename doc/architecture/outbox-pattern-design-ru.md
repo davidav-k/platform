@@ -16,13 +16,10 @@ task-service transaction
   -> notifications
 ```
 
-`task-service` больше не вызывает `notification-service` напрямую для
-уведомлений о создании или назначении задачи. Уведомления по `TASK_CREATED`
-создаются только через Kafka consumer в `notification-service`.
 
 ## Task events
 
-`task-service` сейчас пишет такие outbox events:
+`task-service` пишет такие outbox events:
 
 | Use case | Event type | Producer |
 | --- | --- | --- |
@@ -73,28 +70,3 @@ NOTIFICATION_KAFKA_TOPIC=platform.task-events
 `NotificationEventConsumer` сохраняет обработанные события в
 `event_consumption_log`. Уникальный `event_id` используется как idempotency key
 для повторных Kafka deliveries.
-
-## Проверка
-
-Основные SQL-запросы:
-
-```sql
-select event_id, event_type, aggregate_id, status, error_message
-from outbox_events
-order by created_at desc
-limit 10;
-
-select event_id, event_type, consumed_at, source
-from event_consumption_log
-order by consumed_at desc
-limit 10;
-
-select notification_id, recipient_user_id, type, channel, status,
-       source_service, source_entity_type, source_entity_id
-from notifications
-order by created_at desc
-limit 10;
-```
-
-Подробная процедура описана в
-[Kafka notification E2E verification](../kafka-notification-e2e-verification.md).

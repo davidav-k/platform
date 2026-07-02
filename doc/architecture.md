@@ -53,8 +53,6 @@ frontend -> api-gateway -> task-service -> tasks + outbox_events
   -> frontend GET /api/notifications
 ```
 
-`task-service` does not call `notification-service` directly for task-created
-notifications.
 
 The Vue 3 frontend runs through nginx in Docker Compose or through Vite during
 frontend development. It uses only external API Gateway routes and never
@@ -80,7 +78,6 @@ The following items are roadmap direction, not implemented functionality:
 
 - audit service
 - OpenAI-backed task automation
-- Kubernetes and Helm deployment configuration
 - Prometheus and Grafana monitoring stack
 
 ## Data Ownership

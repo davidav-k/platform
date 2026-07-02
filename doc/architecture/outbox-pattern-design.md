@@ -16,11 +16,6 @@ task-service transaction
   -> notifications
 ```
 
-Task-service publishes task notification intent through `outbox_events` and
-Kafka. Notification-service may still expose internal notification endpoints for
-other system use cases, but task creation notifications are produced through
-Kafka only.
-
 ## Ownership
 
 - `task-service` owns task persistence and task domain events.
@@ -107,29 +102,3 @@ and records the error message on the event. Publish diagnostics should include:
 Notification-service records consumed event status in
 `event_consumption_log`. Consumer diagnostics should identify the task event
 without logging JWTs, cookies, authorization headers, passwords, or secrets.
-
-## Verification
-
-Use the Kafka verification guide:
-
-- [Kafka notification E2E verification](../kafka-notification-e2e-verification.md)
-
-The key database checks are:
-
-```sql
-select event_id, event_type, aggregate_id, status, error_message
-from outbox_events
-order by created_at desc
-limit 10;
-
-select event_id, event_type, consumed_at, source
-from event_consumption_log
-order by consumed_at desc
-limit 10;
-
-select notification_id, recipient_user_id, type, channel, status,
-       source_service, source_entity_type, source_entity_id
-from notifications
-order by created_at desc
-limit 10;
-```

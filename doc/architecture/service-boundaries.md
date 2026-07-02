@@ -30,8 +30,6 @@ event-driven replacement for all service interactions.
 - profiles
 - account lifecycle, including registration, verification, locking, and deletion
 
-It sends account email messages for registration/verification flows. General
-platform notification ownership belongs to `notification-service`.
 
 ### task-service
 
@@ -110,7 +108,6 @@ own aggregates.
 
 - `task-service` must not access the `user-service` database.
 - `notification-service` must not access the `task-service` database.
-- `user-service` must not become the owner of tasks or notification preferences.
 - Services must not use shared entity classes or shared persistence models.
 - Services must not trust gateway headers as the sole authentication proof.
 - Task-service must publish task-created notification intent through

@@ -10,6 +10,7 @@ import com.example.notification_service.usecase.CreateNotificationUseCase;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Validator;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,15 +20,12 @@ import java.util.Set;
  * Creates pending notification records without performing delivery.
  */
 @Service
+@RequiredArgsConstructor
 public class CreateNotificationUseCaseImpl implements CreateNotificationUseCase {
 
     private final NotificationRepository notificationRepository;
     private final Validator validator;
 
-    public CreateNotificationUseCaseImpl(NotificationRepository notificationRepository, Validator validator) {
-        this.notificationRepository = notificationRepository;
-        this.validator = validator;
-    }
 
     @Override
     @Transactional

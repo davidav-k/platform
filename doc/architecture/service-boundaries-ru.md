@@ -44,8 +44,6 @@ notification preferences API и mark-as-read API сейчас не реализ�
 
 - `task-service` не обращается к базе `user-service`.
 - `notification-service` не обращается к базе `task-service`.
-- `task-service` не использует старый прямой REST-путь в
-  `notification-service` для `TASK_CREATED`.
 - Сервисы не используют общие entity или общие persistence-модели.
 - Gateway headers не являются единственным доказательством аутентификации.
 

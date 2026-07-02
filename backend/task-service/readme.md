@@ -11,12 +11,6 @@ Manages tasks within the Task Management Platform (TMP).
 Exposed via API Gateway at `/api/tasks` and `/api/tasks/**`, which route to
 the internal `/api/v1/tasks` endpoints through Eureka service discovery.
 
-`task-service` will own tasks, assignments, statuses, comments, and task history.
-It must not access the `user-service` database directly.
-
-The HTTP API contract is defined in [Task service API contract](../../doc/api/task-service-contract.md).
-Service boundary and gateway alignment notes are in [Service boundaries](../../doc/architecture/service-boundaries.md).
-
 ## Stack
 
 - Java 17
