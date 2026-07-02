@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "3e42b8cb-848a-4dc8-a73d-a588078ffcf1",
     "name": "Platform MVP End-to-End - API Gateway",
-    "description": "Gateway-only MVP verification for authentication, user activation, task ownership/RBAC, soft delete, Kafka-backed task-created in-app notifications, refresh, and the currently pending logout contract. Aligned with platform_240626_exclude.txt.",
+    "description": "Gateway-only MVP verification for authentication, user activation, task ownership/RBAC, soft delete, Kafka-backed task-created in-app notifications, refresh, and the currently pending logout contract. Aligned with platform_240626_exclude.txt. Audit read API requests target Audit Service directly on port 8088.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "event": [
@@ -122,6 +122,36 @@
     {
       "key": "notificationWaitMillis",
       "value": "7000",
+      "type": "string"
+    },
+    {
+      "key": "auditBaseUrl",
+      "value": "http://localhost:8088",
+      "type": "string"
+    },
+    {
+      "key": "auditId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "auditEventType",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "auditAggregateId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "auditActorUserId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "auditAction",
+      "value": "",
       "type": "string"
     }
   ],
@@ -1292,6 +1322,506 @@
             }
           ],
           "disabled": true
+        }
+      ]
+    },
+    {
+      "name": "05 - Audit Read API",
+      "item": [
+        {
+          "name": "List Audit Records",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{auditBaseUrl}}/api/v1/audit?page=0&size=100&sort=occurredAt,desc",
+              "host": [
+                "{{auditBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "audit"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "100"
+                },
+                {
+                  "key": "sort",
+                  "value": "occurredAt,desc"
+                }
+              ]
+            },
+            "description": "Lists audit records and captures values used by the following filter and get-by-ID requests."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Request succeeds', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response is JSON', function () {",
+                  "  pm.expect(pm.response.headers.get('Content-Type') || '').to.include('application/json');",
+                  "});",
+                  "const body = pm.response.json();",
+                  "const items = body.data?.items || [];",
+                  "pm.test('Pagination metadata is present', function () {",
+                  "  pm.expect(body.data?.page).to.be.an('object');",
+                  "});",
+                  "if (items.length > 0) {",
+                  "  const item = items.find(value => value.actorUserId) || items[0];",
+                  "  const values = {",
+                  "    auditId: item.auditId,",
+                  "    auditEventType: item.eventType,",
+                  "    auditAggregateId: item.aggregateId,",
+                  "    auditActorUserId: item.actorUserId,",
+                  "    auditAction: item.action",
+                  "  };",
+                  "  Object.entries(values).forEach(([key, value]) => {",
+                  "    if (value !== undefined && value !== null && value !== '') {",
+                  "      pm.environment.set(key, String(value));",
+                  "      pm.collectionVariables.set(key, String(value));",
+                  "    }",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Filter Audit by Event Type",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{auditBaseUrl}}/api/v1/audit?eventType={{auditEventType}}",
+              "host": [
+                "{{auditBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "audit"
+              ],
+              "query": [
+                {
+                  "key": "eventType",
+                  "value": "{{auditEventType}}"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Request succeeds', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response is JSON', function () {",
+                  "  pm.expect(pm.response.headers.get('Content-Type') || '').to.include('application/json');",
+                  "});",
+                  "const items = pm.response.json().data?.items || [];",
+                  "pm.test('Every record matches eventType', function () {",
+                  "  items.forEach(item => pm.expect(item.eventType).to.eql(pm.variables.get('auditEventType')));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Filter Audit by Aggregate Type",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{auditBaseUrl}}/api/v1/audit?aggregateType=TASK",
+              "host": [
+                "{{auditBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "audit"
+              ],
+              "query": [
+                {
+                  "key": "aggregateType",
+                  "value": "TASK"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Request succeeds', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response is JSON', function () {",
+                  "  pm.expect(pm.response.headers.get('Content-Type') || '').to.include('application/json');",
+                  "});",
+                  "const items = pm.response.json().data?.items || [];",
+                  "pm.test('Every record matches aggregateType', function () {",
+                  "  items.forEach(item => pm.expect(item.aggregateType).to.eql('TASK'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Filter Audit by Aggregate ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{auditBaseUrl}}/api/v1/audit?aggregateId={{auditAggregateId}}",
+              "host": [
+                "{{auditBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "audit"
+              ],
+              "query": [
+                {
+                  "key": "aggregateId",
+                  "value": "{{auditAggregateId}}"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Request succeeds', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response is JSON', function () {",
+                  "  pm.expect(pm.response.headers.get('Content-Type') || '').to.include('application/json');",
+                  "});",
+                  "const items = pm.response.json().data?.items || [];",
+                  "pm.test('Every record matches aggregateId', function () {",
+                  "  items.forEach(item => pm.expect(item.aggregateId).to.eql(pm.variables.get('auditAggregateId')));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Filter Audit by Source Service",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{auditBaseUrl}}/api/v1/audit?sourceService=task-service",
+              "host": [
+                "{{auditBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "audit"
+              ],
+              "query": [
+                {
+                  "key": "sourceService",
+                  "value": "task-service"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Request succeeds', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response is JSON', function () {",
+                  "  pm.expect(pm.response.headers.get('Content-Type') || '').to.include('application/json');",
+                  "});",
+                  "const items = pm.response.json().data?.items || [];",
+                  "pm.test('Every record matches sourceService', function () {",
+                  "  items.forEach(item => pm.expect(item.sourceService).to.eql('task-service'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Filter Audit by Actor User ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{auditBaseUrl}}/api/v1/audit?actorUserId={{auditActorUserId}}",
+              "host": [
+                "{{auditBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "audit"
+              ],
+              "query": [
+                {
+                  "key": "actorUserId",
+                  "value": "{{auditActorUserId}}"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Request succeeds', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response is JSON', function () {",
+                  "  pm.expect(pm.response.headers.get('Content-Type') || '').to.include('application/json');",
+                  "});",
+                  "const items = pm.response.json().data?.items || [];",
+                  "pm.test('Every record matches actorUserId', function () {",
+                  "  items.forEach(item => pm.expect(item.actorUserId).to.eql(pm.variables.get('auditActorUserId')));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Filter Audit by Action",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{auditBaseUrl}}/api/v1/audit?action={{auditAction}}",
+              "host": [
+                "{{auditBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "audit"
+              ],
+              "query": [
+                {
+                  "key": "action",
+                  "value": "{{auditAction}}"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Request succeeds', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response is JSON', function () {",
+                  "  pm.expect(pm.response.headers.get('Content-Type') || '').to.include('application/json');",
+                  "});",
+                  "const items = pm.response.json().data?.items || [];",
+                  "pm.test('Every record matches action', function () {",
+                  "  items.forEach(item => pm.expect(item.action).to.eql(pm.variables.get('auditAction')));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Filter Audit by Occurred At Range",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{auditBaseUrl}}/api/v1/audit?from=2026-01-01T00:00:00Z&to=2026-12-31T23:59:59Z",
+              "host": [
+                "{{auditBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "audit"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "2026-01-01T00:00:00Z"
+                },
+                {
+                  "key": "to",
+                  "value": "2026-12-31T23:59:59Z"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Request succeeds', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response is JSON', function () {",
+                  "  pm.expect(pm.response.headers.get('Content-Type') || '').to.include('application/json');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Audit Record by Audit ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{auditBaseUrl}}/api/v1/audit/{{auditId}}",
+              "host": [
+                "{{auditBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "audit",
+                "{{auditId}}"
+              ],
+              "query": []
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Request succeeds', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response is JSON', function () {",
+                  "  pm.expect(pm.response.headers.get('Content-Type') || '').to.include('application/json');",
+                  "});",
+                  "pm.test('Returned audit ID matches', function () {",
+                  "  pm.expect(pm.response.json().data?.audit?.auditId).to.eql(pm.variables.get('auditId'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Unknown Audit ID Returns Not Found",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{auditBaseUrl}}/api/v1/audit/00000000-0000-0000-0000-000000000000",
+              "host": [
+                "{{auditBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "audit",
+                "00000000-0000-0000-0000-000000000000"
+              ],
+              "query": []
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Unknown audit ID returns 404', function () { pm.response.to.have.status(404); });",
+                  "pm.test('Response uses the platform error envelope', function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.code).to.eql(404);",
+                  "  pm.expect(body.message).to.eql('Audit record not found.');",
+                  "});"
+                ]
+              }
+            }
+          ]
         }
       ]
     }
