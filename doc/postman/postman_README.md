@@ -40,6 +40,11 @@ The wait is required because task-service writes an outbox event and
 notification-service creates the notification asynchronously after Kafka
 delivery.
 
+The existing registration and login requests also exercise user-service audit
+event production. Verify those events through the user database
+`outbox_events` table and Kafka topic `platform.user-events`; Audit Service does
+not consume user events in this phase.
+
 ## How to run
 1. Import collection
 2. Import environment

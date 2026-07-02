@@ -12,11 +12,14 @@ event-driven:
 ```text
 task-service -> outbox_events -> Kafka platform.task-events
   -> notification-service -> notifications
+
+user-service -> outbox_events -> Kafka platform.user-events
+  -> future audit-service consumer
 ```
 
-Frontend traffic remains synchronous HTTP through API Gateway. The Kafka/outbox
-path is currently used for task notification delivery only; it is not a general
-event-driven replacement for all service interactions.
+Frontend traffic remains synchronous HTTP through API Gateway. Kafka/outbox is
+used for task delivery and for durable user audit-event production; it is not a
+general event-driven replacement for all service interactions.
 
 ## Service Responsibilities
 
@@ -29,6 +32,7 @@ event-driven replacement for all service interactions.
 - authentication, JWT issuance, refresh, and MFA
 - profiles
 - account lifecycle, including registration, verification, locking, and deletion
+- user lifecycle and authentication outbox events
 
 
 ### task-service
@@ -65,6 +69,7 @@ needed for notification processing.
 | `User` | `user-service` | Includes account lifecycle and profile |
 | `Role` | `user-service` | Authorities are defined with the role owner |
 | `Authentication` | `user-service` | Includes JWT issuance, refresh, and MFA |
+| `UserOutboxEvent` | `user-service` | Durable user lifecycle and authentication event rows in `outbox_events` |
 | `Task` | `task-service` | Root for title, description, status, priority, assignee, and deletion state |
 | `TaskAssignment` | `task-service` | References assignee by public `userId` |
 | `TaskOutboxEvent` | `task-service` | Durable task-domain event rows in `outbox_events` |
@@ -99,6 +104,7 @@ records; see
 | API Gateway | externally routed services | Route requests and reject invalid JWTs early |
 | Frontend | API Gateway | Use public `/api/**` routes only |
 | `task-service` | Kafka | Publish task domain events from `outbox_events` |
+| `user-service` | Kafka | Publish user lifecycle and authentication events from `outbox_events` |
 | Kafka | `notification-service` | Deliver task events to the notification consumer |
 
 Downstream services independently validate JWTs and authorize access to their
@@ -136,7 +142,11 @@ administrative access explicitly.
 
 ### Implemented Kafka
 
-- `task-service` writes `TASK_CREATED` outbox events when tasks are created.
+- `user-service` publishes audit-relevant registration, login, profile,
+  deletion, password-change, and MFA-enable events to `platform.user-events`.
+  Audit Service consumption of user events is intentionally deferred.
+- `task-service` writes task create, assignment, status, update, and deletion
+  events to its outbox.
 - `OutboxEventPollingScheduler` publishes `NEW` and `FAILED` outbox events
   through `KafkaOutboxEventPublisher`.
 - `notification-service` consumes `platform.task-events` when

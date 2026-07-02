@@ -145,10 +145,19 @@ fixed in configuration and Compose:
 | `KAFKA_LOCAL_PORT` | No | `9092` | `9092` | Docker Compose | Local host port exposed by the Kafka broker. |
 | `KAFKA_BOOTSTRAP_SERVERS` | No | `kafka:9092` | `kafka:9092` | task-service, notification-service, audit-service | Kafka bootstrap server list for service-to-service broker access. |
 | `KAFKA_TASK_EVENTS_TOPIC` | No | `platform.task-events` | `platform.task-events` | task-service, notification-service, audit-service | Topic for task domain events. |
+| `KAFKA_USER_EVENTS_TOPIC` | No | `platform.user-events` | `platform.user-events` | user-service | Topic for user audit events. |
 | `OUTBOX_PUBLISHER_ENABLED` | No | `true` | `false` | task-service | Enables task-service outbox polling. Default Kafka notification delivery keeps this true. |
 | `OUTBOX_PUBLISHER_ADAPTER` | No | `kafka` | `logging` | task-service | Selects the outbox publisher adapter. Use `logging` only for rollback or local no-op delivery. |
 | `OUTBOX_PUBLISHER_KAFKA_BOOTSTRAP_SERVERS` | No | `kafka:9092` | `kafka:9092` | task-service | Explicit Kafka bootstrap server list for the task-service outbox publisher. Falls back to `KAFKA_BOOTSTRAP_SERVERS`. |
 | `OUTBOX_PUBLISHER_KAFKA_TOPIC` | No | `platform.task-events` | `platform.task-events` | task-service | Explicit Kafka topic for the task-service outbox publisher. Falls back to `KAFKA_TASK_EVENTS_TOPIC`. |
+| `USER_OUTBOX_PUBLISHER_ENABLED` | No | `true` | `false` | user-service | Enables user-service outbox polling. |
+| `USER_OUTBOX_PUBLISHER_ADAPTER` | No | `kafka` | `logging` | user-service | Selects the user-service outbox publisher adapter. |
+| `USER_OUTBOX_PUBLISHER_BATCH_SIZE` | No | `20` | `20` | user-service | Maximum user outbox events claimed per poll. |
+| `USER_OUTBOX_PUBLISHER_MAX_RETRIES` | No | `3` | `3` | user-service | Maximum publish attempts before an event stops being claimable. |
+| `USER_OUTBOX_PUBLISHER_FIXED_DELAY_MILLIS` | No | `5000` | `5000` | user-service | Delay between user outbox polling cycles. |
+| `USER_OUTBOX_PUBLISHER_KAFKA_ENABLED` | No | `true` | `false` | user-service | Enables the Kafka user outbox adapter. |
+| `USER_OUTBOX_PUBLISHER_KAFKA_BOOTSTRAP_SERVERS` | No | `kafka:9092` | `kafka:9092` | user-service | Kafka bootstrap servers for user event publication. |
+| `USER_OUTBOX_PUBLISHER_KAFKA_TOPIC` | No | `platform.user-events` | `platform.user-events` | user-service | User event topic. Falls back to `KAFKA_USER_EVENTS_TOPIC`. |
 | `NOTIFICATION_KAFKA_ENABLED` | No | `true` | `false` | notification-service | Enables notification-service Kafka consumer processing. Default notification delivery keeps this true. |
 | `NOTIFICATION_KAFKA_TOPIC` | No | `platform.task-events` | `platform.task-events` | notification-service | Explicit Kafka topic consumed by notification-service. Falls back to `KAFKA_TASK_EVENTS_TOPIC`. |
 | `AUDIT_KAFKA_ENABLED` | No | `true` | `false` | audit-service | Enables Audit Service task-event consumption. |
@@ -173,6 +182,9 @@ Kafka task event mode is the supported runtime path:
   task events.
 - Audit-service consumes the same topic with consumer group `audit-service`
   and stores one `audit_records` row per source event.
+- User-service writes lifecycle and authentication events to its own
+  `outbox_events` table and publishes them to `platform.user-events`. No
+  consumer is enabled for that topic in this phase.
 
 ### Mail
 
@@ -205,11 +217,11 @@ required `.env` contract:
 | --- | --- |
 | `.env.example` | All required local values and optional service overrides |
 | `compose.yml` | `POSTGRES_USER`, `POSTGRES_DB`, `SPRING_CLOUD_CONFIG_SERVER_NATIVE_SEARCH_LOCATIONS`, `APPLICATION_PORT` for task-service; commented fallback toggles |
-| `config/user-service-dev.yml` | PostgreSQL, mail, JWT, admin, and `APPLICATION_PORT` variables |
+| `config/user-service-dev.yml` | PostgreSQL, mail, JWT, admin, `APPLICATION_PORT`, and user outbox publisher variables |
 | `config/task-service-dev.yml` | PostgreSQL (`TASK_POSTGRES_DB`), JWT, Eureka, `APPLICATION_PORT`, and outbox publisher variables |
 | `config/notification-service-dev.yml` | PostgreSQL (`NOTIFICATION_POSTGRES_DB`), Eureka, `APPLICATION_PORT`, and notification Kafka variables |
 | `config/audit-service-dev.yml` | PostgreSQL (`AUDIT_POSTGRES_DB`), Flyway, Eureka, Kafka consumer, `APPLICATION_PORT`, and Actuator exposure |
-| `backend/user-service/src/main/resources/application.yml` | `spring.application.name` only |
+| `backend/user-service/src/main/resources/application.yml` | `spring.application.name` and disabled-by-default user outbox publisher settings |
 | `backend/user-service/src/main/resources/bootstrap.yml` | `ACTIVE_PROFILE` and optional `CONFIG_SERVER_URI` override |
 | `backend/user-service/src/main/resources/application-dev.yml` | Retained development-profile marker only |
 | `backend/task-service/src/main/resources/application.yml` | `spring.application.name` only |

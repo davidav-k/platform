@@ -4,9 +4,16 @@ import com.example.user_service.UserServiceApplication;
 import com.example.user_service.config.TestEmailConfig;
 import com.example.user_service.config.TestSecurityConfig;
 import com.example.user_service.dto.User;
+import com.example.user_service.entity.OutboxEventEntity;
+import com.example.user_service.entity.UserEntity;
+import com.example.user_service.enumeration.LoginType;
+import com.example.user_service.repository.OutboxEventRepository;
 import com.example.user_service.repository.UserRepository;
 import com.example.user_service.security.SecurityConfig;
 import com.example.user_service.service.UserService;
+import com.example.user_service.service.EmailService;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.mock.web.MockHttpServletRequest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -24,6 +31,9 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
+
+import java.util.List;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -66,6 +76,9 @@ class UserServiceIntegrationTest {
     @MockBean
     private PasswordEncoder passwordEncoder;
 
+    @MockBean
+    private EmailService emailService;
+
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
@@ -75,9 +88,49 @@ class UserServiceIntegrationTest {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private OutboxEventRepository outboxEventRepository;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
     @Test
     void contextLoads() {
         assertThat(userService).isNotNull();
+    }
+
+    @Test
+    @Transactional
+    void registrationAndLoginOutcomesPersistUserOutboxEventsWithoutSecrets() throws Exception {
+        String email = "outbox-" + UUID.randomUUID() + "@example.com";
+        userService.createUser("Outbox", "User", email, "Password123");
+        UserEntity user = userRepository.findByEmailIgnoreCase(email).orElseThrow();
+
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setRemoteAddr("127.0.0.1");
+        request.addHeader("User-Agent", "integration-test");
+        userService.updateLoginAttempt(email, LoginType.LOGIN_SUCCESS, request);
+        userService.recordLoginFailed(email, "BAD_CREDENTIALS");
+
+        UUID aggregateId = UUID.fromString(user.getUserId());
+        List<OutboxEventEntity> events = outboxEventRepository.findAll().stream()
+                .filter(event -> aggregateId.equals(event.getAggregateId()))
+                .toList();
+
+        assertThat(events).extracting(OutboxEventEntity::getEventType)
+                .containsExactlyInAnyOrder(
+                        "USER_REGISTERED",
+                        "USER_LOGIN_SUCCESS",
+                        "USER_LOGIN_FAILED"
+                );
+        for (OutboxEventEntity event : events) {
+            assertThat(objectMapper.readTree(event.getPayload()).get("email").asText()).isEqualTo(email);
+            assertThat(event.getPayload())
+                    .doesNotContainIgnoringCase("password")
+                    .doesNotContainIgnoringCase("token")
+                    .doesNotContainIgnoringCase("secret")
+                    .doesNotContainIgnoringCase("confirmation");
+        }
     }
 
     @Test

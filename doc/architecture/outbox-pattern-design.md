@@ -14,15 +14,25 @@ task-service transaction
      -> notification-service NotificationEventConsumer -> notifications
      -> audit-service TaskEventConsumer
         -> TaskAuditEventNormalizer -> CreateAuditRecordUseCase -> audit_records
+
+user-service transaction
+  -> users / credentials / login state
+  -> outbox_events
+  -> OutboxEventPollingScheduler
+  -> KafkaOutboxEventPublisher
+  -> Kafka topic platform.user-events
+     -> future audit-service consumer
 ```
 
 ## Ownership
 
 - `task-service` owns task persistence and task domain events.
+- `user-service` owns user persistence and user lifecycle/authentication events.
 - `notification-service` owns notification persistence and delivery state.
 - `audit-service` owns audit record persistence and consumes Task Service
   events independently from notification-service.
 - Kafka is the transport for task domain events between the services.
+- Kafka transports user events on a dedicated topic; consumption is deferred.
 - Each service owns its database; no cross-service repositories or foreign keys
   are used.
 
@@ -35,6 +45,8 @@ Task-service currently writes these outbox events:
 | Create task | `TASK_CREATED` | `CreateTaskUseCaseImpl` |
 | Assign, reassign, or unassign task | `TASK_ASSIGNED` | `AssignTaskUseCaseImpl` |
 | Change task status | `TASK_STATUS_CHANGED` | `ChangeTaskStatusUseCaseImpl` |
+| Update task fields | `TASK_UPDATED` | `UpdateTaskUseCaseImpl` |
+| Soft-delete task | `TASK_DELETED` | `DeleteTaskUseCaseImpl` |
 
 Each use case saves the task mutation and its outbox event in the same
 transaction.
@@ -63,7 +75,7 @@ events, assignment events without `newAssigneeUserId`, and status events
 without `assigneeUserId` are consumed and logged but do not create notification
 rows.
 
-Audit-service stores all three supported Task Service event types. It preserves
+Audit-service stores all five supported Task Service event types. It preserves
 the source envelope metadata and JSON payload. `TASK_CREATED` uses
 `createdByUserId` as the actor; assignment and status events leave the actor
 null because their current payloads do not identify the acting user.
@@ -75,10 +87,37 @@ Audit normalization uses these stable internal actions:
 | `TASK_CREATED` | `CREATE_TASK` |
 | `TASK_ASSIGNED` | `ASSIGN_TASK` |
 | `TASK_STATUS_CHANGED` | `CHANGE_TASK_STATUS` |
+| `TASK_UPDATED` | `UPDATE_TASK` |
+| `TASK_DELETED` | `DELETE_TASK` |
 
 Unsupported task event types are logged and acknowledged without creating an
-audit record. `TASK_UPDATED` and `TASK_DELETED` are not normalized because
-task-service does not currently publish those events.
+audit record.
+
+## User Events
+
+User-service writes these events to its local outbox for business flows that
+already exist:
+
+| Flow | Event type |
+| --- | --- |
+| Registration | `USER_REGISTERED` |
+| Successful authentication | `USER_LOGIN_SUCCESS` |
+| Failed authentication | `USER_LOGIN_FAILED` |
+| Profile update | `USER_PROFILE_UPDATED` |
+| Account deletion | `USER_DELETED` |
+| Password change | `PASSWORD_CHANGED` |
+| MFA enable | `MFA_ENABLED` |
+
+User mutation events share their existing transaction. Failed authentication
+uses a dedicated transaction to durably record the attempt without changing
+the login response. Payloads are whitelist-based and exclude passwords,
+tokens, MFA secrets, QR-code secrets, confirmation keys, and reset tokens.
+The existing in-process registration email event remains unchanged.
+
+User-service publishing is controlled independently by
+`USER_OUTBOX_PUBLISHER_*` variables and publishes to `platform.user-events`.
+Audit Service consumption and normalization of these user events are outside
+this phase.
 
 ## Publisher Configuration
 

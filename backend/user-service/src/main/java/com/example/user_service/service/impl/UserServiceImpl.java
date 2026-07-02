@@ -10,6 +10,9 @@ import com.example.user_service.enumeration.EventType;
 import com.example.user_service.enumeration.LoginType;
 import com.example.user_service.event.UserEvent;
 import com.example.user_service.exception.ApiException;
+import com.example.user_service.outbox.OutboxEventService;
+import com.example.user_service.outbox.UserOutboxEventTypes;
+import com.example.user_service.outbox.UserOutboxPayloadFactory;
 import com.example.user_service.repository.*;
 import com.example.user_service.service.MfaService;
 import com.example.user_service.service.UserService;
@@ -26,7 +29,13 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.UUID;
 
 
 @Service
@@ -34,6 +43,8 @@ import java.util.Map;
 @RequiredArgsConstructor
 @Slf4j
 public class UserServiceImpl implements UserService {
+
+    private static final String USER_AGGREGATE_TYPE = "USER";
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
@@ -44,6 +55,8 @@ public class UserServiceImpl implements UserService {
     private final CacheStore<String, Integer> userCache;
     private final PasswordEncoder passwordEncoder;
     private final MfaService mfaService;
+    private final OutboxEventService outboxEventService;
+    private final UserOutboxPayloadFactory userOutboxPayloadFactory;
 
     @Override
     public void createUser(String firstName, String lastName, String email, String password) {
@@ -58,6 +71,11 @@ public class UserServiceImpl implements UserService {
         credentialRepository.save(credentialEntity);
         ConfirmationEntity confirmationEntity = new ConfirmationEntity(userEntity);
         confirmationRepository.save(confirmationEntity);
+        saveUserOutboxEvent(
+                userEntity,
+                UserOutboxEventTypes.USER_REGISTERED,
+                userOutboxPayloadFactory.userRegisteredPayload(userEntity)
+        );
         publisher.publishEvent(new UserEvent(userEntity, EventType.REGISTRATION, Map.of("key", confirmationEntity.getKey())));
     }
 
@@ -122,6 +140,11 @@ public class UserServiceImpl implements UserService {
         user.setQrCodeImageUrl(qrCodeUrl);
 
         userRepository.save(user);
+        saveUserOutboxEvent(
+                user,
+                UserOutboxEventTypes.MFA_ENABLED,
+                userOutboxPayloadFactory.mfaEnabledPayload(user)
+        );
     }
 
     @Override
@@ -167,6 +190,37 @@ public class UserServiceImpl implements UserService {
             }
         }
         userRepository.save(userEntity);
+        if (loginType == LoginType.LOGIN_SUCCESS) {
+            saveUserOutboxEvent(
+                    userEntity,
+                    UserOutboxEventTypes.USER_LOGIN_SUCCESS,
+                    userOutboxPayloadFactory.userLoginSuccessPayload(userEntity)
+            );
+        }
+    }
+
+    @Override
+    public void recordLoginFailed(String email, String failureReason) {
+        if (email == null || email.isBlank()) {
+            return;
+        }
+        Optional<UserEntity> user = userRepository.findByEmailIgnoreCase(email);
+        String normalizedEmail = email.trim().toLowerCase();
+        UUID aggregateId = user
+                .map(this::aggregateId)
+                .orElseGet(() -> nameBasedAggregateId("email:" + normalizedEmail));
+        String payload = userOutboxPayloadFactory.userLoginFailedPayload(
+                user.map(UserEntity::getUserId).orElse(null),
+                normalizedEmail,
+                user.map(UserEntity::getRole).map(RoleEntity::getName).orElse(null),
+                failureReason
+        );
+        outboxEventService.saveNewEvent(
+                USER_AGGREGATE_TYPE,
+                aggregateId,
+                UserOutboxEventTypes.USER_LOGIN_FAILED,
+                payload
+        );
     }
 
     @Override
@@ -187,11 +241,17 @@ public class UserServiceImpl implements UserService {
                 throw new ApiException("User with this email already exists");
             }
         }
+        List<String> changedFields = changedProfileFields(userEntity, userRequest);
         userEntity.setFirstName(userRequest.getFirstName());
         userEntity.setLastName(userRequest.getLastName());
         userEntity.setPhone(userRequest.getPhone());
         userEntity.setBio(userRequest.getBio());
         userRepository.save(userEntity);
+        saveUserOutboxEvent(
+                userEntity,
+                UserOutboxEventTypes.USER_PROFILE_UPDATED,
+                userOutboxPayloadFactory.userProfileUpdatedPayload(userEntity, changedFields)
+        );
     }
 
     @Override
@@ -217,6 +277,12 @@ public class UserServiceImpl implements UserService {
             throw new ApiException("New password does not conform to password policy");
         }
         credentialEntity.setPassword(passwordEncoder.encode(newPassword));
+        UserEntity userEntity = credentialEntity.getUserEntity();
+        saveUserOutboxEvent(
+                userEntity,
+                UserOutboxEventTypes.PASSWORD_CHANGED,
+                userOutboxPayloadFactory.passwordChangedPayload(userEntity)
+        );
     }
 
     @Override
@@ -242,7 +308,49 @@ public class UserServiceImpl implements UserService {
         userRepository.deleteRoleAssignmentsByUserId(userId);
         userCache.evict(userEntity.getEmail());
         userRepository.delete(userEntity);
+        saveUserOutboxEvent(
+                userEntity,
+                UserOutboxEventTypes.USER_DELETED,
+                userOutboxPayloadFactory.userDeletedPayload(userEntity, authenticatedUser.getUserId())
+        );
     }
 
+    private void saveUserOutboxEvent(UserEntity user, String eventType, String payload) {
+        outboxEventService.saveNewEvent(
+                USER_AGGREGATE_TYPE,
+                aggregateId(user),
+                eventType,
+                payload
+        );
+    }
+
+    private UUID aggregateId(UserEntity user) {
+        String publicUserId = user.getUserId();
+        try {
+            return UUID.fromString(publicUserId);
+        } catch (IllegalArgumentException exception) {
+            return nameBasedAggregateId("user:" + publicUserId);
+        }
+    }
+
+    private UUID nameBasedAggregateId(String value) {
+        return UUID.nameUUIDFromBytes(value.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private List<String> changedProfileFields(UserEntity user, UserRequest request) {
+        List<String> changedFields = new ArrayList<>();
+        addChangedField(changedFields, "firstName", user.getFirstName(), request.getFirstName());
+        addChangedField(changedFields, "lastName", user.getLastName(), request.getLastName());
+        addChangedField(changedFields, "phone", user.getPhone(), request.getPhone());
+        addChangedField(changedFields, "bio", user.getBio(), request.getBio());
+        return List.copyOf(changedFields);
+    }
+
+    private void addChangedField(List<String> changedFields, String field,
+                                 Object previousValue, Object newValue) {
+        if (!Objects.equals(previousValue, newValue)) {
+            changedFields.add(field);
+        }
+    }
 
 }

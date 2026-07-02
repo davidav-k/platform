@@ -83,3 +83,15 @@ management:
     web:
       exposure:
         include: health,info
+
+outbox:
+  publisher:
+    enabled: ${USER_OUTBOX_PUBLISHER_ENABLED:true}
+    adapter: ${USER_OUTBOX_PUBLISHER_ADAPTER:kafka}
+    batch-size: ${USER_OUTBOX_PUBLISHER_BATCH_SIZE:20}
+    max-retries: ${USER_OUTBOX_PUBLISHER_MAX_RETRIES:3}
+    fixed-delay-millis: ${USER_OUTBOX_PUBLISHER_FIXED_DELAY_MILLIS:5000}
+    kafka:
+      enabled: ${USER_OUTBOX_PUBLISHER_KAFKA_ENABLED:true}
+      bootstrap-servers: ${USER_OUTBOX_PUBLISHER_KAFKA_BOOTSTRAP_SERVERS:${KAFKA_BOOTSTRAP_SERVERS:kafka:9092}}
+      topic: ${USER_OUTBOX_PUBLISHER_KAFKA_TOPIC:${KAFKA_USER_EVENTS_TOPIC:platform.user-events}}
