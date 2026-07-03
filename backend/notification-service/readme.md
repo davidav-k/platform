@@ -51,8 +51,8 @@ Notification Service writes audit-relevant creation events to its own
 | Internal/task-driven system notification creation | `NOTIFICATION_SYSTEM_CREATED` |
 
 The polling publisher sends new and retryable events to
-`platform.notification-events`. Audit Service does not consume this topic in
-the current phase.
+`platform.notification-events`. Audit Service consumes the two currently
+published creation events and persists normalized audit records.
 
 Payloads contain only notification identifiers and lifecycle metadata:
 `notificationId`, `recipientUserId`, `type`, `channel`, `status`,

@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "3e42b8cb-848a-4dc8-a73d-a588078ffcf1",
     "name": "Platform MVP End-to-End - API Gateway",
-    "description": "Gateway-only MVP verification for authentication, user activation, task ownership/RBAC, soft delete, Kafka-backed task-created in-app notifications, refresh, and the currently pending logout contract. Registration and login produce user audit events; notification creation produces notification-service outbox events on platform.notification-events for future Audit Service consumption. Aligned with platform_240626_exclude.txt. Audit read API requests target Audit Service directly on port 8088. Admin authorization is required for Audit API reads; the audit folder verifies 401 and 403 handling first.",
+    "description": "Gateway-only MVP verification for authentication, user activation, task ownership/RBAC, soft delete, Kafka-backed task-created in-app notifications, refresh, and the currently pending logout contract. Registration/login and notification creation produce dedicated audit events consumed by Audit Service from platform.user-events and platform.notification-events. Aligned with platform_240626_exclude.txt. Audit read API requests target Audit Service directly on port 8088. Admin authorization is required for Audit API reads; the audit folder verifies 401 and 403 handling first.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "event": [

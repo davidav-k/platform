@@ -2,14 +2,15 @@
 
 ## Purpose
 
-Audit Service consumes task and user lifecycle events from Kafka, normalizes
-them, and stores immutable audit records. It exposes a read-only API for
-browsing those records. There are no create, update, or delete REST endpoints.
+Audit Service consumes task, user, and notification lifecycle events from
+Kafka, normalizes them, and stores immutable audit records. It exposes a
+read-only API for browsing those records. There are no create, update, or
+delete REST endpoints.
 
 Task events are consumed from `platform.task-events`. User events are consumed
-independently from `platform.user-events`; both listeners use the
-`audit-service` consumer group and the event ID remains the persistence
-idempotency key.
+from `platform.user-events`, and notification events from
+`platform.notification-events`. All listeners use the `audit-service`
+consumer group and the event ID remains the persistence idempotency key.
 
 Supported User Service mappings:
 
@@ -24,6 +25,15 @@ Supported User Service mappings:
 Unknown user event types are skipped. User payloads are sanitized recursively
 before persistence to remove password, JWT, token, secret, and confirmation-key
 fields.
+
+Supported Notification Service mappings:
+
+- `NOTIFICATION_CREATED` -> `CREATE_NOTIFICATION`
+- `NOTIFICATION_SYSTEM_CREATED` -> `CREATE_SYSTEM_NOTIFICATION`
+
+Unknown notification event types are skipped. Notification payloads are
+sanitized recursively to remove password, JWT, token, cookie, request-header,
+authorization, and secret fields. Recipient IDs are not treated as actors.
 
 The service registers with Eureka as audit-service and listens on port 8088 in
 Docker Compose.

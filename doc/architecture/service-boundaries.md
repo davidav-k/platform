@@ -17,7 +17,7 @@ user-service -> outbox_events -> Kafka platform.user-events
   -> audit-service -> audit_records
 
 notification-service -> outbox_events -> Kafka platform.notification-events
-  -> future audit-service notification consumer
+  -> audit-service -> audit_records
 ```
 
 Frontend traffic remains synchronous HTTP through API Gateway. Kafka/outbox is
@@ -161,6 +161,8 @@ administrative access explicitly.
   idempotency key.
 - `notification-service` publishes `NOTIFICATION_CREATED` and
   `NOTIFICATION_SYSTEM_CREATED` to `platform.notification-events`.
+- `audit-service` consumes those notification events independently from the
+  task events consumed by notification-service.
 - `TaskEventNotificationProcessor` handles `TASK_CREATED`, `TASK_ASSIGNED`,
   and `TASK_STATUS_CHANGED` events.
 

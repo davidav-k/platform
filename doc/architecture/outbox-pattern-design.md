@@ -30,7 +30,8 @@ notification-service transaction
   -> OutboxEventPollingScheduler
   -> KafkaOutboxEventPublisher
   -> Kafka topic platform.notification-events
-     -> future audit-service notification consumer
+     -> audit-service NotificationAuditEventConsumer
+        -> NotificationAuditEventNormalizer -> CreateAuditRecordUseCase -> audit_records
 ```
 
 ## Ownership
@@ -39,12 +40,12 @@ notification-service transaction
 - `user-service` owns user persistence and user lifecycle/authentication events.
 - `notification-service` owns notification persistence, incoming task-event
   idempotency, and outgoing notification audit events.
-- `audit-service` owns audit record persistence and consumes task and user
-  events independently from notification-service.
+- `audit-service` owns audit record persistence and consumes task, user, and
+  notification events.
 - Kafka is the transport for task domain events between the services.
 - Kafka transports user events to Audit Service on a dedicated topic.
-- Kafka transports notification audit events on a dedicated topic; Audit
-  Service consumption of that topic is intentionally deferred.
+- Kafka transports notification audit events to Audit Service on a dedicated
+  topic.
 - Each service owns its database; no cross-service repositories or foreign keys
   are used.
 
@@ -141,7 +142,8 @@ because those mutation flows do not exist yet.
 
 The payload is whitelist-based and contains notification/recipient IDs, type,
 channel, status, source metadata, and lifecycle timestamps. Subject, body,
-JWTs, cookies, and request headers are excluded.
+JWTs, cookies, and request headers are excluded by the producer. Audit Service
+also removes technical credential/header fields recursively before persistence.
 
 ## Publisher Configuration
 
@@ -185,10 +187,12 @@ Audit-service Kafka processing is controlled independently by:
 ```text
 AUDIT_KAFKA_ENABLED=true
 AUDIT_KAFKA_TOPIC=platform.task-events
+AUDIT_KAFKA_USER_TOPIC=platform.user-events
+AUDIT_KAFKA_NOTIFICATION_TOPIC=platform.notification-events
 ```
 
-It uses consumer group `audit-service`, so notification and audit processing
-both receive every Task Service event.
+It uses consumer group `audit-service` and independent listeners for task,
+user, and notification topics.
 
 ## Failure Handling
 

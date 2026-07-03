@@ -184,6 +184,7 @@ services:
       - AUDIT_KAFKA_ENABLED=${AUDIT_KAFKA_ENABLED:-true}
       - AUDIT_KAFKA_TOPIC=${AUDIT_KAFKA_TOPIC:-${KAFKA_TASK_EVENTS_TOPIC:-platform.task-events}}
       - AUDIT_KAFKA_USER_TOPIC=${AUDIT_KAFKA_USER_TOPIC:-${KAFKA_USER_EVENTS_TOPIC:-platform.user-events}}
+      - AUDIT_KAFKA_NOTIFICATION_TOPIC=${AUDIT_KAFKA_NOTIFICATION_TOPIC:-${KAFKA_NOTIFICATION_EVENTS_TOPIC:-platform.notification-events}}
     depends_on:
       kafka:
         condition: service_healthy

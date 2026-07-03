@@ -20,7 +20,12 @@ public class AuditKafkaStartupDiagnostics implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
-        log.info("Audit Kafka startup configuration: kafkaConsumerEnabled={}, taskTopic={}, userTopic={}",
-                properties.isEnabled(), properties.getTopic(), properties.getUserTopic());
+        log.info(
+                "Audit Kafka startup configuration: kafkaConsumerEnabled={}, taskTopic={}, userTopic={}, notificationTopic={}",
+                properties.isEnabled(),
+                properties.getTopic(),
+                properties.getUserTopic(),
+                properties.getNotificationTopic()
+        );
     }
 }

@@ -27,6 +27,8 @@ sequenceDiagram
     participant NotifDB as PostgreSQL notifications
     participant NotifOutbox as Notification Outbox
     participant NotifKafka as Kafka platform.notification-events
+    participant AuditConsumer as NotificationAuditEventConsumer
+    participant AuditDB as PostgreSQL audit_records
     participant Router as Vue Router
 
     User->>View: Открывает /tasks/create
@@ -113,4 +115,6 @@ sequenceDiagram
     end
 
     NotifOutbox->>NotifKafka: publish notification audit event
+    NotifKafka-->>AuditConsumer: consume NOTIFICATION_SYSTEM_CREATED
+    AuditConsumer->>AuditDB: INSERT normalized audit record
 ```

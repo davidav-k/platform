@@ -41,7 +41,8 @@ notification-service creates the notification asynchronously after Kafka
 delivery.
 That notification creation also writes `NOTIFICATION_SYSTEM_CREATED` to the
 notification-service outbox for publication to
-`platform.notification-events`.
+`platform.notification-events`. Audit Service consumes that event and stores
+it with `sourceService=notification-service`.
 
 The existing registration and login requests also exercise user-service audit
 event production. Verify those events through the user database
