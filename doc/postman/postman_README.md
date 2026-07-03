@@ -49,6 +49,11 @@ event production. Verify those events through the user database
 `outbox_events` table, Kafka topic `platform.user-events`, and Audit Service
 read requests. The resulting records use `sourceService=user-service`.
 
+The Vue Audit Log reads through API Gateway at `GET /api/audit` and
+`GET /api/audit/{auditId}`. The collection's Audit folder continues to target
+Audit Service directly at `{{auditBaseUrl}}/api/v1/audit` so its service-level
+security checks remain independent of Gateway routing.
+
 ## How to run
 1. Import collection
 2. Import environment

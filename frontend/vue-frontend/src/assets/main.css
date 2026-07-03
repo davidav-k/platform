@@ -153,6 +153,32 @@ h1 {
   border-radius: 0.375rem;
 }
 
+.audit-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 1rem;
+  align-items: end;
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+}
+
+.audit-filter-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.audit-table {
+  min-width: 76rem;
+}
+
+.audit-payload-note {
+  margin-top: 1.5rem;
+}
+
 .table-scroll {
   overflow-x: auto;
 }

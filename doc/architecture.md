@@ -28,7 +28,7 @@ The Docker Compose stack currently runs:
 | `notification-service` | Notification persistence, Kafka-backed task notification processing, and notification audit-event outbox publishing | `8087` |
 | `audit-service` | Kafka-backed task/user/notification audit event consumption, audit record persistence, and secured read-only API | `8088` |
 | `api-gateway` | External entry point, JWT early rejection, routing, CORS, and circuit breaker fallback | `8080` |
-| `frontend` | Vue 3 production bundle served by nginx with SPA route fallback | `5173` |
+| `frontend` | Vue 3 production bundle with profile, task, notification, and admin Audit Log pages, served by nginx with SPA route fallback | `5173` |
 | `config-server` | Spring Cloud Config native repository mounted from `./config` | `8888` |
 | `eureka-server` | Service registration and discovery | `8761` |
 | PostgreSQL 16.1 | User, task, notification, and audit persistence in separate databases | `5432` |
@@ -88,6 +88,11 @@ frontend development. It uses only external API Gateway routes and never
 connects directly to a backend service. See the
 [frontend README](../frontend/vue-frontend/README.md) for implemented pages and
 startup instructions.
+
+The read-only Audit Log uses `GET /api/audit` and `GET /api/audit/{auditId}`.
+API Gateway rewrites these paths to Audit Service's `/api/v1/audit` contract.
+The frontend applies only the existing authenticated-route guard; Audit Service
+enforces the `ROLE_ADMIN` and `ROLE_SUPER_ADMIN` authorization boundary.
 
 The gateway validates access JWTs as an early rejection layer. Downstream services
 validate JWTs again and own authorization decisions. See
