@@ -40,6 +40,7 @@ doc/
 ## Quick Start
 
 ```bash
+cp .env.example .env
 docker compose --env-file .env -f compose.yml up -d --build
 ```
 
