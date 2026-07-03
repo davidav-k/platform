@@ -13,6 +13,8 @@ import com.example.user_service.enumeration.Authority;
 import com.example.user_service.enumeration.LoginType;
 import com.example.user_service.event.UserEvent;
 import com.example.user_service.exception.ApiException;
+import com.example.user_service.outbox.OutboxEventService;
+import com.example.user_service.outbox.UserOutboxPayloadFactory;
 import com.example.user_service.repository.*;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,6 +34,15 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
+
+import static com.example.user_service.outbox.UserOutboxEventTypes.MFA_ENABLED;
+import static com.example.user_service.outbox.UserOutboxEventTypes.PASSWORD_CHANGED;
+import static com.example.user_service.outbox.UserOutboxEventTypes.USER_DELETED;
+import static com.example.user_service.outbox.UserOutboxEventTypes.USER_LOGIN_FAILED;
+import static com.example.user_service.outbox.UserOutboxEventTypes.USER_LOGIN_SUCCESS;
+import static com.example.user_service.outbox.UserOutboxEventTypes.USER_PROFILE_UPDATED;
+import static com.example.user_service.outbox.UserOutboxEventTypes.USER_REGISTERED;
 
 @ExtendWith(MockitoExtension.class)
 class UserServiceImplTest {
@@ -62,6 +73,12 @@ class UserServiceImplTest {
 
     @Mock
     private MfaServiceImpl mfaService;
+
+    @Mock
+    private OutboxEventService outboxEventService;
+
+    @Mock
+    private UserOutboxPayloadFactory userOutboxPayloadFactory;
 
     @Mock
     private HttpServletRequest request;
@@ -115,6 +132,14 @@ void setup() {
         }
 
         RequestContext.setUserId(1L);
+        lenient().when(userOutboxPayloadFactory.userRegisteredPayload(any())).thenReturn("{}");
+        lenient().when(userOutboxPayloadFactory.userLoginSuccessPayload(any())).thenReturn("{}");
+        lenient().when(userOutboxPayloadFactory.userLoginFailedPayload(any(), any(), any(), any()))
+                .thenReturn("{}");
+        lenient().when(userOutboxPayloadFactory.userProfileUpdatedPayload(any(), anyList())).thenReturn("{}");
+        lenient().when(userOutboxPayloadFactory.userDeletedPayload(any(), any())).thenReturn("{}");
+        lenient().when(userOutboxPayloadFactory.passwordChangedPayload(any())).thenReturn("{}");
+        lenient().when(userOutboxPayloadFactory.mfaEnabledPayload(any())).thenReturn("{}");
     } catch (Exception e) {
         fail("Failed to set up entity IDs: " + e.getMessage());
     }
@@ -154,6 +179,8 @@ private void setFieldValue(Object object, String fieldName, Object value) throws
         verify(credentialRepository).save(any(CredentialEntity.class));
         verify(confirmationRepository).save(any(ConfirmationEntity.class));
         verify(publisher).publishEvent(any(UserEvent.class));
+        verify(outboxEventService).saveNewEvent(
+                eq("USER"), any(UUID.class), eq(USER_REGISTERED), eq("{}"));
     }
 
     @Test
@@ -222,6 +249,8 @@ private void setFieldValue(Object object, String fieldName, Object value) throws
         assertEquals("secretKey", userEntity.getQrCodeSecret());
         assertEquals("qrCodeUrl", userEntity.getQrCodeImageUrl());
         verify(userRepository).save(userEntity);
+        verify(outboxEventService).saveNewEvent(
+                eq("USER"), any(UUID.class), eq(MFA_ENABLED), eq("{}"));
     }
 
     @Test
@@ -261,6 +290,20 @@ private void setFieldValue(Object object, String fieldName, Object value) throws
         verify(userCache).evict("test@example.com");
         verify(loginHistoryRepository).save(any(LoginHistoryEntity.class));
         verify(userRepository).save(userEntity);
+        verify(outboxEventService).saveNewEvent(
+                eq("USER"), any(UUID.class), eq(USER_LOGIN_SUCCESS), eq("{}"));
+    }
+
+    @Test
+    void recordFailedLoginWritesOutboxEvent() {
+        when(userRepository.findByEmailIgnoreCase("test@example.com")).thenReturn(Optional.of(userEntity));
+
+        userService.recordLoginFailed("test@example.com", "BAD_CREDENTIALS");
+
+        verify(userOutboxPayloadFactory).userLoginFailedPayload(
+                "user123", "test@example.com", "USER", "BAD_CREDENTIALS");
+        verify(outboxEventService).saveNewEvent(
+                eq("USER"), any(UUID.class), eq(USER_LOGIN_FAILED), eq("{}"));
     }
 
     @Test
@@ -296,6 +339,8 @@ private void setFieldValue(Object object, String fieldName, Object value) throws
         assertEquals("123456789", userEntity.getPhone());
         assertEquals("Updated bio", userEntity.getBio());
         verify(userRepository).save(userEntity);
+        verify(outboxEventService).saveNewEvent(
+                eq("USER"), any(UUID.class), eq(USER_PROFILE_UPDATED), eq("{}"));
     }
 
     @Test
@@ -323,6 +368,8 @@ private void setFieldValue(Object object, String fieldName, Object value) throws
         userService.changePassword(1L, "oldPassword", "NewPassword123", "NewPassword123");
 
         assertEquals("newEncodedPassword", credentialEntity.getPassword());
+        verify(outboxEventService).saveNewEvent(
+                eq("USER"), any(UUID.class), eq(PASSWORD_CHANGED), eq("{}"));
     }
 
     @Test
@@ -432,6 +479,8 @@ private void setFieldValue(Object object, String fieldName, Object value) throws
         deletionOrder.verify(userRepository).deleteRoleAssignmentsByUserId(1L);
         deletionOrder.verify(userRepository).delete(userEntity);
         verify(userCache).evict("test@example.com");
+        verify(outboxEventService).saveNewEvent(
+                eq("USER"), any(UUID.class), eq(USER_DELETED), eq("{}"));
     }
 
     @Test

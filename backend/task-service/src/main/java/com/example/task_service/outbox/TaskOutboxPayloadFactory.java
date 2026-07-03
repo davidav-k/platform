@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Component
@@ -68,6 +69,42 @@ public class TaskOutboxPayloadFactory {
         }
     }
 
+    public String taskUpdatedPayload(TaskEntity task, List<String> changedFields, UUID actorUserId) {
+        try {
+            return objectMapper.writeValueAsString(new TaskUpdatedPayload(
+                task.getTaskId(),
+                task.getTitle(),
+                task.getDescription(),
+                task.getStatus(),
+                task.getPriority(),
+                task.getAssigneeUserId(),
+                task.getCreatedByUserId(),
+                actorUserId,
+                task.getUpdatedAt(),
+                changedFields
+            ));
+        } catch (JsonProcessingException exception) {
+            throw new IllegalStateException("Failed to serialize TASK_UPDATED payload", exception);
+        }
+    }
+
+    public String taskDeletedPayload(TaskEntity task) {
+        try {
+            return objectMapper.writeValueAsString(new TaskDeletedPayload(
+                task.getTaskId(),
+                task.getTitle(),
+                task.getStatus(),
+                task.getPriority(),
+                task.getAssigneeUserId(),
+                task.getCreatedByUserId(),
+                task.getDeletedByUserId(),
+                task.getDeletedAt()
+            ));
+        } catch (JsonProcessingException exception) {
+            throw new IllegalStateException("Failed to serialize TASK_DELETED payload", exception);
+        }
+    }
+
     private record TaskCreatedPayload(
         UUID taskId,
         String title,
@@ -101,6 +138,32 @@ public class TaskOutboxPayloadFactory {
         UUID assigneeUserId,
         UUID createdByUserId,
         OffsetDateTime updatedAt
+    ) {
+    }
+
+    private record TaskUpdatedPayload(
+        UUID taskId,
+        String title,
+        String description,
+        TaskStatus status,
+        TaskPriority priority,
+        UUID assigneeUserId,
+        UUID createdByUserId,
+        UUID actorUserId,
+        OffsetDateTime updatedAt,
+        List<String> changedFields
+    ) {
+    }
+
+    private record TaskDeletedPayload(
+        UUID taskId,
+        String title,
+        TaskStatus status,
+        TaskPriority priority,
+        UUID assigneeUserId,
+        UUID createdByUserId,
+        UUID deletedByUserId,
+        OffsetDateTime deletedAt
     ) {
     }
 }

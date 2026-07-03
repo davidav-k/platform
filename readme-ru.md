@@ -69,13 +69,6 @@ Windows:
 Postman collection находится в `doc/postman`.
 
 
-## Планируется
-
-- audit-service;
-- расширенные настройки уведомлений;
-- email delivery из notification-service;
-- read state / mark-as-read для уведомлений.
-
 ## Документация
 
 - Архитектура: `doc/architecture.md`
@@ -88,8 +81,3 @@ Postman collection находится в `doc/postman`.
 - Notification API: `doc/api/notification-service-contract.md`
 - Postman: `doc/postman/postman_README.md`
 - Frontend: `frontend/vue-frontend/README.md`
-
-## Статус
-
-Проект остаётся в стадии MVP stabilization. Текущая реализация использует Kafka
-и transactional outbox для task notification flow.

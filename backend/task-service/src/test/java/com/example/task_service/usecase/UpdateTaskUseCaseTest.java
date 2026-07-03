@@ -6,11 +6,15 @@ import com.example.task_service.entity.TaskEntity;
 import com.example.task_service.enumeration.TaskPriority;
 import com.example.task_service.enumeration.TaskStatus;
 import com.example.task_service.exception.TaskNotFoundException;
+import com.example.task_service.outbox.OutboxEventService;
 import com.example.task_service.repository.TaskRepository;
 import com.example.task_service.security.CurrentUserAccessProvider;
 import com.example.task_service.security.CurrentUserAccessProvider.CurrentUserAccess;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -21,6 +25,8 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @SpringBootTest(properties = {
@@ -43,8 +49,14 @@ class UpdateTaskUseCaseTest {
     @Autowired
     private TaskRepository taskRepository;
 
+    @Autowired
+    private ObjectMapper objectMapper;
+
     @MockitoBean
     private CurrentUserAccessProvider currentUserAccessProvider;
+
+    @MockitoBean
+    private OutboxEventService outboxEventService;
 
     @BeforeEach
     void setUp() {
@@ -52,15 +64,37 @@ class UpdateTaskUseCaseTest {
     }
 
     @Test
-    void adminUpdatesAnyTask() {
+    void adminUpdatesAnyTaskAndWritesTaskUpdatedOutboxEvent() throws Exception {
         TaskEntity task = saveTask(UUID.randomUUID(), UUID.randomUUID());
+        UUID actorUserId = UUID.randomUUID();
         when(currentUserAccessProvider.currentUserAccess())
-            .thenReturn(new CurrentUserAccess(UUID.randomUUID(), true));
+            .thenReturn(new CurrentUserAccess(actorUserId, true));
         UpdateTaskRequest request = requestWithTitle("Admin update");
 
         TaskResponse response = updateTaskUseCase.update(task.getTaskId(), request);
 
         assertThat(response.title()).isEqualTo("Admin update");
+
+        ArgumentCaptor<String> payloadCaptor = ArgumentCaptor.forClass(String.class);
+        verify(outboxEventService).saveNewEvent(
+            eq("TASK"),
+            eq(task.getTaskId()),
+            eq("TASK_UPDATED"),
+            payloadCaptor.capture()
+        );
+
+        JsonNode payload = objectMapper.readTree(payloadCaptor.getValue());
+        assertThat(payload.get("taskId").asText()).isEqualTo(task.getTaskId().toString());
+        assertThat(payload.get("title").asText()).isEqualTo("Admin update");
+        assertThat(payload.get("description").asText()).isEqualTo("Original description");
+        assertThat(payload.get("status").asText()).isEqualTo("NEW");
+        assertThat(payload.get("priority").asText()).isEqualTo("MEDIUM");
+        assertThat(payload.get("assigneeUserId").asText()).isEqualTo(task.getAssigneeUserId().toString());
+        assertThat(payload.get("createdByUserId").asText()).isEqualTo(task.getCreatedByUserId().toString());
+        assertThat(payload.get("actorUserId").asText()).isEqualTo(actorUserId.toString());
+        assertThat(OffsetDateTime.parse(payload.get("updatedAt").asText())).isEqualTo(response.updatedAt());
+        assertThat(payload.withArray("changedFields").size()).isEqualTo(1);
+        assertThat(payload.withArray("changedFields").get(0).asText()).isEqualTo("title");
     }
 
     @Test

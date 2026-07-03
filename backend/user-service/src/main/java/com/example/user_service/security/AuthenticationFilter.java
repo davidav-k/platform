@@ -19,6 +19,10 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.CredentialsExpiredException;
+import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.authentication.LockedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -51,8 +55,9 @@ public class AuthenticationFilter extends AbstractAuthenticationProcessingFilter
     @Override
     public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response) throws AuthenticationException, IOException, ServletException {
         log.info("Attempting authentication into filter");
+        LoginRequest loginRequest = null;
         try {
-            LoginRequest loginRequest = new ObjectMapper().configure(JsonParser.Feature.AUTO_CLOSE_SOURCE, true)
+            loginRequest = new ObjectMapper().configure(JsonParser.Feature.AUTO_CLOSE_SOURCE, true)
                     .readValue(request.getInputStream(), LoginRequest.class);
             userService.updateLoginAttempt(loginRequest.getEmail(), LoginType.LOGIN_ATTEMPT, request);
 
@@ -60,12 +65,41 @@ public class AuthenticationFilter extends AbstractAuthenticationProcessingFilter
                     loginRequest.getEmail(),
                     loginRequest.getPassword()));
         } catch (Exception ex) {
+            recordLoginFailure(loginRequest, ex);
             log.error("Authentication into filter failed: {}", ex.getMessage());
             RequestUtils.handlerErrorResponse(request, response, ex);
             RequestContext.clear();
             return null;
         }
 
+    }
+
+    private void recordLoginFailure(LoginRequest loginRequest, Exception exception) {
+        if (loginRequest == null || loginRequest.getEmail() == null || loginRequest.getEmail().isBlank()) {
+            return;
+        }
+        try {
+            userService.recordLoginFailed(loginRequest.getEmail(), failureReason(exception));
+        } catch (RuntimeException outboxException) {
+            log.warn("Unable to record failed login audit event: category={}",
+                    outboxException.getClass().getSimpleName());
+        }
+    }
+
+    private String failureReason(Exception exception) {
+        if (exception instanceof BadCredentialsException) {
+            return "BAD_CREDENTIALS";
+        }
+        if (exception instanceof LockedException) {
+            return "ACCOUNT_LOCKED";
+        }
+        if (exception instanceof DisabledException) {
+            return "ACCOUNT_DISABLED";
+        }
+        if (exception instanceof CredentialsExpiredException) {
+            return "CREDENTIALS_EXPIRED";
+        }
+        return "AUTHENTICATION_FAILED";
     }
 
     @Override

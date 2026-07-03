@@ -3,3 +3,6 @@ SELECT 'CREATE DATABASE tasks_db'
 
 SELECT 'CREATE DATABASE notifications_db'
     WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'notifications_db')\gexec
+
+SELECT 'CREATE DATABASE audits_db'
+    WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'audits_db')\gexec

@@ -3,8 +3,8 @@
 ## Overview
 
 This directory contains the Vue 3 MVP client for the Task Management Platform.
-It provides cookie-authenticated access to profile, task management, and
-notification workflows through the API Gateway.
+It provides cookie-authenticated access to profile, task management,
+notification, and administrator audit workflows through the API Gateway.
 
 The frontend is intentionally small. Backend services remain authoritative for
 authentication, authorization, task ownership, assignment, and validation.
@@ -57,6 +57,8 @@ Protected routes:
 | `/tasks/:id/edit` | Edit task form |
 | `/notifications` | Paginated notification list |
 | `/notifications/:id` | Notification details |
+| `/audit` | Filtered and paginated Audit Log |
+| `/audit/:auditId` | Audit record details |
 
 Protected navigation first attempts session restoration through the profile
 endpoint. Unauthenticated users are redirected to login and returned to the
@@ -98,6 +100,19 @@ Supported priorities are `LOW`, `MEDIUM`, and `HIGH`.
 The implemented notification API does not expose read state or a mark-as-read
 operation.
 
+### Audit Log
+
+- Browse audit records with event type, aggregate type, source service, and
+  action filters
+- Sort and navigate through backend pagination, newest events first by default
+- Open a read-only audit detail page using the public `auditId`
+- Display explicit loading, empty, access-denied, not-found, and retry states
+
+Audit routes require an authenticated frontend session. Audit Service remains
+the authorization source of truth and returns `403 Forbidden` unless the user
+has `ROLE_ADMIN` or `ROLE_SUPER_ADMIN`. The current Audit API deliberately does
+not return stored event payloads, so the detail page cannot display payload JSON.
+
 ## Frontend Services
 
 API access stays in `src/services`:
@@ -107,6 +122,7 @@ API access stays in `src/services`:
 - `profileService.js`: Current profile mapping
 - `taskService.js`: Task list, details, create, update, status, assignment, and delete mappings
 - `notificationService.js`: Notification list and details mappings
+- `auditService.js`: Audit list, filters, pagination, and details mappings
 - `authState.js`: Minimal Vue reactive authentication state
 
 Views and components do not call `fetch` directly.
@@ -122,7 +138,8 @@ Views and components do not call `fetch` directly.
   candidate endpoint exists.
 - Notification mark-as-read, polling, WebSocket, and realtime updates are not
   implemented or exposed by current backend contracts.
-- There is no audit UI, advanced dashboard, bulk task workflow, or task restore UI.
+- There is no advanced audit analytics, export, write action, bulk task
+  workflow, or task restore UI.
 - Kafka and the transactional outbox run in the backend. The frontend does not
   expose event-delivery controls and only reads persisted notifications through
   the Gateway.

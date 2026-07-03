@@ -34,6 +34,8 @@ public interface UserService {
 
     void updateLoginAttempt(String email, LoginType loginType, HttpServletRequest request);
 
+    void recordLoginFailed(String email, String failureReason);
+
     void unlockedUser(String email);
 
     void updateUser(Long userId, @Valid UserRequest userRequest);

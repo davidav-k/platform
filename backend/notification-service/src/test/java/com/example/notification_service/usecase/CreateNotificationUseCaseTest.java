@@ -1,12 +1,20 @@
 package com.example.notification_service.usecase;
 
 import com.example.notification_service.dto.CreateNotificationRequest;
+import com.example.notification_service.dto.CreateSystemNotificationRequest;
 import com.example.notification_service.dto.NotificationResponse;
 import com.example.notification_service.entity.NotificationEntity;
+import com.example.notification_service.entity.OutboxEventEntity;
 import com.example.notification_service.enumeration.NotificationChannel;
 import com.example.notification_service.enumeration.NotificationStatus;
 import com.example.notification_service.enumeration.NotificationType;
+import com.example.notification_service.enumeration.OutboxEventStatus;
+import com.example.notification_service.repository.OutboxEventRepository;
 import com.example.notification_service.repository.NotificationRepository;
+import com.example.notification_service.usecase.CreateSystemNotificationUseCase;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
 import jakarta.validation.ConstraintViolationException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -52,10 +60,25 @@ class CreateNotificationUseCaseTest {
     private CreateNotificationUseCase createNotificationUseCase;
 
     @Autowired
+    private CreateSystemNotificationUseCase createSystemNotificationUseCase;
+
+    @Autowired
     private NotificationRepository notificationRepository;
 
+    @Autowired
+    private OutboxEventRepository outboxEventRepository;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @BeforeEach
+    void cleanDatabase() {
+        outboxEventRepository.deleteAll();
+        notificationRepository.deleteAll();
+    }
+
     @Test
-    void createsPendingNotificationAndPersistsTrimmedValues() {
+    void createsPendingNotificationAndNotificationCreatedOutboxEvent() throws Exception {
         UUID recipientUserId = UUID.randomUUID();
         CreateNotificationRequest request = new CreateNotificationRequest(
                 recipientUserId,
@@ -83,6 +106,51 @@ class CreateNotificationUseCaseTest {
         assertThat(persisted.getSubject()).isEqualTo("Task assigned");
         assertThat(persisted.getBody()).isEqualTo("A task was assigned to you.");
         assertThat(persisted.getStatus()).isEqualTo(NotificationStatus.PENDING);
+
+        OutboxEventEntity event = outboxEventRepository.findAll().get(0);
+        assertThat(event.getAggregateType()).isEqualTo("NOTIFICATION");
+        assertThat(event.getAggregateId()).isEqualTo(response.notificationId());
+        assertThat(event.getEventType()).isEqualTo("NOTIFICATION_CREATED");
+        assertThat(event.getStatus()).isEqualTo(OutboxEventStatus.NEW);
+
+        JsonNode payload = objectMapper.readTree(event.getPayload());
+        assertThat(payload.get("notificationId").asText()).isEqualTo(response.notificationId().toString());
+        assertThat(payload.get("recipientUserId").asText()).isEqualTo(recipientUserId.toString());
+        assertThat(payload.get("type").asText()).isEqualTo("TASK_ASSIGNED");
+        assertThat(payload.get("channel").asText()).isEqualTo("EMAIL");
+        assertThat(payload.get("status").asText()).isEqualTo("PENDING");
+        assertThat(payload.get("createdAt").isTextual()).isTrue();
+        assertThat(payload.get("updatedAt").isTextual()).isTrue();
+    }
+
+    @Test
+    void createsSystemNotificationAndNotificationSystemCreatedOutboxEvent() throws Exception {
+        UUID recipientUserId = UUID.randomUUID();
+        UUID taskId = UUID.randomUUID();
+
+        NotificationResponse response = createSystemNotificationUseCase.create(
+                new CreateSystemNotificationRequest(
+                        recipientUserId,
+                        NotificationType.TASK_ASSIGNED,
+                        "Task assigned",
+                        "A task was assigned to you.",
+                        "task-service",
+                        "TASK",
+                        taskId
+                )
+        );
+
+        OutboxEventEntity event = outboxEventRepository.findAll().get(0);
+        assertThat(event.getAggregateId()).isEqualTo(response.notificationId());
+        assertThat(event.getEventType()).isEqualTo("NOTIFICATION_SYSTEM_CREATED");
+        assertThat(event.getStatus()).isEqualTo(OutboxEventStatus.NEW);
+
+        JsonNode payload = objectMapper.readTree(event.getPayload());
+        assertThat(payload.get("notificationId").asText()).isEqualTo(response.notificationId().toString());
+        assertThat(payload.get("recipientUserId").asText()).isEqualTo(recipientUserId.toString());
+        assertThat(payload.get("sourceService").asText()).isEqualTo("task-service");
+        assertThat(payload.get("sourceEntityType").asText()).isEqualTo("TASK");
+        assertThat(payload.get("sourceEntityId").asText()).isEqualTo(taskId.toString());
     }
 
     @Test

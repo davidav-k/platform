@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "3e42b8cb-848a-4dc8-a73d-a588078ffcf1",
     "name": "Platform MVP End-to-End - API Gateway",
-    "description": "Gateway-only MVP verification for authentication, user activation, task ownership/RBAC, soft delete, Kafka-backed task-created in-app notifications, refresh, and the currently pending logout contract. Aligned with platform_240626_exclude.txt.",
+    "description": "Gateway-based MVP verification for authentication, user activation, task ownership/RBAC, soft delete, Kafka-backed notifications, refresh, and the currently pending logout contract. The Audit Service folder verifies the secured read API directly on port 8088. The Audit E2E Flow produces task, user-login, and notification events, then retries Audit API queries until the outbox/Kafka pipeline is visible. The Vue Audit Log uses the Gateway read routes /api/audit and /api/audit/{auditId}. Aligned with platform_240626_exclude.txt.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "event": [
@@ -122,6 +122,71 @@
     {
       "key": "notificationWaitMillis",
       "value": "7000",
+      "type": "string"
+    },
+    {
+      "key": "auditBaseUrl",
+      "value": "http://localhost:8088",
+      "type": "string"
+    },
+    {
+      "key": "auditId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "auditEventType",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "auditAggregateId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "auditActorUserId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "auditAction",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "auditAggregateType",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "auditSourceService",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "auditCreatedTaskId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "auditNotificationId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "auditRunStartedAt",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "auditWaitMillis",
+      "value": "3000",
+      "type": "string"
+    },
+    {
+      "key": "auditPollAttempt",
+      "value": "0",
       "type": "string"
     }
   ],
@@ -1292,6 +1357,1297 @@
             }
           ],
           "disabled": true
+        }
+      ]
+    },
+    {
+      "name": "05 - Audit Service",
+      "item": [
+        {
+          "name": "Unauthenticated Audit Request Is Rejected",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{auditBaseUrl}}/api/v1/audit",
+              "host": [
+                "{{auditBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "audit"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Unauthenticated audit request returns 401', function () { pm.response.to.have.status(401); });",
+                  "pm.test('Response uses the platform error envelope', function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.code).to.eql(401);",
+                  "  pm.expect(body.message).to.eql('Authentication is required');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Regular User Audit Request Is Forbidden",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userAccessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{auditBaseUrl}}/api/v1/audit",
+              "host": [
+                "{{auditBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "audit"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Regular user audit request returns 403', function () { pm.response.to.have.status(403); });",
+                  "pm.test('Response uses the platform error envelope', function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.code).to.eql(403);",
+                  "  pm.expect(body.message).to.eql('Access denied');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin Lists Audit Records Sorted by Created At",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{auditBaseUrl}}/api/v1/audit?page=0&size=20&sort=createdAt,desc",
+              "host": [
+                "{{auditBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "audit"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                },
+                {
+                  "key": "sort",
+                  "value": "createdAt,desc"
+                }
+              ]
+            },
+            "description": "Lists the newest stored audit records and captures values used by the following filter and get-by-ID requests."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Admin audit request succeeds', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response is JSON', function () { pm.expect(pm.response.headers.get('Content-Type') || '').to.include('application/json'); });",
+                  "const body = pm.response.json();",
+                  "const items = body.data?.items || [];",
+                  "pm.test('Audit list response has items and page metadata', function () { pm.expect(body.data).to.be.an('object'); pm.expect(items).to.be.an('array'); pm.expect(body.data?.page).to.be.an('object'); });",
+                  "pm.test('Every audit record contains required fields', function () { items.forEach(item => { pm.expect(item.auditId).to.be.a('string').and.not.empty; pm.expect(item.eventId).to.be.a('string').and.not.empty; pm.expect(item.eventType).to.be.a('string').and.not.empty; pm.expect(item.aggregateType).to.be.a('string').and.not.empty; pm.expect(item.aggregateId).to.be.a('string').and.not.empty; pm.expect(item.sourceService).to.be.a('string').and.not.empty; pm.expect(item.action).to.be.a('string').and.not.empty; pm.expect(item.occurredAt).to.be.a('string').and.not.empty; pm.expect(item.createdAt).to.be.a('string').and.not.empty; }); });",
+                  "pm.test('Records are sorted by createdAt descending', function () { for (let index = 1; index < items.length; index += 1) { pm.expect(Date.parse(items[index - 1].createdAt)).to.be.at.least(Date.parse(items[index].createdAt)); } });",
+                  "if (items.length > 0) {",
+                  "  const item = items.find(value => value.actorUserId) || items[0];",
+                  "  const values = { auditId: item.auditId, auditEventType: item.eventType, auditAggregateType: item.aggregateType, auditAggregateId: item.aggregateId, auditSourceService: item.sourceService, auditActorUserId: item.actorUserId, auditAction: item.action };",
+                  "  Object.entries(values).forEach(([key, value]) => { if (value !== undefined && value !== null && value !== '') { pm.environment.set(key, String(value)); pm.collectionVariables.set(key, String(value)); } });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Filter Audit by Event Type",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{auditBaseUrl}}/api/v1/audit?eventType={{auditEventType}}",
+              "host": [
+                "{{auditBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "audit"
+              ],
+              "query": [
+                {
+                  "key": "eventType",
+                  "value": "{{auditEventType}}"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Filter Audit by Event Type succeeds', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response is JSON', function () { pm.expect(pm.response.headers.get('Content-Type') || '').to.include('application/json'); });",
+                  "const items = pm.response.json().data?.items || [];",
+                  "pm.test('Filter returns at least one eventType match', function () { pm.expect(items.length).to.be.above(0); items.forEach(item => pm.expect(String(item.eventType)).to.eql(pm.variables.get('auditEventType'))); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Filter Audit by Aggregate Type",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{auditBaseUrl}}/api/v1/audit?aggregateType={{auditAggregateType}}",
+              "host": [
+                "{{auditBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "audit"
+              ],
+              "query": [
+                {
+                  "key": "aggregateType",
+                  "value": "{{auditAggregateType}}"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Filter Audit by Aggregate Type succeeds', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response is JSON', function () { pm.expect(pm.response.headers.get('Content-Type') || '').to.include('application/json'); });",
+                  "const items = pm.response.json().data?.items || [];",
+                  "pm.test('Filter returns at least one aggregateType match', function () { pm.expect(items.length).to.be.above(0); items.forEach(item => pm.expect(String(item.aggregateType)).to.eql(pm.variables.get('auditAggregateType'))); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Filter Audit by Aggregate ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{auditBaseUrl}}/api/v1/audit?aggregateId={{auditAggregateId}}",
+              "host": [
+                "{{auditBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "audit"
+              ],
+              "query": [
+                {
+                  "key": "aggregateId",
+                  "value": "{{auditAggregateId}}"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Filter Audit by Aggregate ID succeeds', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response is JSON', function () { pm.expect(pm.response.headers.get('Content-Type') || '').to.include('application/json'); });",
+                  "const items = pm.response.json().data?.items || [];",
+                  "pm.test('Filter returns at least one aggregateId match', function () { pm.expect(items.length).to.be.above(0); items.forEach(item => pm.expect(String(item.aggregateId)).to.eql(pm.variables.get('auditAggregateId'))); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Filter Audit by Source Service",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{auditBaseUrl}}/api/v1/audit?sourceService={{auditSourceService}}",
+              "host": [
+                "{{auditBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "audit"
+              ],
+              "query": [
+                {
+                  "key": "sourceService",
+                  "value": "{{auditSourceService}}"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Filter Audit by Source Service succeeds', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response is JSON', function () { pm.expect(pm.response.headers.get('Content-Type') || '').to.include('application/json'); });",
+                  "const items = pm.response.json().data?.items || [];",
+                  "pm.test('Filter returns at least one sourceService match', function () { pm.expect(items.length).to.be.above(0); items.forEach(item => pm.expect(String(item.sourceService)).to.eql(pm.variables.get('auditSourceService'))); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Filter Audit by Actor User ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{auditBaseUrl}}/api/v1/audit?actorUserId={{auditActorUserId}}",
+              "host": [
+                "{{auditBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "audit"
+              ],
+              "query": [
+                {
+                  "key": "actorUserId",
+                  "value": "{{auditActorUserId}}"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.variables.get('auditActorUserId')) { console.warn('Skipping actor filter because no record with actorUserId was captured.'); pm.execution.skipRequest(); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Filter Audit by Actor User ID succeeds', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response is JSON', function () { pm.expect(pm.response.headers.get('Content-Type') || '').to.include('application/json'); });",
+                  "const items = pm.response.json().data?.items || [];",
+                  "pm.test('Filter returns at least one actorUserId match', function () { pm.expect(items.length).to.be.above(0); items.forEach(item => pm.expect(String(item.actorUserId)).to.eql(pm.variables.get('auditActorUserId'))); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Filter Audit by Action",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{auditBaseUrl}}/api/v1/audit?action={{auditAction}}",
+              "host": [
+                "{{auditBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "audit"
+              ],
+              "query": [
+                {
+                  "key": "action",
+                  "value": "{{auditAction}}"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Filter Audit by Action succeeds', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response is JSON', function () { pm.expect(pm.response.headers.get('Content-Type') || '').to.include('application/json'); });",
+                  "const items = pm.response.json().data?.items || [];",
+                  "pm.test('Filter returns at least one action match', function () { pm.expect(items.length).to.be.above(0); items.forEach(item => pm.expect(String(item.action)).to.eql(pm.variables.get('auditAction'))); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Filter Audit by Occurred At Range",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{auditBaseUrl}}/api/v1/audit?from=2026-01-01T00:00:00Z&to=2026-12-31T23:59:59Z",
+              "host": [
+                "{{auditBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "audit"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "2026-01-01T00:00:00Z"
+                },
+                {
+                  "key": "to",
+                  "value": "2026-12-31T23:59:59Z"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Request succeeds', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response is JSON', function () {",
+                  "  pm.expect(pm.response.headers.get('Content-Type') || '').to.include('application/json');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Audit Record by Audit ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{auditBaseUrl}}/api/v1/audit/{{auditId}}",
+              "host": [
+                "{{auditBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "audit",
+                "{{auditId}}"
+              ],
+              "query": []
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Audit record lookup succeeds', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response is JSON', function () { pm.expect(pm.response.headers.get('Content-Type') || '').to.include('application/json'); });",
+                  "const audit = pm.response.json().data?.audit;",
+                  "pm.test('Returned audit record is complete', function () { pm.expect(audit).to.be.an('object'); pm.expect(audit.auditId).to.eql(pm.variables.get('auditId')); pm.expect(audit.eventId).to.be.a('string').and.not.empty; pm.expect(audit.eventType).to.be.a('string').and.not.empty; pm.expect(audit.aggregateType).to.be.a('string').and.not.empty; pm.expect(audit.aggregateId).to.be.a('string').and.not.empty; pm.expect(audit.sourceService).to.be.a('string').and.not.empty; pm.expect(audit.action).to.be.a('string').and.not.empty; pm.expect(audit.occurredAt).to.be.a('string').and.not.empty; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Unknown Audit ID Returns Not Found",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{auditBaseUrl}}/api/v1/audit/00000000-0000-0000-0000-000000000000",
+              "host": [
+                "{{auditBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "audit",
+                "00000000-0000-0000-0000-000000000000"
+              ],
+              "query": []
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Unknown audit ID returns 404', function () { pm.response.to.have.status(404); });",
+                  "pm.test('Response uses the platform error envelope', function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.code).to.eql(404);",
+                  "  pm.expect(body.message).to.eql('Audit record not found.');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Read-only Audit API contract and security checks. Run after admin and regular-user tokens have been populated by the setup folders."
+    },
+    {
+      "name": "06 - Audit E2E Flow",
+      "description": "Self-contained audit producer-to-API verification using the existing active admin account. Kafka/outbox assertions retry in Collection Runner or Newman runs.",
+      "item": [
+        {
+          "name": "Audit E2E - Login as Admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const startedAt = new Date(Date.now() - 5000).toISOString();",
+                  "pm.environment.set('auditRunStartedAt', startedAt);",
+                  "pm.collectionVariables.set('auditRunStartedAt', startedAt);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Admin login succeeds', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response is JSON', function () {",
+                  "  pm.expect(pm.response.headers.get('Content-Type') || '').to.include('application/json');",
+                  "});",
+                  "function setVariable(name, value) {",
+                  "  if (value === undefined || value === null || value === '') return;",
+                  "  pm.environment.set(name, String(value));",
+                  "  pm.collectionVariables.set(name, String(value));",
+                  "}",
+                  "function cookieValue(name) {",
+                  "  const headers = pm.response.headers.all().filter(h => h.key.toLowerCase() === 'set-cookie');",
+                  "  for (const header of headers) {",
+                  "    const match = header.value.match(new RegExp('(?:^|[,;]\\\\s*)' + name + '=([^;]+)'));",
+                  "    if (match) return match[1];",
+                  "  }",
+                  "}",
+                  "let body = {};",
+                  "try { body = pm.response.json(); } catch (e) {}",
+                  "const accessToken = cookieValue('access-token') || body.accessToken || body.access_token || body.data?.accessToken || body.data?.access_token || body.data?.tokens?.accessToken;",
+                  "const refreshToken = cookieValue('refresh-token') || body.refreshToken || body.refresh_token || body.data?.refreshToken || body.data?.refresh_token || body.data?.tokens?.refreshToken;",
+                  "setVariable('accessToken', accessToken);",
+                  "setVariable('refreshToken', refreshToken);",
+                  "const json = pm.response.json();",
+                  "pm.test('Admin user is returned', function () { pm.expect(json.data?.user).to.be.an('object'); });",
+                  "const adminUserId = json.data?.user?.userId;",
+                  "pm.expect(adminUserId, 'admin public userId').to.be.a('string').and.not.empty;",
+                  "pm.environment.set('adminUserId', adminUserId); pm.collectionVariables.set('adminUserId', adminUserId);",
+                  "const access = pm.environment.get('accessToken'); const refresh = pm.environment.get('refreshToken');",
+                  "pm.test('Admin cookies were extracted', function () { pm.expect(access).to.be.a('string').and.not.empty; pm.expect(refresh).to.be.a('string').and.not.empty; });",
+                  "pm.environment.set('adminAccessToken', access); pm.collectionVariables.set('adminAccessToken', access);",
+                  "pm.environment.set('adminRefreshToken', refresh); pm.collectionVariables.set('adminRefreshToken', refresh);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Audit E2E - Trigger Failed Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}-audit-invalid\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Invalid login is rejected and produces USER_LOGIN_FAILED', function () { pm.response.to.have.status(401); });",
+                  "pm.test('Failure response is JSON', function () { pm.expect(pm.response.headers.get('Content-Type') || '').to.include('application/json'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Audit E2E - Create Task",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tasks"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Audit E2E {{$timestamp}}\",\n  \"description\": \"Created by Audit E2E verification\",\n  \"priority\": \"MEDIUM\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Audit task creation succeeds', function () { pm.response.to.have.status(201); });",
+                  "const auditCreatedTaskId = pm.response.json().data?.task?.taskId;",
+                  "pm.expect(auditCreatedTaskId, 'auditCreatedTaskId').to.be.a('string').and.not.empty;",
+                  "pm.environment.set('auditCreatedTaskId', auditCreatedTaskId);",
+                  "pm.collectionVariables.set('auditCreatedTaskId', auditCreatedTaskId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Audit E2E - Update Task",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks/{{auditCreatedTaskId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tasks",
+                "{{auditCreatedTaskId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Audit E2E updated {{$timestamp}}\",\n  \"description\": \"Updated by Audit E2E verification\",\n  \"priority\": \"HIGH\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Audit task update succeeds', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response is JSON', function () { pm.expect(pm.response.headers.get('Content-Type') || '').to.include('application/json'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Audit E2E - Assign Task",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks/{{auditCreatedTaskId}}/assignee",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tasks",
+                "{{auditCreatedTaskId}}",
+                "assignee"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"assigneeUserId\": \"{{adminUserId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Audit task assignment succeeds', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response is JSON', function () { pm.expect(pm.response.headers.get('Content-Type') || '').to.include('application/json'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Audit E2E - Change Task Status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks/{{auditCreatedTaskId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tasks",
+                "{{auditCreatedTaskId}}",
+                "status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"IN_PROGRESS\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Audit task status change succeeds', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response is JSON', function () { pm.expect(pm.response.headers.get('Content-Type') || '').to.include('application/json'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Audit E2E - Create Notification",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"recipientUserId\": \"{{adminUserId}}\",\n  \"type\": \"SYSTEM\",\n  \"channel\": \"IN_APP\",\n  \"subject\": \"Audit E2E\",\n  \"body\": \"Notification created by Audit E2E verification\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Notification creation succeeds', function () { pm.response.to.have.status(201); });",
+                  "const auditNotificationId = pm.response.json().data?.notification?.notificationId;",
+                  "pm.expect(auditNotificationId, 'auditNotificationId').to.be.a('string').and.not.empty;",
+                  "pm.environment.set('auditNotificationId', auditNotificationId);",
+                  "pm.collectionVariables.set('auditNotificationId', auditNotificationId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Audit E2E - Soft Delete Task",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks/{{auditCreatedTaskId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tasks",
+                "{{auditCreatedTaskId}}"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Audit task soft delete succeeds', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response is JSON', function () { pm.expect(pm.response.headers.get('Content-Type') || '').to.include('application/json'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Audit E2E - Verify Task Audit Events",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{auditBaseUrl}}/api/v1/audit?aggregateId={{auditCreatedTaskId}}&page=0&size=100&sort=createdAt,asc",
+              "host": [
+                "{{auditBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "audit"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const waitMillis = Number(pm.variables.get('auditWaitMillis') || 3000);",
+                  "if (waitMillis > 0) { const startedAt = Date.now(); while (Date.now() - startedAt < waitMillis) {} }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Task audit query succeeds', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response is JSON', function () { pm.expect(pm.response.headers.get('Content-Type') || '').to.include('application/json'); });",
+                  "const items = pm.response.json().data?.items || [];",
+                  "const expected = [\"TASK_CREATED\",\"TASK_UPDATED\",\"TASK_ASSIGNED\",\"TASK_STATUS_CHANGED\",\"TASK_DELETED\"];",
+                  "const eventTypes = items.map(item => item.eventType);",
+                  "const missing = expected.filter(eventType => !eventTypes.includes(eventType));",
+                  "const attempt = Number(pm.variables.get('auditPollAttempt') || 0);",
+                  "if (missing.length > 0 && attempt < 5) { pm.environment.set('auditPollAttempt', String(attempt + 1)); pm.collectionVariables.set('auditPollAttempt', String(attempt + 1)); console.warn('Audit records not ready; retrying request. Missing: ' + missing.join(', ')); pm.execution.setNextRequest(pm.info.requestName); } else {",
+                  "  pm.environment.set('auditPollAttempt', '0'); pm.collectionVariables.set('auditPollAttempt', '0');",
+                  "  pm.test('Expected audit events are present', function () { pm.expect(missing, 'missing event types').to.be.empty; });",
+                  "  const selected = items.find(item => item.eventType === 'TASK_CREATED') || items[0];",
+                  "  if (selected) { pm.environment.set('auditId', selected.auditId); pm.collectionVariables.set('auditId', selected.auditId); }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Audit E2E - Verify User Audit Events",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{auditBaseUrl}}/api/v1/audit?sourceService=user-service&from={{auditRunStartedAt}}&page=0&size=100&sort=createdAt,desc",
+              "host": [
+                "{{auditBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "audit"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const waitMillis = Number(pm.variables.get('auditWaitMillis') || 3000);",
+                  "if (waitMillis > 0) { const startedAt = Date.now(); while (Date.now() - startedAt < waitMillis) {} }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('User audit query succeeds', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response is JSON', function () { pm.expect(pm.response.headers.get('Content-Type') || '').to.include('application/json'); });",
+                  "const items = pm.response.json().data?.items || [];",
+                  "const expected = [\"USER_LOGIN_SUCCESS\",\"USER_LOGIN_FAILED\"];",
+                  "const eventTypes = items.map(item => item.eventType);",
+                  "const missing = expected.filter(eventType => !eventTypes.includes(eventType));",
+                  "const attempt = Number(pm.variables.get('auditPollAttempt') || 0);",
+                  "if (missing.length > 0 && attempt < 5) { pm.environment.set('auditPollAttempt', String(attempt + 1)); pm.collectionVariables.set('auditPollAttempt', String(attempt + 1)); console.warn('Audit records not ready; retrying request. Missing: ' + missing.join(', ')); pm.execution.setNextRequest(pm.info.requestName); } else {",
+                  "  pm.environment.set('auditPollAttempt', '0'); pm.collectionVariables.set('auditPollAttempt', '0');",
+                  "  pm.test('Expected audit events are present', function () { pm.expect(missing, 'missing event types').to.be.empty; });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Audit E2E - Verify Notification Audit Events",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{auditBaseUrl}}/api/v1/audit?sourceService=notification-service&from={{auditRunStartedAt}}&page=0&size=100&sort=createdAt,desc",
+              "host": [
+                "{{auditBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "audit"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const waitMillis = Number(pm.variables.get('auditWaitMillis') || 3000);",
+                  "if (waitMillis > 0) { const startedAt = Date.now(); while (Date.now() - startedAt < waitMillis) {} }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Notification audit query succeeds', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response is JSON', function () { pm.expect(pm.response.headers.get('Content-Type') || '').to.include('application/json'); });",
+                  "const items = pm.response.json().data?.items || [];",
+                  "const expected = [\"NOTIFICATION_CREATED\",\"NOTIFICATION_SYSTEM_CREATED\"];",
+                  "const eventTypes = items.map(item => item.eventType);",
+                  "const missing = expected.filter(eventType => !eventTypes.includes(eventType));",
+                  "const attempt = Number(pm.variables.get('auditPollAttempt') || 0);",
+                  "if (missing.length > 0 && attempt < 5) { pm.environment.set('auditPollAttempt', String(attempt + 1)); pm.collectionVariables.set('auditPollAttempt', String(attempt + 1)); console.warn('Audit records not ready; retrying request. Missing: ' + missing.join(', ')); pm.execution.setNextRequest(pm.info.requestName); } else {",
+                  "  pm.environment.set('auditPollAttempt', '0'); pm.collectionVariables.set('auditPollAttempt', '0');",
+                  "  pm.test('Expected audit events are present', function () { pm.expect(missing, 'missing event types').to.be.empty; });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Audit E2E - Get Generated Audit Record",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{auditBaseUrl}}/api/v1/audit/{{auditId}}",
+              "host": [
+                "{{auditBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "audit",
+                "{{auditId}}"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Generated audit lookup succeeds', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response is JSON', function () { pm.expect(pm.response.headers.get('Content-Type') || '').to.include('application/json'); });",
+                  "pm.test('Generated audit ID matches', function () { pm.expect(pm.response.json().data?.audit?.auditId).to.eql(pm.variables.get('auditId')); });"
+                ]
+              }
+            }
+          ]
         }
       ]
     }

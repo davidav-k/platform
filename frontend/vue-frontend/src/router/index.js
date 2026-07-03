@@ -1,5 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
+import AuditDetailsView from '../views/AuditDetailsView.vue'
+import AuditLogView from '../views/AuditLogView.vue'
 import HomeView from '../views/HomeView.vue'
 import LoginView from '../views/LoginView.vue'
 import NotFoundView from '../views/NotFoundView.vue'
@@ -62,6 +64,19 @@ const router = createRouter({
       component: TaskDetailsView,
       props: true,
       meta: { requiresAuth: true, title: 'Task Details' },
+    },
+    {
+      path: '/audit',
+      name: 'audit-log',
+      component: AuditLogView,
+      meta: { requiresAuth: true, title: 'Audit Log' },
+    },
+    {
+      path: '/audit/:auditId',
+      name: 'audit-details',
+      component: AuditDetailsView,
+      props: true,
+      meta: { requiresAuth: true, title: 'Audit Details' },
     },
     {
       path: '/notifications',

@@ -4,6 +4,8 @@ import com.example.task_service.dto.TaskResponse;
 import com.example.task_service.dto.UpdateTaskRequest;
 import com.example.task_service.entity.TaskEntity;
 import com.example.task_service.exception.TaskNotFoundException;
+import com.example.task_service.outbox.OutboxEventService;
+import com.example.task_service.outbox.TaskOutboxPayloadFactory;
 import com.example.task_service.repository.TaskRepository;
 import com.example.task_service.security.CurrentUserAccessProvider;
 import com.example.task_service.security.CurrentUserAccessProvider.CurrentUserAccess;
@@ -12,6 +14,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -19,8 +23,13 @@ import java.util.UUID;
 @Transactional
 public class UpdateTaskUseCaseImpl implements UpdateTaskUseCase {
 
+    private static final String TASK_AGGREGATE_TYPE = "TASK";
+    private static final String TASK_UPDATED_EVENT_TYPE = "TASK_UPDATED";
+
     private final TaskRepository taskRepository;
     private final CurrentUserAccessProvider currentUserAccessProvider;
+    private final OutboxEventService outboxEventService;
+    private final TaskOutboxPayloadFactory taskOutboxPayloadFactory;
 
     @Override
     public TaskResponse update(UUID taskId, UpdateTaskRequest request) {
@@ -36,9 +45,37 @@ public class UpdateTaskUseCaseImpl implements UpdateTaskUseCase {
             throw new TaskNotFoundException(taskId);
         }
 
+        List<String> changedFields = changedFields(request);
         applyUpdates(task, request);
         TaskEntity updatedTask = taskRepository.saveAndFlush(task);
+        saveTaskUpdatedOutboxEvent(updatedTask, changedFields, access.userId());
         return toResponse(updatedTask);
+    }
+
+    private void saveTaskUpdatedOutboxEvent(TaskEntity task, List<String> changedFields, UUID actorUserId) {
+        outboxEventService.saveNewEvent(
+            TASK_AGGREGATE_TYPE,
+            task.getTaskId(),
+            TASK_UPDATED_EVENT_TYPE,
+            taskOutboxPayloadFactory.taskUpdatedPayload(task, changedFields, actorUserId)
+        );
+    }
+
+    private List<String> changedFields(UpdateTaskRequest request) {
+        List<String> changedFields = new ArrayList<>();
+        if (request.isTitlePresent()) {
+            changedFields.add("title");
+        }
+        if (request.isDescriptionPresent()) {
+            changedFields.add("description");
+        }
+        if (request.isPriorityPresent()) {
+            changedFields.add("priority");
+        }
+        if (request.isAssigneeUserIdPresent()) {
+            changedFields.add("assigneeUserId");
+        }
+        return List.copyOf(changedFields);
     }
 
     private void validate(UUID taskId, UpdateTaskRequest request) {

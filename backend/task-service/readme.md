@@ -100,6 +100,8 @@ Implemented task events:
 | Create task | `TASK_CREATED` |
 | Assign/reassign/unassign task | `TASK_ASSIGNED` |
 | Change task status | `TASK_STATUS_CHANGED` |
+| Update task fields | `TASK_UPDATED` |
+| Soft-delete task | `TASK_DELETED` |
 
 `TASK_CREATED` creates an `IN_APP` `TASK_CREATED` notification only when the
 created task payload contains `assigneeUserId`. Task-service does not call
@@ -292,6 +294,7 @@ Partially updates a task through `UpdateTaskUseCase`.
 - Changing `assigneeUserId` requires an admin role or task creator permission
 - Missing or inaccessible tasks return `404 NOT_FOUND`
 - Gateway route: `PATCH /api/tasks/{taskId}`
+- Event side effect: writes `TASK_UPDATED` to `outbox_events`
 
 Gateway example:
 
@@ -337,6 +340,7 @@ Soft-deletes a task through `DeleteTaskUseCase`.
 - Deleted tasks are excluded from normal get and list operations and cannot be updated
 - Deletion timestamps and actor identifiers remain internal and are not exposed in task DTOs
 - Gateway route: `DELETE /api/tasks/{taskId}`
+- Event side effect: writes `TASK_DELETED` to `outbox_events`
 
 Gateway example:
 

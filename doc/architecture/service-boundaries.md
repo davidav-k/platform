@@ -12,11 +12,17 @@ event-driven:
 ```text
 task-service -> outbox_events -> Kafka platform.task-events
   -> notification-service -> notifications
+
+user-service -> outbox_events -> Kafka platform.user-events
+  -> audit-service -> audit_records
+
+notification-service -> outbox_events -> Kafka platform.notification-events
+  -> audit-service -> audit_records
 ```
 
-Frontend traffic remains synchronous HTTP through API Gateway. The Kafka/outbox
-path is currently used for task notification delivery only; it is not a general
-event-driven replacement for all service interactions.
+Frontend traffic remains synchronous HTTP through API Gateway. Kafka/outbox is
+used for task delivery and for durable user audit-event production; it is not a
+general event-driven replacement for all service interactions.
 
 ## Service Responsibilities
 
@@ -29,6 +35,7 @@ event-driven replacement for all service interactions.
 - authentication, JWT issuance, refresh, and MFA
 - profiles
 - account lifecycle, including registration, verification, locking, and deletion
+- user lifecycle and authentication outbox events
 
 
 ### task-service
@@ -53,6 +60,7 @@ notification-service directly for task-created notifications.
 - notification preferences persistence
 - task-event notification processing
 - event-consumption idempotency through `event_consumption_log`
+- notification audit-event publishing through `outbox_events`
 
 It does not own task state or user profiles. It stores only the recipient user
 reference, notification content/status, source metadata, and consumed event IDs
@@ -65,12 +73,14 @@ needed for notification processing.
 | `User` | `user-service` | Includes account lifecycle and profile |
 | `Role` | `user-service` | Authorities are defined with the role owner |
 | `Authentication` | `user-service` | Includes JWT issuance, refresh, and MFA |
+| `UserOutboxEvent` | `user-service` | Durable user lifecycle and authentication event rows in `outbox_events` |
 | `Task` | `task-service` | Root for title, description, status, priority, assignee, and deletion state |
 | `TaskAssignment` | `task-service` | References assignee by public `userId` |
 | `TaskOutboxEvent` | `task-service` | Durable task-domain event rows in `outbox_events` |
 | `Notification` | `notification-service` | System-notification aggregate |
 | `NotificationPreference` | `notification-service` | Persisted preference entity; no public API yet |
 | `ConsumedEvent` | `notification-service` | Idempotency record for accepted Kafka events |
+| `NotificationOutboxEvent` | `notification-service` | Durable notification creation event in `outbox_events` |
 
 Task comments, task history, notification templates, and delivery attempts are
 not implemented in the current codebase.
@@ -99,6 +109,7 @@ records; see
 | API Gateway | externally routed services | Route requests and reject invalid JWTs early |
 | Frontend | API Gateway | Use public `/api/**` routes only |
 | `task-service` | Kafka | Publish task domain events from `outbox_events` |
+| `user-service` | Kafka | Publish user lifecycle and authentication events from `outbox_events` |
 | Kafka | `notification-service` | Deliver task events to the notification consumer |
 
 Downstream services independently validate JWTs and authorize access to their
@@ -136,13 +147,22 @@ administrative access explicitly.
 
 ### Implemented Kafka
 
-- `task-service` writes `TASK_CREATED` outbox events when tasks are created.
+- `user-service` publishes audit-relevant registration, login, profile,
+  deletion, password-change, and MFA-enable events to `platform.user-events`.
+- `audit-service` consumes supported user events, sanitizes their payloads,
+  and stores them idempotently in `audit_records`.
+- `task-service` writes task create, assignment, status, update, and deletion
+  events to its outbox.
 - `OutboxEventPollingScheduler` publishes `NEW` and `FAILED` outbox events
   through `KafkaOutboxEventPublisher`.
 - `notification-service` consumes `platform.task-events` when
   `notification.kafka.enabled=true`.
 - `NotificationEventConsumer` uses `event_consumption_log.event_id` as the
   idempotency key.
+- `notification-service` publishes `NOTIFICATION_CREATED` and
+  `NOTIFICATION_SYSTEM_CREATED` to `platform.notification-events`.
+- `audit-service` consumes those notification events independently from the
+  task events consumed by notification-service.
 - `TaskEventNotificationProcessor` handles `TASK_CREATED`, `TASK_ASSIGNED`,
   and `TASK_STATUS_CHANGED` events.
 

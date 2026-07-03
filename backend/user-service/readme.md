@@ -18,6 +18,7 @@ Implemented service for:
 - Google Guava for caching
 - Spring Security for authentication and authorization
 - Spring Mail for email notifications
+- Spring Kafka for durable user audit-event publication
 - Docker for containerization
 - JUnit and Mockito for testing
 - PostgreSQL Testcontainers for migration and integration testing
@@ -78,14 +79,41 @@ EMAIL_HOST=localhost
 See [Configuration management](../../doc/architecture/configuration-management.md)
 for the ownership hierarchy and startup modes.
 
+### User Audit Events
+
+User Service writes audit-relevant events to its own `outbox_events` table in
+the same database transaction as the user change. A polling publisher sends
+new and retryable events to `platform.user-events`.
+
+Implemented event types are:
+
+- `USER_REGISTERED`
+- `USER_LOGIN_SUCCESS`
+- `USER_LOGIN_FAILED`
+- `USER_PROFILE_UPDATED`
+- `USER_DELETED`
+- `PASSWORD_CHANGED`
+- `MFA_ENABLED`
+
+Payloads contain only whitelisted identity, role, result, changed-field, and
+timestamp fields. Passwords, JWTs, refresh tokens, MFA secrets, QR-code
+secrets, confirmation keys, and reset tokens are never included. The existing
+in-process registration email event remains independent from Kafka publishing.
+
+Runtime publishing is configured with `USER_OUTBOX_PUBLISHER_*` variables and
+`KAFKA_USER_EVENTS_TOPIC`. Audit Service consumes this topic through its
+dedicated user event listener.
+
 ### Build and Test
 
 ```bash
 mvn -B -f backend/user-service/pom.xml test
 ```
 
-Controller and service tests run with MockMvc and Mockito. The focused
+Controller, service, payload, publisher, and processor tests run with MockMvc
+and Mockito. The focused
 `UserServiceIntegrationTest` starts PostgreSQL 16.1 through Testcontainers,
-runs Flyway, validates Hibernate mappings, and verifies deletion of
-user-service-owned dependent rows. Docker must be running. Maven Surefire sets
-Docker API version `1.44` for Docker Engine 29 compatibility.
+runs Flyway, validates Hibernate mappings, verifies user event persistence,
+and verifies deletion of user-service-owned dependent rows. Docker must be
+running. Maven Surefire sets Docker API version `1.44` for Docker Engine 29
+compatibility.

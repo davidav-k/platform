@@ -3,12 +3,6 @@
 Microservice-based Task Management Platform built with Spring Boot.
 
 
-
-## Planned
-
-- Audit service
-- Prometheus/Grafana monitoring
-
 ## Technology Stack
 
 - Java 17
@@ -28,7 +22,8 @@ Microservice-based Task Management Platform built with Spring Boot.
 backend/
 |-- user-service
 |-- task-service
-`-- notification-service
+|-- notification-service
+`-- audit-service
 
 infrastructure/
 |-- api-gateway
@@ -45,7 +40,8 @@ doc/
 ## Quick Start
 
 ```bash
-cp .env.example .envdocker compose --env-file .env -f compose.yml up -d --build
+cp .env.example .env
+docker compose --env-file .env -f compose.yml up -d --build
 ```
 
 Frontend: `http://localhost:5173`
@@ -58,6 +54,7 @@ Core local ports:
 | User Service | `8085` |
 | Task Service | `8086` |
 | Notification Service | `8087` |
+| Audit Service | `8088` |
 | Frontend | `5173` |
 | Config Server | `8888` |
 | Eureka Server | `8761` |

@@ -6,6 +6,9 @@ import com.example.notification_service.entity.NotificationEntity;
 import com.example.notification_service.enumeration.NotificationChannel;
 import com.example.notification_service.enumeration.NotificationStatus;
 import com.example.notification_service.mapper.NotificationMapper;
+import com.example.notification_service.outbox.NotificationOutboxEventTypes;
+import com.example.notification_service.outbox.NotificationOutboxPayloadFactory;
+import com.example.notification_service.outbox.OutboxEventService;
 import com.example.notification_service.repository.NotificationRepository;
 import com.example.notification_service.usecase.CreateSystemNotificationUseCase;
 import jakarta.validation.ConstraintViolation;
@@ -24,8 +27,12 @@ import java.util.Set;
 @Transactional
 public class CreateSystemNotificationUseCaseImpl implements CreateSystemNotificationUseCase {
 
+    private static final String NOTIFICATION_AGGREGATE_TYPE = "NOTIFICATION";
+
     private final NotificationRepository notificationRepository;
     private final Validator validator;
+    private final OutboxEventService outboxEventService;
+    private final NotificationOutboxPayloadFactory notificationOutboxPayloadFactory;
 
     @Override
     public NotificationResponse create(CreateSystemNotificationRequest request) {
@@ -44,6 +51,12 @@ public class CreateSystemNotificationUseCaseImpl implements CreateSystemNotifica
             request.sourceEntityId()
         );
         NotificationEntity savedNotification = notificationRepository.save(notification);
+        outboxEventService.saveNewEvent(
+            NOTIFICATION_AGGREGATE_TYPE,
+            savedNotification.getNotificationId(),
+            NotificationOutboxEventTypes.NOTIFICATION_SYSTEM_CREATED,
+            notificationOutboxPayloadFactory.notificationSystemCreatedPayload(savedNotification)
+        );
         log.info("Created system notification: notificationId={}, recipientUserId={}, type={}, sourceService={}, sourceEntityType={}, sourceEntityId={}",
             savedNotification.getNotificationId(),
             savedNotification.getRecipientUserId(),

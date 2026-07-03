@@ -23,6 +23,7 @@ async function handleLogout() {
           <RouterLink to="/profile">Profile</RouterLink>
           <RouterLink to="/tasks">Tasks</RouterLink>
           <RouterLink to="/notifications">Notifications</RouterLink>
+          <RouterLink to="/audit">Audit Log</RouterLink>
           <button class="nav-button" type="button" :disabled="isLoading" @click="handleLogout">
             Logout
           </button>
