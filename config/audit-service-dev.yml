@@ -39,3 +39,4 @@ audit:
   kafka:
     enabled: ${AUDIT_KAFKA_ENABLED:true}
     topic: ${AUDIT_KAFKA_TOPIC:${KAFKA_TASK_EVENTS_TOPIC:platform.task-events}}
+    user-topic: ${AUDIT_KAFKA_USER_TOPIC:${KAFKA_USER_EVENTS_TOPIC:platform.user-events}}

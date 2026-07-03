@@ -101,7 +101,8 @@ secrets, confirmation keys, and reset tokens are never included. The existing
 in-process registration email event remains independent from Kafka publishing.
 
 Runtime publishing is configured with `USER_OUTBOX_PUBLISHER_*` variables and
-`KAFKA_USER_EVENTS_TOPIC`. Audit Service does not consume this topic yet.
+`KAFKA_USER_EVENTS_TOPIC`. Audit Service consumes this topic through its
+dedicated user event listener.
 
 ### Build and Test
 

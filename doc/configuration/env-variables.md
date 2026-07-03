@@ -145,7 +145,7 @@ fixed in configuration and Compose:
 | `KAFKA_LOCAL_PORT` | No | `9092` | `9092` | Docker Compose | Local host port exposed by the Kafka broker. |
 | `KAFKA_BOOTSTRAP_SERVERS` | No | `kafka:9092` | `kafka:9092` | task-service, notification-service, audit-service | Kafka bootstrap server list for service-to-service broker access. |
 | `KAFKA_TASK_EVENTS_TOPIC` | No | `platform.task-events` | `platform.task-events` | task-service, notification-service, audit-service | Topic for task domain events. |
-| `KAFKA_USER_EVENTS_TOPIC` | No | `platform.user-events` | `platform.user-events` | user-service | Topic for user audit events. |
+| `KAFKA_USER_EVENTS_TOPIC` | No | `platform.user-events` | `platform.user-events` | user-service, audit-service | Topic for user audit events. |
 | `OUTBOX_PUBLISHER_ENABLED` | No | `true` | `false` | task-service | Enables task-service outbox polling. Default Kafka notification delivery keeps this true. |
 | `OUTBOX_PUBLISHER_ADAPTER` | No | `kafka` | `logging` | task-service | Selects the outbox publisher adapter. Use `logging` only for rollback or local no-op delivery. |
 | `OUTBOX_PUBLISHER_KAFKA_BOOTSTRAP_SERVERS` | No | `kafka:9092` | `kafka:9092` | task-service | Explicit Kafka bootstrap server list for the task-service outbox publisher. Falls back to `KAFKA_BOOTSTRAP_SERVERS`. |
@@ -160,8 +160,9 @@ fixed in configuration and Compose:
 | `USER_OUTBOX_PUBLISHER_KAFKA_TOPIC` | No | `platform.user-events` | `platform.user-events` | user-service | User event topic. Falls back to `KAFKA_USER_EVENTS_TOPIC`. |
 | `NOTIFICATION_KAFKA_ENABLED` | No | `true` | `false` | notification-service | Enables notification-service Kafka consumer processing. Default notification delivery keeps this true. |
 | `NOTIFICATION_KAFKA_TOPIC` | No | `platform.task-events` | `platform.task-events` | notification-service | Explicit Kafka topic consumed by notification-service. Falls back to `KAFKA_TASK_EVENTS_TOPIC`. |
-| `AUDIT_KAFKA_ENABLED` | No | `true` | `false` | audit-service | Enables Audit Service task-event consumption. |
+| `AUDIT_KAFKA_ENABLED` | No | `true` | `false` | audit-service | Enables Audit Service task- and user-event consumption. |
 | `AUDIT_KAFKA_TOPIC` | No | `platform.task-events` | `platform.task-events` | audit-service | Task event topic consumed by Audit Service. Falls back to `KAFKA_TASK_EVENTS_TOPIC`. |
+| `AUDIT_KAFKA_USER_TOPIC` | No | `platform.user-events` | `platform.user-events` | audit-service | User event topic consumed by Audit Service. Falls back to `KAFKA_USER_EVENTS_TOPIC`. |
 
 Default Kafka task event delivery uses:
 
@@ -183,8 +184,10 @@ Kafka task event mode is the supported runtime path:
 - Audit-service consumes the same topic with consumer group `audit-service`
   and stores one `audit_records` row per source event.
 - User-service writes lifecycle and authentication events to its own
-  `outbox_events` table and publishes them to `platform.user-events`. No
-  consumer is enabled for that topic in this phase.
+  `outbox_events` table and publishes them to `platform.user-events`.
+- Audit-service consumes the user topic with its dedicated listener, normalizes
+  supported events, sanitizes sensitive payload fields, and persists them using
+  the same event-ID idempotency rule as task events.
 
 ### Mail
 

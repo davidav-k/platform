@@ -42,8 +42,8 @@ delivery.
 
 The existing registration and login requests also exercise user-service audit
 event production. Verify those events through the user database
-`outbox_events` table and Kafka topic `platform.user-events`; Audit Service does
-not consume user events in this phase.
+`outbox_events` table, Kafka topic `platform.user-events`, and Audit Service
+read requests. The resulting records use `sourceService=user-service`.
 
 ## How to run
 1. Import collection

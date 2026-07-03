@@ -21,7 +21,8 @@ user-service transaction
   -> OutboxEventPollingScheduler
   -> KafkaOutboxEventPublisher
   -> Kafka topic platform.user-events
-     -> future audit-service consumer
+     -> audit-service UserEventConsumer
+        -> UserAuditEventNormalizer -> CreateAuditRecordUseCase -> audit_records
 ```
 
 ## Ownership
@@ -29,10 +30,10 @@ user-service transaction
 - `task-service` owns task persistence and task domain events.
 - `user-service` owns user persistence and user lifecycle/authentication events.
 - `notification-service` owns notification persistence and delivery state.
-- `audit-service` owns audit record persistence and consumes Task Service
+- `audit-service` owns audit record persistence and consumes task and user
   events independently from notification-service.
 - Kafka is the transport for task domain events between the services.
-- Kafka transports user events on a dedicated topic; consumption is deferred.
+- Kafka transports user events to Audit Service on a dedicated topic.
 - Each service owns its database; no cross-service repositories or foreign keys
   are used.
 
@@ -116,8 +117,9 @@ The existing in-process registration email event remains unchanged.
 
 User-service publishing is controlled independently by
 `USER_OUTBOX_PUBLISHER_*` variables and publishes to `platform.user-events`.
-Audit Service consumption and normalization of these user events are outside
-this phase.
+Audit Service consumes the seven currently published event types, normalizes
+them, recursively removes sensitive payload fields, and uses `eventId` for
+idempotent persistence.
 
 ## Publisher Configuration
 

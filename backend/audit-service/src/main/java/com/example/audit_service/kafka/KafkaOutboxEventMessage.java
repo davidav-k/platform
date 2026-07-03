@@ -4,7 +4,7 @@ import java.time.OffsetDateTime;
 import java.util.UUID;
 
 /**
- * Task-service outbox event envelope published to the shared task-events topic.
+ * Outbox event envelope shared by platform services that publish audit events.
  */
 public record KafkaOutboxEventMessage(
         UUID eventId,

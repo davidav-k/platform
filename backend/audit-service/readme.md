@@ -2,9 +2,28 @@
 
 ## Purpose
 
-Audit Service consumes task lifecycle events from Kafka, normalizes them, and
-stores immutable audit records. It exposes a read-only API for browsing those
-records. There are no create, update, or delete REST endpoints.
+Audit Service consumes task and user lifecycle events from Kafka, normalizes
+them, and stores immutable audit records. It exposes a read-only API for
+browsing those records. There are no create, update, or delete REST endpoints.
+
+Task events are consumed from `platform.task-events`. User events are consumed
+independently from `platform.user-events`; both listeners use the
+`audit-service` consumer group and the event ID remains the persistence
+idempotency key.
+
+Supported User Service mappings:
+
+- `USER_REGISTERED` -> `REGISTER_USER`
+- `USER_LOGIN_SUCCESS` -> `LOGIN_SUCCESS`
+- `USER_LOGIN_FAILED` -> `LOGIN_FAILED`
+- `USER_PROFILE_UPDATED` -> `UPDATE_USER_PROFILE`
+- `USER_DELETED` -> `DELETE_USER`
+- `PASSWORD_CHANGED` -> `CHANGE_PASSWORD`
+- `MFA_ENABLED` -> `ENABLE_MFA`
+
+Unknown user event types are skipped. User payloads are sanitized recursively
+before persistence to remove password, JWT, token, secret, and confirmation-key
+fields.
 
 The service registers with Eureka as audit-service and listens on port 8088 in
 Docker Compose.
@@ -120,6 +139,34 @@ Docker.
 Start the platform:
 
     docker compose --env-file .env -f compose.yml up -d --build
+
+Register, verify, and exercise successful and failed login events:
+
+    AUDIT_EMAIL="audit-user-$(date +%s)@example.com"
+    AUDIT_PASSWORD='Password123'
+    curl -i -X POST http://localhost:8080/api/users/register \
+      -H 'Content-Type: application/json' \
+      -d "{\"firstName\":\"Audit\",\"lastName\":\"User\",\"email\":\"${AUDIT_EMAIL}\",\"password\":\"${AUDIT_PASSWORD}\"}"
+    CONFIRMATION_KEY=$(docker exec tsp_postgres psql -U user -d users_db -Atc \
+      "select c.\"key\" from confirmations c join users u on u.id=c.user_id where u.email='${AUDIT_EMAIL}'")
+    curl -i "http://localhost:8080/api/users/verify/account?key=${CONFIRMATION_KEY}"
+    curl -i -X POST http://localhost:8080/api/users/login \
+      -H 'Content-Type: application/json' \
+      -d "{\"email\":\"${AUDIT_EMAIL}\",\"password\":\"${AUDIT_PASSWORD}\"}"
+    curl -i -X POST http://localhost:8080/api/users/login \
+      -H 'Content-Type: application/json' \
+      -d "{\"email\":\"${AUDIT_EMAIL}\",\"password\":\"WrongPassword123\"}"
+
+Inspect the producer outbox and consumed audit rows:
+
+    docker exec tsp_postgres psql -U user -d users_db -c \
+      "select event_id,event_type,status,retry_count from outbox_events where event_type like 'USER_%' order by created_at desc;"
+    docker exec tsp_postgres psql -U user -d audits_db -c \
+      "select event_id,event_type,source_service,action,actor_email,payload from audit_records where source_service='user-service' order by occurred_at desc;"
+    docker exec tsp_postgres psql -U user -d audits_db -c \
+      "select event_id,count(*) from audit_records group by event_id having count(*) > 1;"
+    docker exec tsp_postgres psql -U user -d audits_db -c \
+      "select event_id,event_type from audit_records where payload::text ~* '(password|jwt|token|secret|confirmation.?key)';"
 
 Check Audit Service health and Eureka registration:
 

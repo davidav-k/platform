@@ -3,7 +3,7 @@
 ## Purpose
 
 Platform is an MVP-stage Task Management Platform. The current runnable system
-delivers user management, task management, notifications, Task Service audit
+delivers user management, task management, notifications, task and user audit
 event persistence, and shared infrastructure.
 
 For aggregate ownership and future service rules, see
@@ -26,14 +26,14 @@ The Docker Compose stack currently runs:
 | `user-service` | Users, roles, authentication, JWT issuance and validation, MFA, profiles, and account lifecycle | `8085` |
 | `task-service` | Task lifecycle, ownership, assignment, status changes, filtering, pagination, and soft delete | `8086` |
 | `notification-service` | Notification persistence, create, get, list, filtering, pagination, and Kafka-backed task notification processing | `8087` |
-| `audit-service` | Kafka-backed Task Service audit event consumption and audit record persistence; no API yet | `8088` |
+| `audit-service` | Kafka-backed task/user audit event consumption, audit record persistence, and secured read-only API | `8088` |
 | `api-gateway` | External entry point, JWT early rejection, routing, CORS, and circuit breaker fallback | `8080` |
 | `frontend` | Vue 3 production bundle served by nginx with SPA route fallback | `5173` |
 | `config-server` | Spring Cloud Config native repository mounted from `./config` | `8888` |
 | `eureka-server` | Service registration and discovery | `8761` |
 | PostgreSQL 16.1 | User, task, notification, and audit persistence in separate databases | `5432` |
 | Redis 7 | Independently running and health-checked; not integrated into user-service | `6379` |
-| Kafka 3.7.1 | Task event transport for outbox-backed notifications and audit records | `9092` |
+| Kafka 3.7.1 | Task and user event transport for outbox-backed processing and audit records | `9092` |
 | MailHog | Local SMTP capture and UI | `1025`, `8025` |
 | Zipkin | Local tracing infrastructure container | `9411` |
 
@@ -63,6 +63,15 @@ task-service -> outbox_events -> Kafka platform.task-events
   -> CreateAuditRecordUseCase -> audit_records
 ```
 
+The implemented user audit event path is:
+
+```text
+user-service -> outbox_events -> Kafka platform.user-events
+  -> audit-service UserEventConsumer
+  -> UserAuditEventNormalizer -> NormalizedAuditEvent
+  -> CreateAuditRecordUseCase -> audit_records
+```
+
 
 The Vue 3 frontend runs through nginx in Docker Compose or through Vite during
 frontend development. It uses only external API Gateway routes and never
@@ -86,7 +95,6 @@ The notification API contract is documented in
 
 The following items are roadmap direction, not implemented functionality:
 
-- audit REST API and search
 - OpenAI-backed task automation
 - Prometheus and Grafana monitoring stack
 

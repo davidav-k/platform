@@ -14,7 +14,7 @@ task-service -> outbox_events -> Kafka platform.task-events
   -> notification-service -> notifications
 
 user-service -> outbox_events -> Kafka platform.user-events
-  -> future audit-service consumer
+  -> audit-service -> audit_records
 ```
 
 Frontend traffic remains synchronous HTTP through API Gateway. Kafka/outbox is
@@ -144,7 +144,8 @@ administrative access explicitly.
 
 - `user-service` publishes audit-relevant registration, login, profile,
   deletion, password-change, and MFA-enable events to `platform.user-events`.
-  Audit Service consumption of user events is intentionally deferred.
+- `audit-service` consumes supported user events, sanitizes their payloads,
+  and stores them idempotently in `audit_records`.
 - `task-service` writes task create, assignment, status, update, and deletion
   events to its outbox.
 - `OutboxEventPollingScheduler` publishes `NEW` and `FAILED` outbox events

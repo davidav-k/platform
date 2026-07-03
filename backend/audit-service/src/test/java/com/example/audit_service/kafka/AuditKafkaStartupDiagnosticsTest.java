@@ -16,12 +16,14 @@ class AuditKafkaStartupDiagnosticsTest {
         AuditKafkaProperties properties = new AuditKafkaProperties();
         properties.setEnabled(true);
         properties.setTopic("platform.task-events");
+        properties.setUserTopic("platform.user-events");
 
         new AuditKafkaStartupDiagnostics(properties).run(new DefaultApplicationArguments());
 
         assertThat(output)
                 .contains("Audit Kafka startup configuration")
                 .contains("kafkaConsumerEnabled=true")
-                .contains("topic=platform.task-events");
+                .contains("taskTopic=platform.task-events")
+                .contains("userTopic=platform.user-events");
     }
 }
