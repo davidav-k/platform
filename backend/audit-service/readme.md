@@ -136,6 +136,19 @@ Build Audit Service:
 
     mvn -B -f backend/audit-service/pom.xml clean verify
 
+Run the full local producer-to-Audit verification after starting Docker
+Compose:
+
+```bash
+./scripts/verify-audit-flow.sh
+```
+
+The script logs in as the configured admin, triggers successful and failed
+login events, creates/updates/assigns/status-changes/deletes a task, creates a
+notification, and polls the secured Audit API until task, user, and
+notification audit records are visible. It uses only standard shell tools and
+`curl`; `ADMIN_PASSWORD` is read from the repository `.env` file.
+
 Run the focused REST API and security tests:
 
     mvn -B -f backend/audit-service/pom.xml \

@@ -11,6 +11,8 @@
 9. Kafka/Outbox notification flow check for `TASK_CREATED` / `IN_APP`.
 10. Refresh token flow.
 11. Current logout contract.
+12. Audit API security, filters, pagination, and record lookup.
+13. Task, user, and notification event delivery into Audit Service.
 
 ## Postman Environment Variables
 
@@ -32,6 +34,17 @@
 | `unrelatedTaskId` | UUID of the administrator task for RBAC/ownership checks. Automatically populated. |
 | `notificationId` | UUID of the found notification. Automatically populated. |
 | `notificationWaitMillis` | Kafka/outbox processing wait time. Recommended: 7000. |
+| `auditBaseUrl` | Direct Audit Service URL. Defaults to `http://localhost:8088`. |
+| `auditId` | Public audit UUID captured from an Audit API response. |
+| `auditEventType` | Captured event type used by the filter request. |
+| `auditAggregateType` | Captured aggregate type used by the filter request. |
+| `auditAggregateId` | Captured aggregate UUID used by the filter request. |
+| `auditSourceService` | Captured source service used by the filter request. |
+| `auditAction` | Captured action used by the filter request. |
+| `auditCreatedTaskId` | Task UUID created by the dedicated Audit E2E flow. |
+| `auditNotificationId` | Notification UUID created by the Audit E2E flow. |
+| `auditRunStartedAt` | Timestamp used to isolate user and notification events from the current E2E run. |
+| `auditWaitMillis` | Delay between retryable Audit API checks. Defaults to 3000 ms. |
 
 The notification check creates a task with `assigneeUserId`, waits
 `notificationWaitMillis`, then reads `GET /api/notifications` through the
@@ -55,7 +68,36 @@ Audit Service directly at `{{auditBaseUrl}}/api/v1/audit` so its service-level
 security checks remain independent of Gateway routing.
 
 ## How to run
-1. Import collection
-2. Import environment
-3. `Platform Local - Postman Template` environment.
-4. `adminPassword` and `userPassword`.
+
+1. Start the complete Docker Compose stack and verify it:
+
+   ```bash
+   docker compose --env-file .env -f compose.yml up -d --build
+   ./scripts/check-local-stack.sh
+   ```
+
+2. Import `platform-mvp-e2e.updated.postman_collection.json` and
+   `platform-local.updated.postman_environment.json`.
+3. Select `Platform Local - Postman Template` and populate `adminPassword` and
+   `userPassword`.
+4. Run the complete collection to retain the existing MVP checks.
+5. Run `05 - Audit Service` after the setup folders to verify 401, 403, 200,
+   filters, sorting, detail lookup, and 404 behavior.
+6. Run `06 - Audit E2E Flow` with Collection Runner. It uses the existing
+   active admin account, creates and mutates a task, creates a notification,
+   and retries Audit API queries while Kafka/outbox processing completes.
+
+Expected Audit E2E events are `TASK_CREATED`, `TASK_UPDATED`, `TASK_ASSIGNED`,
+`TASK_STATUS_CHANGED`, `TASK_DELETED`, `USER_LOGIN_SUCCESS`,
+`USER_LOGIN_FAILED`, `NOTIFICATION_CREATED`, and
+`NOTIFICATION_SYSTEM_CREATED`.
+
+The equivalent dependency-free local check is:
+
+```bash
+./scripts/verify-audit-flow.sh
+```
+
+It reads `ADMIN_PASSWORD` from `.env`. Optional overrides are `BASE_URL`,
+`AUDIT_BASE_URL`, `ADMIN_EMAIL`, `AUDIT_POLL_ATTEMPTS`, and
+`AUDIT_POLL_DELAY_SECONDS`.
