@@ -2,11 +2,11 @@ package com.example.audit_service.mapper;
 
 import com.example.audit_service.dto.AuditResponseDto;
 import com.example.audit_service.entity.AuditRecordEntity;
+import lombok.NoArgsConstructor;
 
+@NoArgsConstructor
 public final class AuditMapper {
 
-    private AuditMapper() {
-    }
 
     public static AuditResponseDto toResponse(AuditRecordEntity entity) {
         return new AuditResponseDto(

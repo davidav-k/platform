@@ -5,6 +5,8 @@ import com.example.audit_service.normalization.NotificationAuditEventNormalizer;
 import com.example.audit_service.usecase.CreateAuditRecordUseCase;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -14,24 +16,15 @@ import org.springframework.stereotype.Component;
 import java.util.Optional;
 
 @Component
+@Slf4j
+@RequiredArgsConstructor
 @ConditionalOnProperty(prefix = "audit.kafka", name = "enabled", havingValue = "true")
 public class NotificationAuditEventConsumer {
-
-    private static final Logger log = LoggerFactory.getLogger(NotificationAuditEventConsumer.class);
 
     private final ObjectMapper objectMapper;
     private final NotificationAuditEventNormalizer notificationAuditEventNormalizer;
     private final CreateAuditRecordUseCase createAuditRecordUseCase;
 
-    public NotificationAuditEventConsumer(
-            ObjectMapper objectMapper,
-            NotificationAuditEventNormalizer notificationAuditEventNormalizer,
-            CreateAuditRecordUseCase createAuditRecordUseCase
-    ) {
-        this.objectMapper = objectMapper;
-        this.notificationAuditEventNormalizer = notificationAuditEventNormalizer;
-        this.createAuditRecordUseCase = createAuditRecordUseCase;
-    }
 
     @KafkaListener(
             topics = "${audit.kafka.notification-topic:platform.notification-events}",

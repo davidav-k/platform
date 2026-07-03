@@ -9,6 +9,7 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
+import lombok.Getter;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
@@ -22,6 +23,7 @@ import java.util.UUID;
  * <p>The source event ID is the idempotency key. The original event payload is
  * retained as JSONB so later audit projections do not lose source data.</p>
  */
+@Getter
 @Entity
 @Table(name = "audit_records")
 public class AuditRecordEntity {
@@ -107,59 +109,4 @@ public class AuditRecordEntity {
         }
     }
 
-    public Long getId() {
-        return id;
-    }
-
-    public UUID getAuditId() {
-        return auditId;
-    }
-
-    public UUID getEventId() {
-        return eventId;
-    }
-
-    public String getEventType() {
-        return eventType;
-    }
-
-    public String getAggregateType() {
-        return aggregateType;
-    }
-
-    public UUID getAggregateId() {
-        return aggregateId;
-    }
-
-    public String getSourceService() {
-        return sourceService;
-    }
-
-    public UUID getActorUserId() {
-        return actorUserId;
-    }
-
-    public String getActorEmail() {
-        return actorEmail;
-    }
-
-    public String getAction() {
-        return action;
-    }
-
-    public String getPayload() {
-        return payload;
-    }
-
-    public OffsetDateTime getOccurredAt() {
-        return occurredAt;
-    }
-
-    public OffsetDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public Long getVersion() {
-        return version;
-    }
 }

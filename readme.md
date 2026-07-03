@@ -3,12 +3,6 @@
 Microservice-based Task Management Platform built with Spring Boot.
 
 
-
-## Planned
-
-- Audit REST API and search
-- Prometheus/Grafana monitoring
-
 ## Technology Stack
 
 - Java 17
@@ -46,7 +40,7 @@ doc/
 ## Quick Start
 
 ```bash
-cp .env.example .envdocker compose --env-file .env -f compose.yml up -d --build
+docker compose --env-file .env -f compose.yml up -d --build
 ```
 
 Frontend: `http://localhost:5173`

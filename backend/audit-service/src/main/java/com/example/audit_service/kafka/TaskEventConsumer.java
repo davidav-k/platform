@@ -5,6 +5,8 @@ import com.example.audit_service.normalization.TaskAuditEventNormalizer;
 import com.example.audit_service.usecase.CreateAuditRecordUseCase;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -14,21 +16,15 @@ import org.springframework.stereotype.Component;
 import java.util.Optional;
 
 @Component
+@Slf4j
+@RequiredArgsConstructor
 @ConditionalOnProperty(prefix = "audit.kafka", name = "enabled", havingValue = "true")
 public class TaskEventConsumer {
-
-    private static final Logger log = LoggerFactory.getLogger(TaskEventConsumer.class);
 
     private final ObjectMapper objectMapper;
     private final TaskAuditEventNormalizer taskAuditEventNormalizer;
     private final CreateAuditRecordUseCase createAuditRecordUseCase;
 
-    public TaskEventConsumer(ObjectMapper objectMapper, TaskAuditEventNormalizer taskAuditEventNormalizer,
-                             CreateAuditRecordUseCase createAuditRecordUseCase) {
-        this.objectMapper = objectMapper;
-        this.taskAuditEventNormalizer = taskAuditEventNormalizer;
-        this.createAuditRecordUseCase = createAuditRecordUseCase;
-    }
 
     @KafkaListener(
             topics = "${audit.kafka.topic:platform.task-events}",
