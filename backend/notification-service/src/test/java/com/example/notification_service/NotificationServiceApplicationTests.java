@@ -1,6 +1,7 @@
 package com.example.notification_service;
 
 import com.example.notification_service.repository.NotificationRepository;
+import com.example.notification_service.repository.OutboxEventRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
@@ -20,6 +21,9 @@ class NotificationServiceApplicationTests {
 
     @MockitoBean
     private NotificationRepository notificationRepository;
+
+    @MockitoBean
+    private OutboxEventRepository outboxEventRepository;
 
     @Test
     void contextLoads() {

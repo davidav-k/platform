@@ -39,6 +39,9 @@ Gateway and expects a `TASK_CREATED` notification for the assigned recipient.
 The wait is required because task-service writes an outbox event and
 notification-service creates the notification asynchronously after Kafka
 delivery.
+That notification creation also writes `NOTIFICATION_SYSTEM_CREATED` to the
+notification-service outbox for publication to
+`platform.notification-events`.
 
 The existing registration and login requests also exercise user-service audit
 event production. Verify those events through the user database

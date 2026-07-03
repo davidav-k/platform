@@ -40,6 +40,30 @@ Implemented enum values:
 The current use cases persist notification rows. Email sending, read state,
 mark-as-read, delete, and status transition APIs are not implemented.
 
+## Notification Audit Event Publishing
+
+Notification Service writes audit-relevant creation events to its own
+`outbox_events` table in the same transaction as the notification:
+
+| Flow | Event type |
+| --- | --- |
+| Public notification creation | `NOTIFICATION_CREATED` |
+| Internal/task-driven system notification creation | `NOTIFICATION_SYSTEM_CREATED` |
+
+The polling publisher sends new and retryable events to
+`platform.notification-events`. Audit Service does not consume this topic in
+the current phase.
+
+Payloads contain only notification identifiers and lifecycle metadata:
+`notificationId`, `recipientUserId`, `type`, `channel`, `status`,
+`sourceService`, `sourceEntityType`, `sourceEntityId`, `createdAt`,
+`updatedAt`, and `sentAt`. Notification subject/body, JWTs, cookies, and
+request headers are excluded.
+
+The consumed task-event path remains separate: `event_consumption_log`
+records incoming task events, while `outbox_events` contains outgoing
+notification audit events.
+
 ## Kafka Task Event Processing
 
 The supported task notification delivery path is Outbox Pattern + Kafka:
@@ -158,6 +182,18 @@ Start the service and its dependencies through Docker Compose:
 
 ```bash
 docker compose --env-file .env -f compose.yml up -d --build notification-service
+```
+
+Inspect outgoing events and the dedicated Kafka topic:
+
+```bash
+docker exec tsp_postgres psql -U user -d notifications_db -c \
+  "select event_id,event_type,aggregate_id,status,retry_count,payload from outbox_events order by created_at desc;"
+
+docker exec tsp_kafka /opt/kafka/bin/kafka-console-consumer.sh \
+  --bootstrap-server kafka:9092 \
+  --topic platform.notification-events \
+  --from-beginning --max-messages 2
 ```
 
 Health check:

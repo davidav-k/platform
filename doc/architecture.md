@@ -25,7 +25,7 @@ The Docker Compose stack currently runs:
 | --- | --- | --- |
 | `user-service` | Users, roles, authentication, JWT issuance and validation, MFA, profiles, and account lifecycle | `8085` |
 | `task-service` | Task lifecycle, ownership, assignment, status changes, filtering, pagination, and soft delete | `8086` |
-| `notification-service` | Notification persistence, create, get, list, filtering, pagination, and Kafka-backed task notification processing | `8087` |
+| `notification-service` | Notification persistence, Kafka-backed task notification processing, and notification audit-event outbox publishing | `8087` |
 | `audit-service` | Kafka-backed task/user audit event consumption, audit record persistence, and secured read-only API | `8088` |
 | `api-gateway` | External entry point, JWT early rejection, routing, CORS, and circuit breaker fallback | `8080` |
 | `frontend` | Vue 3 production bundle served by nginx with SPA route fallback | `5173` |
@@ -33,7 +33,7 @@ The Docker Compose stack currently runs:
 | `eureka-server` | Service registration and discovery | `8761` |
 | PostgreSQL 16.1 | User, task, notification, and audit persistence in separate databases | `5432` |
 | Redis 7 | Independently running and health-checked; not integrated into user-service | `6379` |
-| Kafka 3.7.1 | Task and user event transport for outbox-backed processing and audit records | `9092` |
+| Kafka 3.7.1 | Task, user, and notification event transport for outbox-backed processing | `9092` |
 | MailHog | Local SMTP capture and UI | `1025`, `8025` |
 | Zipkin | Local tracing infrastructure container | `9411` |
 
@@ -70,6 +70,14 @@ user-service -> outbox_events -> Kafka platform.user-events
   -> audit-service UserEventConsumer
   -> UserAuditEventNormalizer -> NormalizedAuditEvent
   -> CreateAuditRecordUseCase -> audit_records
+```
+
+The implemented notification audit-event production path is:
+
+```text
+notification-service -> notifications + outbox_events
+  -> Kafka platform.notification-events
+  -> future audit-service notification consumer
 ```
 
 

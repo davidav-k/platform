@@ -23,17 +23,28 @@ user-service transaction
   -> Kafka topic platform.user-events
      -> audit-service UserEventConsumer
         -> UserAuditEventNormalizer -> CreateAuditRecordUseCase -> audit_records
+
+notification-service transaction
+  -> notifications
+  -> outbox_events
+  -> OutboxEventPollingScheduler
+  -> KafkaOutboxEventPublisher
+  -> Kafka topic platform.notification-events
+     -> future audit-service notification consumer
 ```
 
 ## Ownership
 
 - `task-service` owns task persistence and task domain events.
 - `user-service` owns user persistence and user lifecycle/authentication events.
-- `notification-service` owns notification persistence and delivery state.
+- `notification-service` owns notification persistence, incoming task-event
+  idempotency, and outgoing notification audit events.
 - `audit-service` owns audit record persistence and consumes task and user
   events independently from notification-service.
 - Kafka is the transport for task domain events between the services.
 - Kafka transports user events to Audit Service on a dedicated topic.
+- Kafka transports notification audit events on a dedicated topic; Audit
+  Service consumption of that topic is intentionally deferred.
 - Each service owns its database; no cross-service repositories or foreign keys
   are used.
 
@@ -121,6 +132,17 @@ Audit Service consumes the seven currently published event types, normalizes
 them, recursively removes sensitive payload fields, and uses `eventId` for
 idempotent persistence.
 
+## Notification Events
+
+Notification-service writes `NOTIFICATION_CREATED` for the public create use
+case and `NOTIFICATION_SYSTEM_CREATED` for internal and task-event-driven
+system creation. No read, delete, sent, or delivery-failed event is published
+because those mutation flows do not exist yet.
+
+The payload is whitelist-based and contains notification/recipient IDs, type,
+channel, status, source metadata, and lifecycle timestamps. Subject, body,
+JWTs, cookies, and request headers are excluded.
+
 ## Publisher Configuration
 
 Task-service outbox publishing is controlled by:
@@ -137,6 +159,15 @@ OUTBOX_PUBLISHER_KAFKA_TOPIC=platform.task-events
 `KAFKA_TASK_EVENTS_TOPIC`.
 
 Inside Docker, bootstrap servers must use `kafka:9092`, not `localhost:9092`.
+
+Notification-service publishing is controlled independently by:
+
+```text
+NOTIFICATION_OUTBOX_PUBLISHER_ENABLED=true
+NOTIFICATION_OUTBOX_PUBLISHER_ADAPTER=kafka
+NOTIFICATION_OUTBOX_PUBLISHER_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+NOTIFICATION_OUTBOX_PUBLISHER_KAFKA_TOPIC=platform.notification-events
+```
 
 ## Consumer Configuration
 
@@ -169,9 +200,10 @@ and records the error message on the event. Publish diagnostics should include:
 - `aggregateId`
 - `error_message`
 
-Notification-service records consumed event status in
-`event_consumption_log`. Consumer diagnostics should identify the task event
-without logging JWTs, cookies, authorization headers, passwords, or secrets.
+Notification-service records consumed task events in `event_consumption_log`
+and produced notification events in `outbox_events`. Publisher and consumer
+diagnostics identify envelopes without logging JWTs, cookies, authorization
+headers, passwords, message bodies, or secrets.
 Audit-service uses the unique `audit_records.event_id` constraint as its
 idempotency backstop and ignores events already present through the persistence
 use case.

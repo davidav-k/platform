@@ -15,6 +15,9 @@ task-service -> outbox_events -> Kafka platform.task-events
 
 user-service -> outbox_events -> Kafka platform.user-events
   -> audit-service -> audit_records
+
+notification-service -> outbox_events -> Kafka platform.notification-events
+  -> future audit-service notification consumer
 ```
 
 Frontend traffic remains synchronous HTTP through API Gateway. Kafka/outbox is
@@ -57,6 +60,7 @@ notification-service directly for task-created notifications.
 - notification preferences persistence
 - task-event notification processing
 - event-consumption idempotency through `event_consumption_log`
+- notification audit-event publishing through `outbox_events`
 
 It does not own task state or user profiles. It stores only the recipient user
 reference, notification content/status, source metadata, and consumed event IDs
@@ -76,6 +80,7 @@ needed for notification processing.
 | `Notification` | `notification-service` | System-notification aggregate |
 | `NotificationPreference` | `notification-service` | Persisted preference entity; no public API yet |
 | `ConsumedEvent` | `notification-service` | Idempotency record for accepted Kafka events |
+| `NotificationOutboxEvent` | `notification-service` | Durable notification creation event in `outbox_events` |
 
 Task comments, task history, notification templates, and delivery attempts are
 not implemented in the current codebase.
@@ -154,6 +159,8 @@ administrative access explicitly.
   `notification.kafka.enabled=true`.
 - `NotificationEventConsumer` uses `event_consumption_log.event_id` as the
   idempotency key.
+- `notification-service` publishes `NOTIFICATION_CREATED` and
+  `NOTIFICATION_SYSTEM_CREATED` to `platform.notification-events`.
 - `TaskEventNotificationProcessor` handles `TASK_CREATED`, `TASK_ASSIGNED`,
   and `TASK_STATUS_CHANGED` events.
 

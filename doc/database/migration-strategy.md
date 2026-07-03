@@ -15,6 +15,9 @@ These migrations are the schema source of truth. Hibernate validates migrated
 schemas and must not create or update them. The local Docker Compose stack and
 integration tests use PostgreSQL `16.1`.
 
+Notification Service currently extends its baseline with
+`V4__create_outbox_events.sql` for service-owned notification audit events.
+
 ## Principles
 
 - Every schema change goes through Flyway.
