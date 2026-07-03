@@ -24,6 +24,11 @@ sequenceDiagram
     participant Consumer as NotificationEventConsumer
     participant Processor as TaskEventNotificationProcessor
     participant NotifService as notification-service
+    participant NotifDB as PostgreSQL notifications
+    participant NotifOutbox as Notification Outbox
+    participant NotifKafka as Kafka platform.notification-events
+    participant AuditConsumer as NotificationAuditEventConsumer
+    participant AuditDB as PostgreSQL audit_records
     participant Router as Vue Router
 
     User->>View: Открывает /tasks/create
@@ -104,6 +109,12 @@ sequenceDiagram
         Processor-->>Consumer: notification skipped
     else assigneeUserId есть
         Processor->>NotifService: create IN_APP TASK_CREATED notification
-        NotifService-->>Processor: saved notification
+        NotifService->>NotifDB: INSERT notification
+        NotifService->>NotifOutbox: INSERT NOTIFICATION_SYSTEM_CREATED
+        NotifService-->>Processor: saved notification and outbox event
     end
+
+    NotifOutbox->>NotifKafka: publish notification audit event
+    NotifKafka-->>AuditConsumer: consume NOTIFICATION_SYSTEM_CREATED
+    AuditConsumer->>AuditDB: INSERT normalized audit record
 ```

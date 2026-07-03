@@ -1,0 +1,10 @@
+spring:
+  application:
+    name: audit-service
+
+audit:
+  kafka:
+    enabled: false
+    topic: platform.task-events
+    user-topic: platform.user-events
+    notification-topic: platform.notification-events

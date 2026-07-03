@@ -13,6 +13,22 @@ spring:
           lower-case-service-id: true
 
       routes:
+        - id: audit-service-root
+          uri: lb://audit-service
+          predicates:
+            - Path=/api/audit,/api/audit/
+            - Method=GET,OPTIONS
+          filters:
+            - SetPath=/api/v1/audit
+
+        - id: audit-service
+          uri: lb://audit-service
+          predicates:
+            - Path=/api/audit/**
+            - Method=GET,OPTIONS
+          filters:
+            - RewritePath=/api/audit/(?<segment>.*), /api/v1/audit/${segment}
+
         - id: user-service
           uri: lb://user-service
           predicates:

@@ -1,267 +1,280 @@
-# Platform Development Instructions
+# AGENTS.md
 
-You are working on Platform — a microservice-based Task Management Platform.
+# Platform / Task Management Platform
 
-## Goal
+This repository contains a Spring Boot microservices learning project.
 
-Current goal is MVP stabilization.
-
-Priorities:
-
-1. Startup stability
-2. Security hardening
-3. user-service stabilization
-4. task-service stabilization
-5. notification-service stabilization
-6. Gateway and contract alignment
-7. Frontend integration
-8. Event-driven architecture preparation
-
-Prefer small, reviewable, incremental changes.
-
-Do not introduce large-scale refactoring unless explicitly requested.
+The primary objective is to evolve the platform while preserving clean architecture, service boundaries, and incremental development.
 
 ---
 
-## Technology Stack
+# Technology Stack
 
-* Java 17
-* Spring Boot 3.4.x
-* Spring Cloud 2024.x
-* Spring Security
-* Spring Cloud Gateway
-* Eureka
-* Config Server
-* PostgreSQL 16.x
-* Redis
-* Docker Compose
-* Maven
-* JUnit 5
-* Mockito
-* Testcontainers
-* Vue 3
+Backend
 
-Always verify version compatibility before upgrades.
+- Java 17
+- Spring Boot 3.4.x
+- Spring Cloud 2024.x
+- Spring Security
+- Spring Cloud Gateway
+- Spring Cloud Config
+- Eureka Server
+- Apache Kafka
+- PostgreSQL 16
+- Redis
+- Flyway
+- Maven
+- Docker Compose
 
----
+Testing
 
-## Architecture Rules
+- JUnit 5
+- Mockito
+- Testcontainers
 
-### Service Ownership
+Frontend
 
-user-service:
-
-* authentication
-* authorization
-* MFA
-* user lifecycle
-
-task-service:
-
-* task lifecycle
-* ownership
-* assignment
-* status transitions
-
-notification-service:
-
-* notifications
-* preferences
-* delivery
-
-api-gateway:
-
-* routing
-* JWT validation
-* gateway filters
-
-Do not move responsibilities between services without explicit justification.
-
-### Controllers
-
-Controllers must:
-
-* validate requests
-* call use cases
-* return DTOs
-
-Controllers must not contain business logic.
-
-### Service Layer
-
-Service layer owns:
-
-* business rules
-* use cases
-* transactions
-
-### DTO Rules
-
-Keep separation between:
-
-* Entity
-* DTO
-* Security Principal
-
-Never expose entities directly.
-
-### Database Rules
-
-Each service owns its own schema/database.
-
-Never create:
-
-* cross-service foreign keys
-* cross-service repository access
+- Vue 3
+- Vite
+- JavaScript
 
 ---
 
-## Security Rules
+# Current Architecture
 
-Always verify:
+Infrastructure services
 
-* JWT validation
-* expiration handling
-* refresh flow
-* authorization rules
-* MFA flow
-* security filter ordering
+- config-server
+- eureka-server
+- api-gateway
 
-Special attention:
+Business services
 
-* JWT expiration units
-* HttpOnly cookies
-* Secure cookies
-* SameSite
-* MaxAge
-* RequestContext cleanup
+- user-service
+- task-service
+- notification-service
 
-Never log:
+Future services
 
-* passwords
-* JWT tokens
-* refresh tokens
-* secrets
+- audit-service
+- scheduler-service
+- ai-service
+
+Each service owns its own database/schema.
+
+Never introduce shared persistence.
 
 ---
 
-## Configuration Rules
+# Architectural Rules
+
+Always preserve:
+
+- Clean Architecture
+- SOLID
+- SRP
+- Explicit transaction boundaries
+- Thin controllers
+- Business logic inside service layer
+- Repository layer only for persistence
+- DTOs separated from Entities
+- Infrastructure isolated from API contracts
+
+Do not move business logic into controllers.
+
+Do not bypass service layer.
+
+---
+
+# Event Driven Architecture
+
+Inter-service communication should prefer Kafka events.
+
+Current pattern:
+
+Task Service
+
+↓
+
+Outbox Pattern
+
+↓
+
+Kafka
+
+↓
+
+Notification Service
+
+↓
+
+Notification persistence
+
+Future integrations should follow the same approach.
+
+Avoid synchronous REST communication when events are appropriate.
+
+Audit Service must consume Kafka events rather than REST APIs.
+
+---
+
+# Coding Rules
 
 Prefer:
 
-* application.yml
-* Config Server
-* Environment Variables
-
-Never hardcode:
-
-* credentials
-* secrets
-* environment-specific values
-
----
-
-## Coding Style
-
-Prefer:
-
-* simple code
-* readable code
-* explicit names
+- readable code
+- small classes
+- cohesive methods
+- descriptive naming
 
 Avoid:
 
-* premature optimization
-* speculative design
-* unnecessary abstractions
+- unnecessary abstractions
+- speculative design
+- overengineering
+- magic strings
+- duplicated logic
+
+When introducing constants, prefer dedicated constants/classes instead of inline literals.
 
 ---
 
-## Workflow
+# Dependency Rules
 
-Before implementation:
+Do not introduce new libraries unless necessary.
 
-1. Analyze existing code.
-2. Identify affected modules.
-3. Identify affected files.
-4. Identify risks.
-5. Propose minimal solution.
+Reuse existing Spring Boot capabilities whenever possible.
 
-Do not start implementation before analysis.
+Keep dependency changes minimal.
 
-After implementation:
-
-1. List modified files.
-2. Review architecture impact.
-3. Review security impact.
-4. Suggest tests.
-5. Suggest documentation updates.
+Do not change Java or Spring versions without explicit reason.
 
 ---
 
-## Testing
+# Database
 
-Provide required tests for every change:
+Use Flyway for every schema change.
 
-* Unit Tests
-* Integration Tests
-* MockMvc Tests
-* Security Tests
-* Testcontainers Tests
+Never modify previous migrations.
 
----
+Always create a new migration.
 
-## Documentation
-
-Update documentation when changing:
-
-* API contracts
-* Architecture
-* Security
-* Configuration
-* Startup process
-
-Relevant documents:
-
-* README.md
-* doc/architecture.md
-* doc/development-workflow.md
-* doc/security/*
-* doc/configuration/*
-* doc/technical-debt.md
+Keep migrations idempotent and deterministic.
 
 ---
 
-## Technical Debt
+# REST API
 
-Do not introduce new technical debt without documenting it.
+Do not break existing REST contracts.
 
-Prefer reducing nearby technical debt when touching existing code.
+Maintain backward compatibility whenever possible.
+
+Keep controllers thin.
+
+Validate input at API boundary.
+
+Return consistent error responses.
 
 ---
 
-## Required Response Format
+# Security
 
-Before implementation:
+Never log:
 
-## Analysis
+- JWT
+- passwords
+- secrets
 
-## Affected Modules
+Prefer HttpOnly cookies.
 
-## Affected Files
+Use SecurityContext when user identity is required.
 
-## Risks
+Never expose internal implementation details through API.
 
-## Proposed Solution
+---
 
-After implementation:
+# Documentation
 
-## Summary
+Whenever architecture changes:
 
-## Modified Files
+Update
 
-## Tests
+- README
+- Mermaid diagrams
+- Postman Collection
+- architecture documentation if required
 
-## Documentation Updates
+Documentation is part of the feature.
 
-## Remaining Technical Debt
+---
+
+# Git Workflow
+
+One branch = one feature.
+
+Keep pull requests focused.
+
+Prefer small atomic commits.
+
+Do not combine unrelated changes.
+
+---
+
+# Before Changing Code
+
+Always analyze the existing implementation first.
+
+Follow the current project style.
+
+Modify only what is necessary.
+
+Avoid unrelated refactoring.
+
+Do not rename files or packages without a strong reason.
+
+---
+
+# When Producing Changes
+
+Explain:
+
+1. what was changed
+
+2. why it was changed
+
+3. affected files
+
+4. tests that should be executed
+
+---
+
+# Preferred Response Style
+
+For implementation requests:
+
+1. Brief implementation plan.
+
+2. Concrete code or patch.
+
+3. Testing checklist.
+
+If information is missing, explicitly state assumptions instead of inventing code.
+
+---
+
+# Current Development Priority
+
+Current roadmap:
+
+1. Audit Service
+2. Audit Event Pipeline
+3. Audit REST API
+4. Audit Frontend
+5. Email/WebSocket Notifications
+6. Scheduler Service
+7. AI Service
+8. Monitoring
+9. CI/CD improvements
+10. Production readiness
+
+Architectural consistency is always more important than adding new features.

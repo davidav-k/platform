@@ -3,8 +3,8 @@
 ## Purpose
 
 Platform is an MVP-stage Task Management Platform. The current runnable system
-delivers user management, task management, notifications, and shared
-infrastructure.
+delivers user management, task management, notifications, task and user audit
+event persistence, and shared infrastructure.
 
 For aggregate ownership and future service rules, see
 [Service boundaries](architecture/service-boundaries.md).
@@ -25,14 +25,15 @@ The Docker Compose stack currently runs:
 | --- | --- | --- |
 | `user-service` | Users, roles, authentication, JWT issuance and validation, MFA, profiles, and account lifecycle | `8085` |
 | `task-service` | Task lifecycle, ownership, assignment, status changes, filtering, pagination, and soft delete | `8086` |
-| `notification-service` | Notification persistence, create, get, list, filtering, pagination, and Kafka-backed task notification processing | `8087` |
+| `notification-service` | Notification persistence, Kafka-backed task notification processing, and notification audit-event outbox publishing | `8087` |
+| `audit-service` | Kafka-backed task/user/notification audit event consumption, audit record persistence, and secured read-only API | `8088` |
 | `api-gateway` | External entry point, JWT early rejection, routing, CORS, and circuit breaker fallback | `8080` |
-| `frontend` | Vue 3 production bundle served by nginx with SPA route fallback | `5173` |
+| `frontend` | Vue 3 production bundle with profile, task, notification, and admin Audit Log pages, served by nginx with SPA route fallback | `5173` |
 | `config-server` | Spring Cloud Config native repository mounted from `./config` | `8888` |
 | `eureka-server` | Service registration and discovery | `8761` |
-| PostgreSQL 16.1 | User, task, and notification persistence in separate databases | `5432` |
+| PostgreSQL 16.1 | User, task, notification, and audit persistence in separate databases | `5432` |
 | Redis 7 | Independently running and health-checked; not integrated into user-service | `6379` |
-| Kafka 3.7.1 | Task event transport for outbox-backed notifications | `9092` |
+| Kafka 3.7.1 | Task, user, and notification event transport for outbox-backed processing | `9092` |
 | MailHog | Local SMTP capture and UI | `1025`, `8025` |
 | Zipkin | Local tracing infrastructure container | `9411` |
 
@@ -53,14 +54,45 @@ frontend -> api-gateway -> task-service -> tasks + outbox_events
   -> frontend GET /api/notifications
 ```
 
-`task-service` does not call `notification-service` directly for task-created
-notifications.
+The implemented task audit event path is:
+
+```text
+task-service -> outbox_events -> Kafka platform.task-events
+  -> audit-service TaskEventConsumer
+  -> TaskAuditEventNormalizer -> NormalizedAuditEvent
+  -> CreateAuditRecordUseCase -> audit_records
+```
+
+The implemented user audit event path is:
+
+```text
+user-service -> outbox_events -> Kafka platform.user-events
+  -> audit-service UserEventConsumer
+  -> UserAuditEventNormalizer -> NormalizedAuditEvent
+  -> CreateAuditRecordUseCase -> audit_records
+```
+
+The implemented notification audit-event production path is:
+
+```text
+notification-service -> notifications + outbox_events
+  -> Kafka platform.notification-events
+  -> audit-service NotificationAuditEventConsumer
+  -> NotificationAuditEventNormalizer -> NormalizedAuditEvent
+  -> CreateAuditRecordUseCase -> audit_records
+```
+
 
 The Vue 3 frontend runs through nginx in Docker Compose or through Vite during
 frontend development. It uses only external API Gateway routes and never
 connects directly to a backend service. See the
 [frontend README](../frontend/vue-frontend/README.md) for implemented pages and
 startup instructions.
+
+The read-only Audit Log uses `GET /api/audit` and `GET /api/audit/{auditId}`.
+API Gateway rewrites these paths to Audit Service's `/api/v1/audit` contract.
+The frontend applies only the existing authenticated-route guard; Audit Service
+enforces the `ROLE_ADMIN` and `ROLE_SUPER_ADMIN` authorization boundary.
 
 The gateway validates access JWTs as an early rejection layer. Downstream services
 validate JWTs again and own authorization decisions. See
@@ -78,9 +110,7 @@ The notification API contract is documented in
 
 The following items are roadmap direction, not implemented functionality:
 
-- audit service
 - OpenAI-backed task automation
-- Kubernetes and Helm deployment configuration
 - Prometheus and Grafana monitoring stack
 
 ## Data Ownership
@@ -88,7 +118,8 @@ The following items are roadmap direction, not implemented functionality:
 - `user-service` owns its PostgreSQL schema (`users_db` by default).
 - `task-service` owns its PostgreSQL schema (`tasks_db` by default).
 - `notification-service` owns its PostgreSQL schema (`notifications_db` by default).
-- Flyway migrations are authoritative for all three service schemas.
+- `audit-service` owns its PostgreSQL schema (`audits_db` by default) and its `audit_records` table.
+- Flyway migrations are authoritative for all service schemas.
 - Hibernate uses `ddl-auto=validate`; it does not create or update schema.
 - Future services must also own separate schemas or databases.
 - Services must not access another service's database directly.

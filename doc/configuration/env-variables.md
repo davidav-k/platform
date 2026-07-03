@@ -52,6 +52,7 @@ credentials, mail credentials, or externally managed service credentials.
 | `POSTGRES_DB` | Yes | None | `users_db` | postgres, user-service, Compose healthcheck | Local user-service database name. |
 | `TASK_POSTGRES_DB` | No | `tasks_db` | `tasks_db` | postgres init, task-service | Local task-service database name. |
 | `NOTIFICATION_POSTGRES_DB` | No | `notifications_db` | `notifications_db` | postgres init, notification-service | Local notification-service database name. |
+| `AUDIT_POSTGRES_DB` | No | `audits_db` | `audits_db` | postgres init, audit-service | Local audit-service database name. |
 | `POSTGRES_USER` | Yes | None | `user` | postgres, user-service, Compose healthcheck | PostgreSQL username. |
 | `POSTGRES_PASSWORD` | Yes | None | `dev_example_postgres_password_change_me` | postgres, user-service | Development-only PostgreSQL password placeholder. |
 
@@ -72,7 +73,7 @@ container.
 
 | Name | Required | Default | Example | Consumed by | Description |
 | --- | --- | --- | --- | --- | --- |
-| `CONFIG_SERVER_URI` | No | `http://config-server:8888` | `http://localhost:8888` | user-service | Overrides the Config Server client URL for IDE launches. |
+| `CONFIG_SERVER_URI` | No | `http://config-server:8888` | `http://localhost:8888` | application services | Overrides the Config Server client URL for IDE launches. |
 
 ### Eureka
 
@@ -82,7 +83,7 @@ for an IDE launch.
 
 | Name | Required | Default | Example | Consumed by | Description |
 | --- | --- | --- | --- | --- | --- |
-| `EUREKA_URL` | No | `http://eureka-server:8761/eureka` | `http://localhost:8761/eureka` | user-service | Overrides the Config Server-owned Eureka URL for IDE launches. |
+| `EUREKA_URL` | No | `http://eureka-server:8761/eureka` | `http://localhost:8761/eureka` | application services | Overrides the Config Server-owned Eureka URL for IDE launches. |
 
 ## Security
 
@@ -114,8 +115,8 @@ No separate encryption-secret environment variable is active.
 
 | Name | Required | Default | Example | Consumed by | Description |
 | --- | --- | --- | --- | --- | --- |
-| `ACTIVE_PROFILE` | No | `dev` | `dev` | user-service, task-service | Active Spring profile override. |
-| `APPLICATION_PORT` | No | service-specific | `8085` (user), `8086` (task), `8087` (notification) | user-service, task-service, notification-service | HTTP port override. Compose sets `APPLICATION_PORT=8086` for task-service explicitly. Changing this alone breaks routing and health checks. |
+| `ACTIVE_PROFILE` | No | `dev` | `dev` | application services | Active Spring profile override. |
+| `APPLICATION_PORT` | No | service-specific | `8085` (user), `8086` (task), `8087` (notification), `8088` (audit) | application services | HTTP port override. Compose sets service-specific ports where required. Changing this alone breaks routing and health checks. |
 
 No logging environment variable is active. Infrastructure service ports are
 fixed in configuration and Compose:
@@ -126,6 +127,7 @@ fixed in configuration and Compose:
 | User Service | `8085` |
 | Task Service | `8086` |
 | Notification Service | `8087` |
+| Audit Service | `8088` |
 | Config Server | `8888` |
 | Eureka Server | `8761` |
 | PostgreSQL | `5432` |
@@ -136,29 +138,54 @@ fixed in configuration and Compose:
 
 ## External Integrations
 
-### Kafka Notification Flow
+### Kafka Event Flow
 
 | Name | Required | Default | Example | Consumed by | Description |
 | --- | --- | --- | --- | --- | --- |
 | `KAFKA_LOCAL_PORT` | No | `9092` | `9092` | Docker Compose | Local host port exposed by the Kafka broker. |
-| `KAFKA_BOOTSTRAP_SERVERS` | No | `kafka:9092` | `kafka:9092` | task-service, notification-service | Kafka bootstrap server list for service-to-service broker access. |
-| `KAFKA_TASK_EVENTS_TOPIC` | No | `platform.task-events` | `platform.task-events` | task-service, notification-service | Topic for task domain events. |
+| `KAFKA_BOOTSTRAP_SERVERS` | No | `kafka:9092` | `kafka:9092` | task-service, notification-service, audit-service | Kafka bootstrap server list for service-to-service broker access. |
+| `KAFKA_TASK_EVENTS_TOPIC` | No | `platform.task-events` | `platform.task-events` | task-service, notification-service, audit-service | Topic for task domain events. |
+| `KAFKA_USER_EVENTS_TOPIC` | No | `platform.user-events` | `platform.user-events` | user-service, audit-service | Topic for user audit events. |
+| `KAFKA_NOTIFICATION_EVENTS_TOPIC` | No | `platform.notification-events` | `platform.notification-events` | notification-service, audit-service | Topic for notification audit events. |
 | `OUTBOX_PUBLISHER_ENABLED` | No | `true` | `false` | task-service | Enables task-service outbox polling. Default Kafka notification delivery keeps this true. |
 | `OUTBOX_PUBLISHER_ADAPTER` | No | `kafka` | `logging` | task-service | Selects the outbox publisher adapter. Use `logging` only for rollback or local no-op delivery. |
 | `OUTBOX_PUBLISHER_KAFKA_BOOTSTRAP_SERVERS` | No | `kafka:9092` | `kafka:9092` | task-service | Explicit Kafka bootstrap server list for the task-service outbox publisher. Falls back to `KAFKA_BOOTSTRAP_SERVERS`. |
 | `OUTBOX_PUBLISHER_KAFKA_TOPIC` | No | `platform.task-events` | `platform.task-events` | task-service | Explicit Kafka topic for the task-service outbox publisher. Falls back to `KAFKA_TASK_EVENTS_TOPIC`. |
+| `USER_OUTBOX_PUBLISHER_ENABLED` | No | `true` | `false` | user-service | Enables user-service outbox polling. |
+| `USER_OUTBOX_PUBLISHER_ADAPTER` | No | `kafka` | `logging` | user-service | Selects the user-service outbox publisher adapter. |
+| `USER_OUTBOX_PUBLISHER_BATCH_SIZE` | No | `20` | `20` | user-service | Maximum user outbox events claimed per poll. |
+| `USER_OUTBOX_PUBLISHER_MAX_RETRIES` | No | `3` | `3` | user-service | Maximum publish attempts before an event stops being claimable. |
+| `USER_OUTBOX_PUBLISHER_FIXED_DELAY_MILLIS` | No | `5000` | `5000` | user-service | Delay between user outbox polling cycles. |
+| `USER_OUTBOX_PUBLISHER_KAFKA_ENABLED` | No | `true` | `false` | user-service | Enables the Kafka user outbox adapter. |
+| `USER_OUTBOX_PUBLISHER_KAFKA_BOOTSTRAP_SERVERS` | No | `kafka:9092` | `kafka:9092` | user-service | Kafka bootstrap servers for user event publication. |
+| `USER_OUTBOX_PUBLISHER_KAFKA_TOPIC` | No | `platform.user-events` | `platform.user-events` | user-service | User event topic. Falls back to `KAFKA_USER_EVENTS_TOPIC`. |
 | `NOTIFICATION_KAFKA_ENABLED` | No | `true` | `false` | notification-service | Enables notification-service Kafka consumer processing. Default notification delivery keeps this true. |
 | `NOTIFICATION_KAFKA_TOPIC` | No | `platform.task-events` | `platform.task-events` | notification-service | Explicit Kafka topic consumed by notification-service. Falls back to `KAFKA_TASK_EVENTS_TOPIC`. |
+| `NOTIFICATION_OUTBOX_PUBLISHER_ENABLED` | No | `true` | `false` | notification-service | Enables notification-service outbox polling. |
+| `NOTIFICATION_OUTBOX_PUBLISHER_ADAPTER` | No | `kafka` | `logging` | notification-service | Selects the notification outbox publisher adapter. |
+| `NOTIFICATION_OUTBOX_PUBLISHER_BATCH_SIZE` | No | `20` | `20` | notification-service | Maximum notification outbox events claimed per poll. |
+| `NOTIFICATION_OUTBOX_PUBLISHER_MAX_RETRIES` | No | `3` | `3` | notification-service | Maximum publish attempts for a notification outbox event. |
+| `NOTIFICATION_OUTBOX_PUBLISHER_FIXED_DELAY_MILLIS` | No | `5000` | `5000` | notification-service | Delay between notification outbox polling cycles. |
+| `NOTIFICATION_OUTBOX_PUBLISHER_KAFKA_ENABLED` | No | `true` | `false` | notification-service | Enables notification Kafka publishing configuration. |
+| `NOTIFICATION_OUTBOX_PUBLISHER_KAFKA_BOOTSTRAP_SERVERS` | No | `kafka:9092` | `kafka:9092` | notification-service | Kafka bootstrap servers for notification event publication. |
+| `NOTIFICATION_OUTBOX_PUBLISHER_KAFKA_TOPIC` | No | `platform.notification-events` | `platform.notification-events` | notification-service | Notification event topic. Falls back to `KAFKA_NOTIFICATION_EVENTS_TOPIC`. |
+| `AUDIT_KAFKA_ENABLED` | No | `true` | `false` | audit-service | Enables Audit Service task-, user-, and notification-event consumption. |
+| `AUDIT_KAFKA_TOPIC` | No | `platform.task-events` | `platform.task-events` | audit-service | Task event topic consumed by Audit Service. Falls back to `KAFKA_TASK_EVENTS_TOPIC`. |
+| `AUDIT_KAFKA_USER_TOPIC` | No | `platform.user-events` | `platform.user-events` | audit-service | User event topic consumed by Audit Service. Falls back to `KAFKA_USER_EVENTS_TOPIC`. |
+| `AUDIT_KAFKA_NOTIFICATION_TOPIC` | No | `platform.notification-events` | `platform.notification-events` | audit-service | Notification event topic consumed by Audit Service. Falls back to `KAFKA_NOTIFICATION_EVENTS_TOPIC`. |
 
-Default Kafka notification delivery uses:
+Default Kafka task event delivery uses:
 
 ```text
 OUTBOX_PUBLISHER_ENABLED=true
 OUTBOX_PUBLISHER_ADAPTER=kafka
 NOTIFICATION_KAFKA_ENABLED=true
+NOTIFICATION_OUTBOX_PUBLISHER_ENABLED=true
+NOTIFICATION_OUTBOX_PUBLISHER_ADAPTER=kafka
+AUDIT_KAFKA_ENABLED=true
 ```
 
-Kafka notification mode is the supported runtime path:
+Kafka task event mode is the supported runtime path:
 
 - Task-service writes task domain events to `outbox_events`.
 - The outbox publisher uses `OUTBOX_PUBLISHER_ENABLED=true`,
@@ -166,6 +193,18 @@ Kafka notification mode is the supported runtime path:
   the configured Kafka task event topic.
 - Notification-service consumes that topic and creates notifications from
   task events.
+- Notification-service writes creation events to its own `outbox_events`
+  table and publishes them to `platform.notification-events`.
+- Audit-service consumes notification creation events from that topic,
+  sanitizes technical credential/header fields, and stores audit records using
+  the source event ID for idempotency.
+- Audit-service consumes the same topic with consumer group `audit-service`
+  and stores one `audit_records` row per source event.
+- User-service writes lifecycle and authentication events to its own
+  `outbox_events` table and publishes them to `platform.user-events`.
+- Audit-service consumes the user topic with its dedicated listener, normalizes
+  supported events, sanitizes sensitive payload fields, and persists them using
+  the same event-ID idempotency rule as task events.
 
 ### Mail
 
@@ -198,16 +237,19 @@ required `.env` contract:
 | --- | --- |
 | `.env.example` | All required local values and optional service overrides |
 | `compose.yml` | `POSTGRES_USER`, `POSTGRES_DB`, `SPRING_CLOUD_CONFIG_SERVER_NATIVE_SEARCH_LOCATIONS`, `APPLICATION_PORT` for task-service; commented fallback toggles |
-| `config/user-service-dev.yml` | PostgreSQL, mail, JWT, admin, and `APPLICATION_PORT` variables |
+| `config/user-service-dev.yml` | PostgreSQL, mail, JWT, admin, `APPLICATION_PORT`, and user outbox publisher variables |
 | `config/task-service-dev.yml` | PostgreSQL (`TASK_POSTGRES_DB`), JWT, Eureka, `APPLICATION_PORT`, and outbox publisher variables |
-| `config/notification-service-dev.yml` | PostgreSQL (`NOTIFICATION_POSTGRES_DB`), Eureka, `APPLICATION_PORT`, and notification Kafka variables |
-| `backend/user-service/src/main/resources/application.yml` | `spring.application.name` only |
+| `config/notification-service-dev.yml` | PostgreSQL (`NOTIFICATION_POSTGRES_DB`), Eureka, `APPLICATION_PORT`, task-event consumer, and notification outbox publisher variables |
+| `config/audit-service-dev.yml` | PostgreSQL (`AUDIT_POSTGRES_DB`), Flyway, Eureka, Kafka consumer, `APPLICATION_PORT`, and Actuator exposure |
+| `backend/user-service/src/main/resources/application.yml` | `spring.application.name` and disabled-by-default user outbox publisher settings |
 | `backend/user-service/src/main/resources/bootstrap.yml` | `ACTIVE_PROFILE` and optional `CONFIG_SERVER_URI` override |
 | `backend/user-service/src/main/resources/application-dev.yml` | Retained development-profile marker only |
 | `backend/task-service/src/main/resources/application.yml` | `spring.application.name` only |
 | `backend/task-service/src/main/resources/bootstrap.yml` | `ACTIVE_PROFILE` and optional `CONFIG_SERVER_URI` override |
-| `backend/notification-service/src/main/resources/application.yml` | `spring.application.name` only |
+| `backend/notification-service/src/main/resources/application.yml` | `spring.application.name` and disabled-by-default Kafka consumer/outbox publisher settings |
 | `backend/notification-service/src/main/resources/bootstrap.yml` | `ACTIVE_PROFILE` and optional `CONFIG_SERVER_URI` override |
+| `backend/audit-service/src/main/resources/application.yml` | `spring.application.name` and disabled-by-default Kafka consumer settings |
+| `backend/audit-service/src/main/resources/bootstrap.yml` | `ACTIVE_PROFILE` and optional `CONFIG_SERVER_URI` override |
 | `infrastructure/api-gateway/.../JwtUtil.java` | Direct `JWT_SECRET` lookup |
 | Dockerfiles | No environment variables |
 

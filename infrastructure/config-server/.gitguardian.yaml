@@ -1,0 +1,5 @@
+secret:
+  ignored_matches:
+  - match: 536b9710915ea7d9039854fb792353a003d08327c88aba38e0c83a0b9de1a705
+    name: test-password
+version: 2

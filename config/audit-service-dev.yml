@@ -1,0 +1,43 @@
+server:
+  port: ${APPLICATION_PORT:8088}
+
+spring:
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:postgres}:${POSTGRES_PORT:5432}/${AUDIT_POSTGRES_DB:audits_db}
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
+    consumer:
+      group-id: audit-service
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      auto-offset-reset: earliest
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URL:http://eureka-server:8761/eureka}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+jwt:
+  secret: ${JWT_SECRET}
+
+audit:
+  kafka:
+    enabled: ${AUDIT_KAFKA_ENABLED:true}
+    topic: ${AUDIT_KAFKA_TOPIC:${KAFKA_TASK_EVENTS_TOPIC:platform.task-events}}
+    user-topic: ${AUDIT_KAFKA_USER_TOPIC:${KAFKA_USER_EVENTS_TOPIC:platform.user-events}}
+    notification-topic: ${AUDIT_KAFKA_NOTIFICATION_TOPIC:${KAFKA_NOTIFICATION_EVENTS_TOPIC:platform.notification-events}}

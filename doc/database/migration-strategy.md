@@ -9,10 +9,14 @@ Each persistence service owns its PostgreSQL database and Flyway migrations:
 | `user-service` | `users_db` | `backend/user-service/src/main/resources/db/migration` | `V1__user_service_baseline.sql` |
 | `task-service` | `tasks_db` | `backend/task-service/src/main/resources/db/migration` | `V1__task_service_baseline.sql` |
 | `notification-service` | `notifications_db` | `backend/notification-service/src/main/resources/db/migration` | `V1__notification_service_baseline.sql` |
+| `audit-service` | `audits_db` | `backend/audit-service/src/main/resources/db/migration` | `V1__audit_service_baseline.sql` |
 
 These migrations are the schema source of truth. Hibernate validates migrated
 schemas and must not create or update them. The local Docker Compose stack and
 integration tests use PostgreSQL `16.1`.
+
+Notification Service currently extends its baseline with
+`V4__create_outbox_events.sql` for service-owned notification audit events.
 
 ## Principles
 

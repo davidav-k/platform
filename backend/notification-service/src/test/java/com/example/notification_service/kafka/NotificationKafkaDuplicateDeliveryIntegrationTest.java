@@ -2,10 +2,12 @@ package com.example.notification_service.kafka;
 
 import com.example.notification_service.entity.ConsumedEventEntity;
 import com.example.notification_service.entity.NotificationEntity;
+import com.example.notification_service.entity.OutboxEventEntity;
 import com.example.notification_service.enumeration.NotificationChannel;
 import com.example.notification_service.enumeration.NotificationType;
 import com.example.notification_service.repository.ConsumedEventRepository;
 import com.example.notification_service.repository.NotificationRepository;
+import com.example.notification_service.repository.OutboxEventRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -67,10 +69,14 @@ class NotificationKafkaDuplicateDeliveryIntegrationTest {
     private ConsumedEventRepository consumedEventRepository;
 
     @Autowired
+    private OutboxEventRepository outboxEventRepository;
+
+    @Autowired
     private ObjectMapper objectMapper;
 
     @BeforeEach
     void cleanDatabase() {
+        outboxEventRepository.deleteAll();
         notificationRepository.deleteAll();
         consumedEventRepository.deleteAll();
     }
@@ -100,6 +106,11 @@ class NotificationKafkaDuplicateDeliveryIntegrationTest {
         assertThat(notification.getSourceService()).isEqualTo("task-service");
         assertThat(notification.getSourceEntityType()).isEqualTo("TASK");
         assertThat(notification.getSourceEntityId()).isEqualTo(TASK_ID);
+
+        List<OutboxEventEntity> outboxEvents = outboxEventRepository.findAll();
+        assertThat(outboxEvents).hasSize(1);
+        assertThat(outboxEvents.get(0).getEventType()).isEqualTo("NOTIFICATION_SYSTEM_CREATED");
+        assertThat(outboxEvents.get(0).getAggregateId()).isEqualTo(notification.getNotificationId());
     }
 
     private KafkaOutboxEventMessage taskAssignedEvent() {

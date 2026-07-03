@@ -47,8 +47,6 @@ Frontend
   -> Frontend GET /api/notifications
 ```
 
-`task-service` не вызывает `notification-service` напрямую для task-created
-notifications. Уведомления создаются из Kafka events.
 
 ## Частично настроено
 
@@ -61,7 +59,6 @@ notifications. Уведомления создаются из Kafka events.
 
 - audit service
 - OpenAI-backed task automation
-- Kubernetes/Helm deployment
 - Prometheus/Grafana monitoring
 
 ## Data ownership

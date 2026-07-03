@@ -70,6 +70,7 @@ required_services=(
   user-service
   task-service
   notification-service
+  audit-service
   gateway
 )
 
@@ -91,6 +92,7 @@ healthy_containers=(
   tsp_user_service
   tsp_task_service
   tsp_notification_service
+  tsp_audit_service
   tsp_gateway
 )
 
@@ -102,6 +104,7 @@ healthy_services=(
   user-service
   task-service
   notification-service
+  audit-service
   gateway
 )
 
@@ -133,6 +136,7 @@ check_http "Eureka registry" "http://localhost:8761/eureka/apps"
 check_http "User Service" "http://localhost:8085/actuator/health"
 check_http "Task Service" "http://localhost:8086/actuator/health"
 check_http "Notification Service" "http://localhost:8087/actuator/health"
+check_http "Audit Service" "http://localhost:8088/actuator/health"
 check_http "API Gateway" "http://localhost:8080/actuator/health"
 check_expected_status "Gateway notification route" "http://localhost:8080/api/notifications" "401"
 

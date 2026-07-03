@@ -143,6 +143,14 @@ services:
       - KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
       - NOTIFICATION_KAFKA_ENABLED=${NOTIFICATION_KAFKA_ENABLED:-true}
       - NOTIFICATION_KAFKA_TOPIC=${NOTIFICATION_KAFKA_TOPIC:-${KAFKA_TASK_EVENTS_TOPIC:-platform.task-events}}
+      - NOTIFICATION_OUTBOX_PUBLISHER_ENABLED=${NOTIFICATION_OUTBOX_PUBLISHER_ENABLED:-true}
+      - NOTIFICATION_OUTBOX_PUBLISHER_ADAPTER=${NOTIFICATION_OUTBOX_PUBLISHER_ADAPTER:-kafka}
+      - NOTIFICATION_OUTBOX_PUBLISHER_BATCH_SIZE=${NOTIFICATION_OUTBOX_PUBLISHER_BATCH_SIZE:-20}
+      - NOTIFICATION_OUTBOX_PUBLISHER_MAX_RETRIES=${NOTIFICATION_OUTBOX_PUBLISHER_MAX_RETRIES:-3}
+      - NOTIFICATION_OUTBOX_PUBLISHER_FIXED_DELAY_MILLIS=${NOTIFICATION_OUTBOX_PUBLISHER_FIXED_DELAY_MILLIS:-5000}
+      - NOTIFICATION_OUTBOX_PUBLISHER_KAFKA_ENABLED=${NOTIFICATION_OUTBOX_PUBLISHER_KAFKA_ENABLED:-true}
+      - NOTIFICATION_OUTBOX_PUBLISHER_KAFKA_BOOTSTRAP_SERVERS=${NOTIFICATION_OUTBOX_PUBLISHER_KAFKA_BOOTSTRAP_SERVERS:-${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}}
+      - NOTIFICATION_OUTBOX_PUBLISHER_KAFKA_TOPIC=${NOTIFICATION_OUTBOX_PUBLISHER_KAFKA_TOPIC:-${KAFKA_NOTIFICATION_EVENTS_TOPIC:-platform.notification-events}}
     depends_on:
       kafka:
         condition: service_healthy
@@ -154,6 +162,40 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "bash -ec 'exec 3<>/dev/tcp/127.0.0.1/8087; printf \"GET /actuator/health HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n\" >&3; head -n 1 <&3 | grep -q \" 200 \"'"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    networks:
+      - tsp-network
+
+  audit-service:
+    container_name: tsp_audit_service
+    build:
+      context: ./backend/audit-service
+      dockerfile: Dockerfile
+    ports:
+      - "8088:8088"
+    env_file:
+      - .env
+    environment:
+      - APPLICATION_PORT=8088
+      - KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
+      - AUDIT_KAFKA_ENABLED=${AUDIT_KAFKA_ENABLED:-true}
+      - AUDIT_KAFKA_TOPIC=${AUDIT_KAFKA_TOPIC:-${KAFKA_TASK_EVENTS_TOPIC:-platform.task-events}}
+      - AUDIT_KAFKA_USER_TOPIC=${AUDIT_KAFKA_USER_TOPIC:-${KAFKA_USER_EVENTS_TOPIC:-platform.user-events}}
+      - AUDIT_KAFKA_NOTIFICATION_TOPIC=${AUDIT_KAFKA_NOTIFICATION_TOPIC:-${KAFKA_NOTIFICATION_EVENTS_TOPIC:-platform.notification-events}}
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "bash -ec 'exec 3<>/dev/tcp/127.0.0.1/8088; printf \"GET /actuator/health HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n\" >&3; head -n 1 <&3 | grep -q \" 200 \"'"]
       interval: 10s
       timeout: 5s
       retries: 12
@@ -217,7 +259,20 @@ services:
       - "8085:8085"
     env_file:
       - .env
+    environment:
+      - APPLICATION_PORT=8085
+      - KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
+      - USER_OUTBOX_PUBLISHER_ENABLED=${USER_OUTBOX_PUBLISHER_ENABLED:-true}
+      - USER_OUTBOX_PUBLISHER_ADAPTER=${USER_OUTBOX_PUBLISHER_ADAPTER:-kafka}
+      - USER_OUTBOX_PUBLISHER_BATCH_SIZE=${USER_OUTBOX_PUBLISHER_BATCH_SIZE:-20}
+      - USER_OUTBOX_PUBLISHER_MAX_RETRIES=${USER_OUTBOX_PUBLISHER_MAX_RETRIES:-3}
+      - USER_OUTBOX_PUBLISHER_FIXED_DELAY_MILLIS=${USER_OUTBOX_PUBLISHER_FIXED_DELAY_MILLIS:-5000}
+      - USER_OUTBOX_PUBLISHER_KAFKA_ENABLED=${USER_OUTBOX_PUBLISHER_KAFKA_ENABLED:-true}
+      - USER_OUTBOX_PUBLISHER_KAFKA_BOOTSTRAP_SERVERS=${USER_OUTBOX_PUBLISHER_KAFKA_BOOTSTRAP_SERVERS:-${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}}
+      - USER_OUTBOX_PUBLISHER_KAFKA_TOPIC=${USER_OUTBOX_PUBLISHER_KAFKA_TOPIC:-${KAFKA_USER_EVENTS_TOPIC:-platform.user-events}}
     depends_on:
+      kafka:
+        condition: service_healthy
       postgres:
         condition: service_healthy
       config-server:
