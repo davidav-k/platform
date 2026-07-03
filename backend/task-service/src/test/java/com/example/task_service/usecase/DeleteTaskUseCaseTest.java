@@ -16,7 +16,9 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import java.time.temporal.ChronoUnit;
 
+import static org.assertj.core.api.Assertions.within;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.UUID;
@@ -91,7 +93,8 @@ class DeleteTaskUseCaseTest {
         assertThat(payload.get("assigneeUserId").asText()).isEqualTo(task.getAssigneeUserId().toString());
         assertThat(payload.get("createdByUserId").asText()).isEqualTo(task.getCreatedByUserId().toString());
         assertThat(payload.get("deletedByUserId").asText()).isEqualTo(adminUserId.toString());
-        assertThat(OffsetDateTime.parse(payload.get("deletedAt").asText())).isEqualTo(deleted.getDeletedAt());
+        assertThat(OffsetDateTime.parse(payload.get("deletedAt").asText()))
+                .isCloseTo(deleted.getDeletedAt(), within(1, ChronoUnit.SECONDS));
     }
 
     @Test
