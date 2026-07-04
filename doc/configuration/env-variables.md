@@ -53,6 +53,7 @@ credentials, mail credentials, or externally managed service credentials.
 | `TASK_POSTGRES_DB` | No | `tasks_db` | `tasks_db` | postgres init, task-service | Local task-service database name. |
 | `NOTIFICATION_POSTGRES_DB` | No | `notifications_db` | `notifications_db` | postgres init, notification-service | Local notification-service database name. |
 | `AUDIT_POSTGRES_DB` | No | `audits_db` | `audits_db` | postgres init, audit-service | Local audit-service database name. |
+| `AI_POSTGRES_DB` | No | `ai_db` | `ai_db` | postgres init, ai-service | Local AI service database name. |
 | `POSTGRES_USER` | Yes | None | `user` | postgres, user-service, Compose healthcheck | PostgreSQL username. |
 | `POSTGRES_PASSWORD` | Yes | None | `dev_example_postgres_password_change_me` | postgres, user-service | Development-only PostgreSQL password placeholder. |
 
@@ -116,7 +117,7 @@ No separate encryption-secret environment variable is active.
 | Name | Required | Default | Example | Consumed by | Description |
 | --- | --- | --- | --- | --- | --- |
 | `ACTIVE_PROFILE` | No | `dev` | `dev` | application services | Active Spring profile override. |
-| `APPLICATION_PORT` | No | service-specific | `8085` (user), `8086` (task), `8087` (notification), `8088` (audit) | application services | HTTP port override. Compose sets service-specific ports where required. Changing this alone breaks routing and health checks. |
+| `APPLICATION_PORT` | No | service-specific | `8085` (user), `8086` (task), `8087` (notification), `8088` (audit), `8089` (AI) | application services | HTTP port override. Compose sets service-specific ports where required. Changing this alone breaks routing and health checks. |
 
 No logging environment variable is active. Infrastructure service ports are
 fixed in configuration and Compose:
@@ -128,6 +129,7 @@ fixed in configuration and Compose:
 | Task Service | `8086` |
 | Notification Service | `8087` |
 | Audit Service | `8088` |
+| AI Service | `8089` |
 | Config Server | `8888` |
 | Eureka Server | `8761` |
 | PostgreSQL | `5432` |
@@ -241,6 +243,7 @@ required `.env` contract:
 | `config/task-service-dev.yml` | PostgreSQL (`TASK_POSTGRES_DB`), JWT, Eureka, `APPLICATION_PORT`, and outbox publisher variables |
 | `config/notification-service-dev.yml` | PostgreSQL (`NOTIFICATION_POSTGRES_DB`), Eureka, `APPLICATION_PORT`, task-event consumer, and notification outbox publisher variables |
 | `config/audit-service-dev.yml` | PostgreSQL (`AUDIT_POSTGRES_DB`), Flyway, Eureka, Kafka consumer, `APPLICATION_PORT`, and Actuator exposure |
+| `config/ai-service-dev.yml` | PostgreSQL (`AI_POSTGRES_DB`), Flyway, JPA, Eureka, `APPLICATION_PORT`, and Actuator exposure |
 | `backend/user-service/src/main/resources/application.yml` | `spring.application.name` and disabled-by-default user outbox publisher settings |
 | `backend/user-service/src/main/resources/bootstrap.yml` | `ACTIVE_PROFILE` and optional `CONFIG_SERVER_URI` override |
 | `backend/user-service/src/main/resources/application-dev.yml` | Retained development-profile marker only |
@@ -250,6 +253,8 @@ required `.env` contract:
 | `backend/notification-service/src/main/resources/bootstrap.yml` | `ACTIVE_PROFILE` and optional `CONFIG_SERVER_URI` override |
 | `backend/audit-service/src/main/resources/application.yml` | `spring.application.name` and disabled-by-default Kafka consumer settings |
 | `backend/audit-service/src/main/resources/bootstrap.yml` | `ACTIVE_PROFILE` and optional `CONFIG_SERVER_URI` override |
+| `backend/ai-service/src/main/resources/application.yml` | `spring.application.name` only |
+| `backend/ai-service/src/main/resources/bootstrap.yml` | `ACTIVE_PROFILE` and optional `CONFIG_SERVER_URI` override |
 | `infrastructure/api-gateway/.../JwtUtil.java` | Direct `JWT_SECRET` lookup |
 | Dockerfiles | No environment variables |
 

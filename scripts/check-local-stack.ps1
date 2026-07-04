@@ -99,6 +99,7 @@ $RequiredServices = @(
     "task-service",
     "notification-service",
     "audit-service",
+    "ai-service",
     "gateway"
 )
 
@@ -120,6 +121,7 @@ $HealthyContainers = @(
     "tsp_task_service",
     "tsp_notification_service",
     "tsp_audit_service",
+    "tsp_ai_service",
     "tsp_gateway"
 )
 
@@ -155,6 +157,7 @@ Test-Http "User Service" "http://localhost:8085/actuator/health"
 Test-Http "Task Service" "http://localhost:8086/actuator/health"
 Test-Http "Notification Service" "http://localhost:8087/actuator/health"
 Test-Http "Audit Service" "http://localhost:8088/actuator/health"
+Test-Http "AI Service" "http://localhost:8089/actuator/health"
 Test-Http "API Gateway" "http://localhost:8080/actuator/health"
 Test-ExpectedStatus -Name "Gateway notification route" -Url "http://localhost:8080/api/notifications" -ExpectedStatus 401
 
