@@ -12,6 +12,11 @@ import com.example.ai_service.model.ImproveTaskDescriptionRequest;
 import com.example.ai_service.model.ImproveTaskDescriptionResult;
 import com.example.ai_service.model.SummarizeTaskRequest;
 import com.example.ai_service.model.SummarizeTaskResult;
+import com.example.ai_service.security.AiAccessDeniedHandler;
+import com.example.ai_service.security.AiAuthenticationEntryPoint;
+import com.example.ai_service.security.JwtAuthenticationFilter;
+import com.example.ai_service.security.JwtTokenService;
+import com.example.ai_service.security.SecurityConfig;
 import com.example.ai_service.usecase.ImproveTaskDescriptionUseCase;
 import com.example.ai_service.usecase.SuggestPriorityUseCase;
 import com.example.ai_service.usecase.SuggestSubtasksUseCase;
@@ -20,7 +25,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -39,9 +46,18 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         controllers = AiTaskController.class,
         properties = {
                 "spring.cloud.config.enabled=false",
-                "eureka.client.enabled=false"
+                "eureka.client.enabled=false",
+                "jwt.secret=QUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQQ=="
         }
 )
+@Import({
+        SecurityConfig.class,
+        JwtAuthenticationFilter.class,
+        JwtTokenService.class,
+        AiAuthenticationEntryPoint.class,
+        AiAccessDeniedHandler.class
+})
+@WithMockUser(roles = "USER")
 class AiTaskControllerTest {
 
     @Autowired

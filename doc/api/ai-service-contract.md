@@ -73,6 +73,12 @@ Response data:
 }
 ```
 
+
+## Authentication
+
+All AI endpoints require a valid platform access JWT. The service accepts the same `Authorization: Bearer <token>` header and `access-token` HttpOnly cookie used by the other backend services. Authenticated platform roles `USER`, `MANAGER`, `ADMIN`, and `SUPER_ADMIN` are authorized.
+
+Unauthenticated or invalid-token requests return `401 UNAUTHORIZED`. Authenticated tokens without an authorized platform role return `403 FORBIDDEN`.
 ## Validation
 
 All operations require:

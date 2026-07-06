@@ -11,7 +11,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @SpringBootTest(properties = {
         "server.port=0",
         "eureka.client.enabled=false",
-        "spring.cloud.config.enabled=false"
+        "spring.cloud.config.enabled=false",
+        "jwt.secret=QUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQQ=="
 })
 @Testcontainers
 class AiDatabaseMigrationTest {
