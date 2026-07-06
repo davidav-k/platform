@@ -9,6 +9,8 @@ import com.example.ai_service.model.ImproveTaskDescriptionRequest;
 import com.example.ai_service.model.ImproveTaskDescriptionResult;
 import com.example.ai_service.model.SummarizeTaskRequest;
 import com.example.ai_service.model.SummarizeTaskResult;
+import com.example.ai_service.outbox.AiOperationAuditRecorder;
+import com.example.ai_service.outbox.AiOutboxEventTypes;
 import com.example.ai_service.provider.AiProvider;
 import com.example.ai_service.usecase.impl.AiTaskAssistanceService;
 import org.junit.jupiter.api.Test;
@@ -31,6 +33,9 @@ class AiTaskAssistanceServiceTest {
     @Mock
     private AiProvider aiProvider;
 
+    @Mock
+    private AiOperationAuditRecorder auditRecorder;
+
     @InjectMocks
     private AiTaskAssistanceService aiTaskAssistanceService;
 
@@ -49,6 +54,7 @@ class AiTaskAssistanceServiceTest {
 
         assertThat(response).isEqualTo(expected);
         verify(aiProvider).improveTaskDescription(request);
+        verify(auditRecorder).recordSuccess(AiOutboxEventTypes.TASK_DESCRIPTION_IMPROVED);
     }
 
     @Test
@@ -67,6 +73,7 @@ class AiTaskAssistanceServiceTest {
 
         assertThat(response).isEqualTo(expected);
         verify(aiProvider).suggestSubtasks(request);
+        verify(auditRecorder).recordSuccess(AiOutboxEventTypes.SUBTASKS_SUGGESTED);
     }
 
     @Test
@@ -82,6 +89,7 @@ class AiTaskAssistanceServiceTest {
 
         assertThat(response).isEqualTo(expected);
         verify(aiProvider).summarizeTask(request);
+        verify(auditRecorder).recordSuccess(AiOutboxEventTypes.TASK_SUMMARIZED);
     }
 
     @Test
@@ -100,8 +108,23 @@ class AiTaskAssistanceServiceTest {
 
         assertThat(response).isEqualTo(expected);
         verify(aiProvider).suggestPriority(request);
+        verify(auditRecorder).recordSuccess(AiOutboxEventTypes.PRIORITY_SUGGESTED);
     }
 
+    @Test
+    void doesNotRecordEventWhenProviderFails() {
+        SummarizeTaskRequest request = new SummarizeTaskRequest(
+                "Summarize task",
+                "Task description"
+        );
+        when(aiProvider.summarizeTask(request)).thenThrow(new IllegalStateException("provider failed"));
+
+        assertThatThrownBy(() -> aiTaskAssistanceService.summarizeTask(request))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("provider failed");
+
+        verifyNoInteractions(auditRecorder);
+    }
     @Test
     void rejectsNullRequestBeforeCallingProvider() {
         assertThatThrownBy(() -> aiTaskAssistanceService.summarizeTask(null))

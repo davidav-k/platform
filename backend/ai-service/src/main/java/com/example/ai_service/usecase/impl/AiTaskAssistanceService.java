@@ -8,6 +8,8 @@ import com.example.ai_service.model.ImproveTaskDescriptionRequest;
 import com.example.ai_service.model.ImproveTaskDescriptionResult;
 import com.example.ai_service.model.SummarizeTaskRequest;
 import com.example.ai_service.model.SummarizeTaskResult;
+import com.example.ai_service.outbox.AiOperationAuditRecorder;
+import com.example.ai_service.outbox.AiOutboxEventTypes;
 import com.example.ai_service.provider.AiProvider;
 import com.example.ai_service.usecase.ImproveTaskDescriptionUseCase;
 import com.example.ai_service.usecase.SuggestPriorityUseCase;
@@ -24,29 +26,38 @@ public class AiTaskAssistanceService implements ImproveTaskDescriptionUseCase,
         SuggestPriorityUseCase {
 
     private final AiProvider aiProvider;
+    private final AiOperationAuditRecorder auditRecorder;
 
     @Override
     public ImproveTaskDescriptionResult improveTaskDescription(ImproveTaskDescriptionRequest request) {
         validateTaskText(request, "Improve task description request is required");
-        return aiProvider.improveTaskDescription(request);
+        ImproveTaskDescriptionResult result = aiProvider.improveTaskDescription(request);
+        auditRecorder.recordSuccess(AiOutboxEventTypes.TASK_DESCRIPTION_IMPROVED);
+        return result;
     }
 
     @Override
     public SuggestSubtasksResult suggestSubtasks(SuggestSubtasksRequest request) {
         validateTaskText(request, "Suggest subtasks request is required");
-        return aiProvider.suggestSubtasks(request);
+        SuggestSubtasksResult result = aiProvider.suggestSubtasks(request);
+        auditRecorder.recordSuccess(AiOutboxEventTypes.SUBTASKS_SUGGESTED);
+        return result;
     }
 
     @Override
     public SummarizeTaskResult summarizeTask(SummarizeTaskRequest request) {
         validateTaskText(request, "Summarize task request is required");
-        return aiProvider.summarizeTask(request);
+        SummarizeTaskResult result = aiProvider.summarizeTask(request);
+        auditRecorder.recordSuccess(AiOutboxEventTypes.TASK_SUMMARIZED);
+        return result;
     }
 
     @Override
     public SuggestPriorityResult suggestPriority(SuggestPriorityRequest request) {
         validateTaskText(request, "Suggest priority request is required");
-        return aiProvider.suggestPriority(request);
+        SuggestPriorityResult result = aiProvider.suggestPriority(request);
+        auditRecorder.recordSuccess(AiOutboxEventTypes.PRIORITY_SUGGESTED);
+        return result;
     }
 
     private void validateTaskText(ImproveTaskDescriptionRequest request, String nullMessage) {

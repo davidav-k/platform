@@ -16,8 +16,8 @@ These migrations are the schema source of truth. Hibernate validates migrated
 schemas and must not create or update them. The local Docker Compose stack and
 integration tests use PostgreSQL `16.1`.
 
-AI Service currently has a comment-only baseline so Flyway owns its migration
-history without introducing speculative domain tables.
+AI Service extends its baseline with `V2__create_outbox_events.sql` for
+service-owned AI audit events. No AI request or generated response content is persisted.
 
 Notification Service currently extends its baseline with
 `V4__create_outbox_events.sql` for service-owned notification audit events.
