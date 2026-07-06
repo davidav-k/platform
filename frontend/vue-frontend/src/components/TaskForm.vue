@@ -1,6 +1,8 @@
 <script setup>
 import { reactive, ref, watch } from 'vue'
 
+import AiTaskTools from './AiTaskTools.vue'
+
 const props = defineProps({
   mode: {
     type: String,
@@ -150,6 +152,14 @@ function handleSubmit() {
       </select>
       <p v-if="fieldError('priority')" class="field-error">{{ fieldError('priority') }}</p>
     </div>
+
+    <AiTaskTools
+      :title="form.title"
+      :description="form.description"
+      :priority="form.priority"
+      @update:description="form.description = $event"
+      @update:priority="form.priority = $event"
+    />
 
     <div v-if="showAssignee" class="form-field">
       <label for="task-assignee">Assignee user ID</label>
