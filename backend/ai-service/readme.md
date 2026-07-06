@@ -4,8 +4,10 @@ AI Service is currently an infrastructure-only Spring Boot microservice. It
 registers with Eureka, loads configuration from Config Server, connects to its
 own PostgreSQL database, runs Flyway, and exposes Actuator health information.
 
-No AI provider integration, public REST API, Kafka integration, or domain
-schema is included in this bootstrap.
+The service defines internal AI task-assistance use cases and a provider
+abstraction for future provider integrations. No real AI provider integration,
+public REST API, Kafka integration, or domain schema is included in this
+bootstrap.
 
 From the repository root, start the required services with:
 
