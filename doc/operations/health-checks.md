@@ -122,8 +122,8 @@ Local platform stack verification passed.
 The script verifies:
 
 1. Docker CLI, Docker Compose v2, the Docker daemon, `.env`, and `compose.yml`.
-2. All twelve expected Compose containers are running.
-3. The ten containers with Docker health checks report `healthy`.
+2. All thirteen expected Compose containers are running.
+3. The eleven containers with Docker health checks report `healthy`.
 4. PostgreSQL accepts connections, Redis responds with `PONG`, and Kafka can
    list topics.
 5. Config Server health and mounted-repository access.
