@@ -18,6 +18,8 @@ docker compose --env-file .env -f compose.yml up -d --build \
 
 Verify the service:
 
+AI REST endpoints require a valid platform access JWT via `Authorization: Bearer <token>` or the `access-token` cookie. Actuator health/info remain public.
+
 ```bash
 curl -fsS http://localhost:8089/actuator/health
 curl -fsS http://localhost:8761/eureka/apps/AI-SERVICE
