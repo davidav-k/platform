@@ -22,7 +22,6 @@ function mountTools(props = {}) {
     props: {
       title: 'Improve onboarding',
       description: 'Make onboarding clearer for new users.',
-      priority: '',
       ...props,
     },
   })
@@ -152,6 +151,10 @@ describe('AiTaskTools', () => {
     await flushPromises()
     await buttonByText(wrapper, 'Apply priority').trigger('click')
 
+    expect(suggestPriority).toHaveBeenCalledWith({
+      title: 'Improve onboarding',
+      description: 'Make onboarding clearer for new users.',
+    })
     expect(wrapper.text()).toContain('Blocks onboarding release.')
     expect(wrapper.emitted('update:priority')).toEqual([['HIGH']])
   })

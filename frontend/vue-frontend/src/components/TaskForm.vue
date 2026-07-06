@@ -156,7 +156,6 @@ function handleSubmit() {
     <AiTaskTools
       :title="form.title"
       :description="form.description"
-      :priority="form.priority"
       @update:description="form.description = $event"
       @update:priority="form.priority = $event"
     />

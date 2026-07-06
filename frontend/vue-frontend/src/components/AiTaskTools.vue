@@ -18,10 +18,6 @@ const props = defineProps({
     type: String,
     default: '',
   },
-  priority: {
-    type: String,
-    default: '',
-  },
 })
 
 const emit = defineEmits(['update:description', 'update:priority'])
