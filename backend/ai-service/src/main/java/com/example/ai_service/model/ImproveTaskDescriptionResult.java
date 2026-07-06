@@ -1,6 +1,6 @@
 package com.example.ai_service.model;
 
-public record TaskDescriptionImprovementResponse(
+public record ImproveTaskDescriptionResult(
         String improvedDescription
 ) {
 }

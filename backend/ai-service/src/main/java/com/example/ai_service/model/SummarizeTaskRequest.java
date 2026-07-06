@@ -1,6 +1,6 @@
 package com.example.ai_service.model;
 
-public record TaskSummaryRequest(
+public record SummarizeTaskRequest(
         String title,
         String description
 ) {

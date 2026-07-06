@@ -1,9 +1,9 @@
 package com.example.ai_service.usecase;
 
-import com.example.ai_service.model.TaskSummaryRequest;
-import com.example.ai_service.model.TaskSummaryResponse;
+import com.example.ai_service.model.SummarizeTaskRequest;
+import com.example.ai_service.model.SummarizeTaskResult;
 
 public interface SummarizeTaskUseCase {
 
-    TaskSummaryResponse summarizeTask(TaskSummaryRequest request);
+    SummarizeTaskResult summarizeTask(SummarizeTaskRequest request);
 }

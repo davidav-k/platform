@@ -1,9 +1,9 @@
 package com.example.ai_service.usecase;
 
-import com.example.ai_service.model.PrioritySuggestionRequest;
-import com.example.ai_service.model.PrioritySuggestionResponse;
+import com.example.ai_service.model.SuggestPriorityRequest;
+import com.example.ai_service.model.SuggestPriorityResult;
 
 public interface SuggestPriorityUseCase {
 
-    PrioritySuggestionResponse suggestPriority(PrioritySuggestionRequest request);
+    SuggestPriorityResult suggestPriority(SuggestPriorityRequest request);
 }

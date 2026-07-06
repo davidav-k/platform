@@ -1,14 +1,14 @@
 package com.example.ai_service.usecase;
 
 import com.example.ai_service.enumeration.AiTaskPriority;
-import com.example.ai_service.model.PrioritySuggestionRequest;
-import com.example.ai_service.model.PrioritySuggestionResponse;
-import com.example.ai_service.model.SubtaskSuggestionRequest;
-import com.example.ai_service.model.SubtaskSuggestionResponse;
-import com.example.ai_service.model.TaskDescriptionImprovementRequest;
-import com.example.ai_service.model.TaskDescriptionImprovementResponse;
-import com.example.ai_service.model.TaskSummaryRequest;
-import com.example.ai_service.model.TaskSummaryResponse;
+import com.example.ai_service.model.SuggestPriorityRequest;
+import com.example.ai_service.model.SuggestPriorityResult;
+import com.example.ai_service.model.SuggestSubtasksRequest;
+import com.example.ai_service.model.SuggestSubtasksResult;
+import com.example.ai_service.model.ImproveTaskDescriptionRequest;
+import com.example.ai_service.model.ImproveTaskDescriptionResult;
+import com.example.ai_service.model.SummarizeTaskRequest;
+import com.example.ai_service.model.SummarizeTaskResult;
 import com.example.ai_service.provider.AiProvider;
 import com.example.ai_service.usecase.impl.AiTaskAssistanceService;
 import org.junit.jupiter.api.Test;
@@ -36,15 +36,15 @@ class AiTaskAssistanceServiceTest {
 
     @Test
     void improveTaskDescriptionDelegatesToProvider() {
-        TaskDescriptionImprovementRequest request = new TaskDescriptionImprovementRequest(
+        ImproveTaskDescriptionRequest request = new ImproveTaskDescriptionRequest(
                 "Clarify onboarding",
                 "Need better onboarding task details"
         );
-        TaskDescriptionImprovementResponse expected =
-                new TaskDescriptionImprovementResponse("Write detailed onboarding steps.");
+        ImproveTaskDescriptionResult expected =
+                new ImproveTaskDescriptionResult("Write detailed onboarding steps.");
         when(aiProvider.improveTaskDescription(request)).thenReturn(expected);
 
-        TaskDescriptionImprovementResponse response =
+        ImproveTaskDescriptionResult response =
                 aiTaskAssistanceService.improveTaskDescription(request);
 
         assertThat(response).isEqualTo(expected);
@@ -53,17 +53,17 @@ class AiTaskAssistanceServiceTest {
 
     @Test
     void suggestSubtasksDelegatesToProvider() {
-        SubtaskSuggestionRequest request = new SubtaskSuggestionRequest(
+        SuggestSubtasksRequest request = new SuggestSubtasksRequest(
                 "Create audit page",
                 "Add an audit log view for task events"
         );
-        SubtaskSuggestionResponse expected = new SubtaskSuggestionResponse(List.of(
+        SuggestSubtasksResult expected = new SuggestSubtasksResult(List.of(
                 "Define audit filters",
                 "Render audit table"
         ));
         when(aiProvider.suggestSubtasks(request)).thenReturn(expected);
 
-        SubtaskSuggestionResponse response = aiTaskAssistanceService.suggestSubtasks(request);
+        SuggestSubtasksResult response = aiTaskAssistanceService.suggestSubtasks(request);
 
         assertThat(response).isEqualTo(expected);
         verify(aiProvider).suggestSubtasks(request);
@@ -71,14 +71,14 @@ class AiTaskAssistanceServiceTest {
 
     @Test
     void summarizeTaskDelegatesToProvider() {
-        TaskSummaryRequest request = new TaskSummaryRequest(
+        SummarizeTaskRequest request = new SummarizeTaskRequest(
                 "Refactor task validation",
                 "Move duplicated validation into a focused service method"
         );
-        TaskSummaryResponse expected = new TaskSummaryResponse("Refactor duplicated task validation.");
+        SummarizeTaskResult expected = new SummarizeTaskResult("Refactor duplicated task validation.");
         when(aiProvider.summarizeTask(request)).thenReturn(expected);
 
-        TaskSummaryResponse response = aiTaskAssistanceService.summarizeTask(request);
+        SummarizeTaskResult response = aiTaskAssistanceService.summarizeTask(request);
 
         assertThat(response).isEqualTo(expected);
         verify(aiProvider).summarizeTask(request);
@@ -86,17 +86,17 @@ class AiTaskAssistanceServiceTest {
 
     @Test
     void suggestPriorityDelegatesToProvider() {
-        PrioritySuggestionRequest request = new PrioritySuggestionRequest(
+        SuggestPriorityRequest request = new SuggestPriorityRequest(
                 "Fix login outage",
                 "Users cannot authenticate after token rotation"
         );
-        PrioritySuggestionResponse expected = new PrioritySuggestionResponse(
+        SuggestPriorityResult expected = new SuggestPriorityResult(
                 AiTaskPriority.HIGH,
                 "Authentication outage blocks users."
         );
         when(aiProvider.suggestPriority(request)).thenReturn(expected);
 
-        PrioritySuggestionResponse response = aiTaskAssistanceService.suggestPriority(request);
+        SuggestPriorityResult response = aiTaskAssistanceService.suggestPriority(request);
 
         assertThat(response).isEqualTo(expected);
         verify(aiProvider).suggestPriority(request);
@@ -113,7 +113,7 @@ class AiTaskAssistanceServiceTest {
 
     @Test
     void rejectsBlankTitleBeforeCallingProvider() {
-        TaskSummaryRequest request = new TaskSummaryRequest("   ", "Summarize this task");
+        SummarizeTaskRequest request = new SummarizeTaskRequest("   ", "Summarize this task");
 
         assertThatThrownBy(() -> aiTaskAssistanceService.summarizeTask(request))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -124,7 +124,7 @@ class AiTaskAssistanceServiceTest {
 
     @Test
     void rejectsBlankDescriptionBeforeCallingProvider() {
-        TaskSummaryRequest request = new TaskSummaryRequest("Summarize task", "   ");
+        SummarizeTaskRequest request = new SummarizeTaskRequest("Summarize task", "   ");
 
         assertThatThrownBy(() -> aiTaskAssistanceService.summarizeTask(request))
                 .isInstanceOf(IllegalArgumentException.class)

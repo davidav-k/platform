@@ -1,6 +1,6 @@
 package com.example.ai_service.model;
 
-public record SubtaskSuggestionRequest(
+public record SuggestPriorityRequest(
         String title,
         String description
 ) {

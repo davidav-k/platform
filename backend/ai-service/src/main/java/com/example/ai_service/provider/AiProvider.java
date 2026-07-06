@@ -1,21 +1,21 @@
 package com.example.ai_service.provider;
 
-import com.example.ai_service.model.PrioritySuggestionRequest;
-import com.example.ai_service.model.PrioritySuggestionResponse;
-import com.example.ai_service.model.SubtaskSuggestionRequest;
-import com.example.ai_service.model.SubtaskSuggestionResponse;
-import com.example.ai_service.model.TaskDescriptionImprovementRequest;
-import com.example.ai_service.model.TaskDescriptionImprovementResponse;
-import com.example.ai_service.model.TaskSummaryRequest;
-import com.example.ai_service.model.TaskSummaryResponse;
+import com.example.ai_service.model.SuggestPriorityRequest;
+import com.example.ai_service.model.SuggestPriorityResult;
+import com.example.ai_service.model.SuggestSubtasksRequest;
+import com.example.ai_service.model.SuggestSubtasksResult;
+import com.example.ai_service.model.ImproveTaskDescriptionRequest;
+import com.example.ai_service.model.ImproveTaskDescriptionResult;
+import com.example.ai_service.model.SummarizeTaskRequest;
+import com.example.ai_service.model.SummarizeTaskResult;
 
 public interface AiProvider {
 
-    TaskDescriptionImprovementResponse improveTaskDescription(TaskDescriptionImprovementRequest request);
+    ImproveTaskDescriptionResult improveTaskDescription(ImproveTaskDescriptionRequest request);
 
-    SubtaskSuggestionResponse suggestSubtasks(SubtaskSuggestionRequest request);
+    SuggestSubtasksResult suggestSubtasks(SuggestSubtasksRequest request);
 
-    TaskSummaryResponse summarizeTask(TaskSummaryRequest request);
+    SummarizeTaskResult summarizeTask(SummarizeTaskRequest request);
 
-    PrioritySuggestionResponse suggestPriority(PrioritySuggestionRequest request);
+    SuggestPriorityResult suggestPriority(SuggestPriorityRequest request);
 }
