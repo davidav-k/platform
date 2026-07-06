@@ -23,7 +23,8 @@ backend/
 |-- user-service
 |-- task-service
 |-- notification-service
-`-- audit-service
+|-- audit-service
+`-- ai-service
 
 infrastructure/
 |-- api-gateway
@@ -55,6 +56,7 @@ Core local ports:
 | Task Service | `8086` |
 | Notification Service | `8087` |
 | Audit Service | `8088` |
+| AI Service | `8089` |
 | Frontend | `5173` |
 | Config Server | `8888` |
 | Eureka Server | `8761` |
@@ -68,6 +70,14 @@ Verify startup:
 
 ```bash
 ./scripts/check-local-stack.sh
+```
+
+To start only AI Service and its required infrastructure:
+
+```bash
+docker compose --env-file .env -f compose.yml up -d --build \
+  postgres config-server eureka-server ai-service
+curl -fsS http://localhost:8089/actuator/health
 ```
 
 Windows:
