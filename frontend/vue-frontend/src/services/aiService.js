@@ -1,6 +1,6 @@
 import { post } from './apiClient'
 
-const AI_TASKS_PATH = '/ai-service/api/v1/ai/tasks'
+const AI_TASKS_PATH = '/api/ai/tasks'
 
 export function improveTaskDescription(task) {
   return post(`${AI_TASKS_PATH}/description/improve`, task)

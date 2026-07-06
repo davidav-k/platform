@@ -81,6 +81,14 @@ spring:
                 name: taskService
                 fallbackUri: forward:/fallback/task-service
 
+        - id: ai-service
+          uri: lb://ai-service
+          predicates:
+            - Path=/api/ai/**
+            - Method=POST,OPTIONS
+          filters:
+            - RewritePath=/api/ai/(?<segment>.*), /api/v1/ai/${segment}
+
       default-filters:
         - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
 

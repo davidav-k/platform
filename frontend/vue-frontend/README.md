@@ -145,7 +145,7 @@ Views and components do not call `fetch` directly.
 - Kafka and the transactional outbox run in the backend. The frontend does not
   expose event-delivery controls and only reads persisted notifications through
   the Gateway.
-- Browser E2E tests are not configured yet.
+- Frontend component tests run with `npm test` (Vitest); browser E2E tests are not configured yet.
 
 
 For backend endpoint verification, seeded users, and the broader service E2E
