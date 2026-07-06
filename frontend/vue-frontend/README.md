@@ -20,8 +20,8 @@ authentication, authorization, task ownership, assignment, and validation.
 
 ## Prerequisites
 
-- Node.js 18 or later
-- npm 9 or later
+- Node.js 20.19.0 or later
+- npm 10 or later
 - The backend environment running from the repository root for local Vite mode
 - API Gateway available at `http://localhost:8080` by default
 
