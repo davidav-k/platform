@@ -1,14 +1,14 @@
 package com.example.ai_service.provider;
 
 import com.example.ai_service.enumeration.AiTaskPriority;
-import com.example.ai_service.model.PrioritySuggestionRequest;
-import com.example.ai_service.model.PrioritySuggestionResponse;
-import com.example.ai_service.model.SubtaskSuggestionRequest;
-import com.example.ai_service.model.SubtaskSuggestionResponse;
-import com.example.ai_service.model.TaskDescriptionImprovementRequest;
-import com.example.ai_service.model.TaskDescriptionImprovementResponse;
-import com.example.ai_service.model.TaskSummaryRequest;
-import com.example.ai_service.model.TaskSummaryResponse;
+import com.example.ai_service.model.SuggestPriorityRequest;
+import com.example.ai_service.model.SuggestPriorityResult;
+import com.example.ai_service.model.SuggestSubtasksRequest;
+import com.example.ai_service.model.SuggestSubtasksResult;
+import com.example.ai_service.model.ImproveTaskDescriptionRequest;
+import com.example.ai_service.model.ImproveTaskDescriptionResult;
+import com.example.ai_service.model.SummarizeTaskRequest;
+import com.example.ai_service.model.SummarizeTaskResult;
 import java.util.List;
 
 /**
@@ -17,22 +17,22 @@ import java.util.List;
 public class TemporaryNoOpAiProvider implements AiProvider {
 
     @Override
-    public TaskDescriptionImprovementResponse improveTaskDescription(TaskDescriptionImprovementRequest request) {
-        return new TaskDescriptionImprovementResponse(request.description().strip());
+    public ImproveTaskDescriptionResult improveTaskDescription(ImproveTaskDescriptionRequest request) {
+        return new ImproveTaskDescriptionResult(request.description().strip());
     }
 
     @Override
-    public SubtaskSuggestionResponse suggestSubtasks(SubtaskSuggestionRequest request) {
-        return new SubtaskSuggestionResponse(List.of());
+    public SuggestSubtasksResult suggestSubtasks(SuggestSubtasksRequest request) {
+        return new SuggestSubtasksResult(List.of());
     }
 
     @Override
-    public TaskSummaryResponse summarizeTask(TaskSummaryRequest request) {
-        return new TaskSummaryResponse(request.title().strip());
+    public SummarizeTaskResult summarizeTask(SummarizeTaskRequest request) {
+        return new SummarizeTaskResult(request.title().strip());
     }
 
     @Override
-    public PrioritySuggestionResponse suggestPriority(PrioritySuggestionRequest request) {
-        return new PrioritySuggestionResponse(AiTaskPriority.MEDIUM, "Temporary no-op provider default");
+    public SuggestPriorityResult suggestPriority(SuggestPriorityRequest request) {
+        return new SuggestPriorityResult(AiTaskPriority.MEDIUM, "Temporary no-op provider default");
     }
 }

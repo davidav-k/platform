@@ -1,8 +1,8 @@
 # AI Service API Contract
 
 AI Service exposes task-assistance operations through `/api/v1/ai/tasks`.
-Responses use the platform response envelope with operation payloads under
-`data.result`.
+Successful responses use the platform response envelope with operation payloads under `data.result`.
+All operations accept a JSON body with `title` and `description`; validation errors return `400 BAD_REQUEST` with field errors directly under `data` (e.g., `data.title`, `data.description`).
 
 ## Improve Task Description
 

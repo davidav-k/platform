@@ -1,13 +1,13 @@
 package com.example.ai_service.usecase.impl;
 
-import com.example.ai_service.model.PrioritySuggestionRequest;
-import com.example.ai_service.model.PrioritySuggestionResponse;
-import com.example.ai_service.model.SubtaskSuggestionRequest;
-import com.example.ai_service.model.SubtaskSuggestionResponse;
-import com.example.ai_service.model.TaskDescriptionImprovementRequest;
-import com.example.ai_service.model.TaskDescriptionImprovementResponse;
-import com.example.ai_service.model.TaskSummaryRequest;
-import com.example.ai_service.model.TaskSummaryResponse;
+import com.example.ai_service.model.SuggestPriorityRequest;
+import com.example.ai_service.model.SuggestPriorityResult;
+import com.example.ai_service.model.SuggestSubtasksRequest;
+import com.example.ai_service.model.SuggestSubtasksResult;
+import com.example.ai_service.model.ImproveTaskDescriptionRequest;
+import com.example.ai_service.model.ImproveTaskDescriptionResult;
+import com.example.ai_service.model.SummarizeTaskRequest;
+import com.example.ai_service.model.SummarizeTaskResult;
 import com.example.ai_service.provider.AiProvider;
 import com.example.ai_service.usecase.ImproveTaskDescriptionUseCase;
 import com.example.ai_service.usecase.SuggestPriorityUseCase;
@@ -26,45 +26,45 @@ public class AiTaskAssistanceService implements ImproveTaskDescriptionUseCase,
     private final AiProvider aiProvider;
 
     @Override
-    public TaskDescriptionImprovementResponse improveTaskDescription(TaskDescriptionImprovementRequest request) {
+    public ImproveTaskDescriptionResult improveTaskDescription(ImproveTaskDescriptionRequest request) {
         validateTaskText(request, "Improve task description request is required");
         return aiProvider.improveTaskDescription(request);
     }
 
     @Override
-    public SubtaskSuggestionResponse suggestSubtasks(SubtaskSuggestionRequest request) {
+    public SuggestSubtasksResult suggestSubtasks(SuggestSubtasksRequest request) {
         validateTaskText(request, "Suggest subtasks request is required");
         return aiProvider.suggestSubtasks(request);
     }
 
     @Override
-    public TaskSummaryResponse summarizeTask(TaskSummaryRequest request) {
+    public SummarizeTaskResult summarizeTask(SummarizeTaskRequest request) {
         validateTaskText(request, "Summarize task request is required");
         return aiProvider.summarizeTask(request);
     }
 
     @Override
-    public PrioritySuggestionResponse suggestPriority(PrioritySuggestionRequest request) {
+    public SuggestPriorityResult suggestPriority(SuggestPriorityRequest request) {
         validateTaskText(request, "Suggest priority request is required");
         return aiProvider.suggestPriority(request);
     }
 
-    private void validateTaskText(TaskDescriptionImprovementRequest request, String nullMessage) {
+    private void validateTaskText(ImproveTaskDescriptionRequest request, String nullMessage) {
         validateTaskText(request, request == null ? null : request.title(),
                 request == null ? null : request.description(), nullMessage);
     }
 
-    private void validateTaskText(SubtaskSuggestionRequest request, String nullMessage) {
+    private void validateTaskText(SuggestSubtasksRequest request, String nullMessage) {
         validateTaskText(request, request == null ? null : request.title(),
                 request == null ? null : request.description(), nullMessage);
     }
 
-    private void validateTaskText(TaskSummaryRequest request, String nullMessage) {
+    private void validateTaskText(SummarizeTaskRequest request, String nullMessage) {
         validateTaskText(request, request == null ? null : request.title(),
                 request == null ? null : request.description(), nullMessage);
     }
 
-    private void validateTaskText(PrioritySuggestionRequest request, String nullMessage) {
+    private void validateTaskText(SuggestPriorityRequest request, String nullMessage) {
         validateTaskText(request, request == null ? null : request.title(),
                 request == null ? null : request.description(), nullMessage);
     }

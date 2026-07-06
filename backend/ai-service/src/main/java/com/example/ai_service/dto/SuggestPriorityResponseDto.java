@@ -1,8 +1,8 @@
-package com.example.ai_service.model;
+package com.example.ai_service.dto;
 
 import com.example.ai_service.enumeration.AiTaskPriority;
 
-public record PrioritySuggestionResponse(
+public record SuggestPriorityResponseDto(
         AiTaskPriority priority,
         String reason
 ) {

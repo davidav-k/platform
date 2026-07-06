@@ -1,6 +1,6 @@
 package com.example.ai_service.dto;
 
-public record SummarizeTaskResponse(
+public record SummarizeTaskResponseDto(
         String summary
 ) {
 }

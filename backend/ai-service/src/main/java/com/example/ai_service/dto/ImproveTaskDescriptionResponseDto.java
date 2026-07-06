@@ -1,6 +1,6 @@
 package com.example.ai_service.dto;
 
-public record ImproveTaskDescriptionResponse(
+public record ImproveTaskDescriptionResponseDto(
         String improvedDescription
 ) {
 }

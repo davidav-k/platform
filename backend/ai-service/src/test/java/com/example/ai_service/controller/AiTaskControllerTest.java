@@ -4,14 +4,14 @@ import com.example.ai_service.enumeration.AiTaskPriority;
 import com.example.ai_service.exception.AiProviderException;
 import com.example.ai_service.exception.AiProviderTimeoutException;
 import com.example.ai_service.exception.AiProviderUnavailableException;
-import com.example.ai_service.model.PrioritySuggestionRequest;
-import com.example.ai_service.model.PrioritySuggestionResponse;
-import com.example.ai_service.model.SubtaskSuggestionRequest;
-import com.example.ai_service.model.SubtaskSuggestionResponse;
-import com.example.ai_service.model.TaskDescriptionImprovementRequest;
-import com.example.ai_service.model.TaskDescriptionImprovementResponse;
-import com.example.ai_service.model.TaskSummaryRequest;
-import com.example.ai_service.model.TaskSummaryResponse;
+import com.example.ai_service.model.SuggestPriorityRequest;
+import com.example.ai_service.model.SuggestPriorityResult;
+import com.example.ai_service.model.SuggestSubtasksRequest;
+import com.example.ai_service.model.SuggestSubtasksResult;
+import com.example.ai_service.model.ImproveTaskDescriptionRequest;
+import com.example.ai_service.model.ImproveTaskDescriptionResult;
+import com.example.ai_service.model.SummarizeTaskRequest;
+import com.example.ai_service.model.SummarizeTaskResult;
 import com.example.ai_service.usecase.ImproveTaskDescriptionUseCase;
 import com.example.ai_service.usecase.SuggestPriorityUseCase;
 import com.example.ai_service.usecase.SuggestSubtasksUseCase;
@@ -64,8 +64,8 @@ class AiTaskControllerTest {
 
     @Test
     void improvesTaskDescription() throws Exception {
-        when(improveTaskDescriptionUseCase.improveTaskDescription(any(TaskDescriptionImprovementRequest.class)))
-                .thenReturn(new TaskDescriptionImprovementResponse("Add acceptance criteria and rollout notes."));
+        when(improveTaskDescriptionUseCase.improveTaskDescription(any(ImproveTaskDescriptionRequest.class)))
+                .thenReturn(new ImproveTaskDescriptionResult("Add acceptance criteria and rollout notes."));
 
         mockMvc.perform(post("/api/v1/ai/tasks/description/improve")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -87,8 +87,8 @@ class AiTaskControllerTest {
 
     @Test
     void suggestsSubtasks() throws Exception {
-        when(suggestSubtasksUseCase.suggestSubtasks(any(SubtaskSuggestionRequest.class)))
-                .thenReturn(new SubtaskSuggestionResponse(List.of(
+        when(suggestSubtasksUseCase.suggestSubtasks(any(SuggestSubtasksRequest.class)))
+                .thenReturn(new SuggestSubtasksResult(List.of(
                         "Draft acceptance criteria",
                         "Review with product"
                 )));
@@ -101,13 +101,13 @@ class AiTaskControllerTest {
                 .andExpect(jsonPath("$.data.result.subtasks[0]").value("Draft acceptance criteria"))
                 .andExpect(jsonPath("$.data.result.subtasks[1]").value("Review with product"));
 
-        verify(suggestSubtasksUseCase).suggestSubtasks(any(SubtaskSuggestionRequest.class));
+        verify(suggestSubtasksUseCase).suggestSubtasks(any(SuggestSubtasksRequest.class));
     }
 
     @Test
     void summarizesTask() throws Exception {
-        when(summarizeTaskUseCase.summarizeTask(any(TaskSummaryRequest.class)))
-                .thenReturn(new TaskSummaryResponse("Improve onboarding clarity."));
+        when(summarizeTaskUseCase.summarizeTask(any(SummarizeTaskRequest.class)))
+                .thenReturn(new SummarizeTaskResult("Improve onboarding clarity."));
 
         mockMvc.perform(post("/api/v1/ai/tasks/summary")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -116,13 +116,13 @@ class AiTaskControllerTest {
                 .andExpect(jsonPath("$.message").value("Task summarized successfully."))
                 .andExpect(jsonPath("$.data.result.summary").value("Improve onboarding clarity."));
 
-        verify(summarizeTaskUseCase).summarizeTask(any(TaskSummaryRequest.class));
+        verify(summarizeTaskUseCase).summarizeTask(any(SummarizeTaskRequest.class));
     }
 
     @Test
     void suggestsPriority() throws Exception {
-        when(suggestPriorityUseCase.suggestPriority(any(PrioritySuggestionRequest.class)))
-                .thenReturn(new PrioritySuggestionResponse(AiTaskPriority.HIGH, "Blocks onboarding release."));
+        when(suggestPriorityUseCase.suggestPriority(any(SuggestPriorityRequest.class)))
+                .thenReturn(new SuggestPriorityResult(AiTaskPriority.HIGH, "Blocks onboarding release."));
 
         mockMvc.perform(post("/api/v1/ai/tasks/priority/suggest")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -132,7 +132,7 @@ class AiTaskControllerTest {
                 .andExpect(jsonPath("$.data.result.priority").value("HIGH"))
                 .andExpect(jsonPath("$.data.result.reason").value("Blocks onboarding release."));
 
-        verify(suggestPriorityUseCase).suggestPriority(any(PrioritySuggestionRequest.class));
+        verify(suggestPriorityUseCase).suggestPriority(any(SuggestPriorityRequest.class));
     }
 
     @Test
@@ -213,7 +213,7 @@ class AiTaskControllerTest {
 
     @Test
     void providerUnavailableReturnsServiceUnavailable() throws Exception {
-        when(summarizeTaskUseCase.summarizeTask(any(TaskSummaryRequest.class)))
+        when(summarizeTaskUseCase.summarizeTask(any(SummarizeTaskRequest.class)))
                 .thenThrow(new AiProviderUnavailableException("AI provider is unavailable"));
 
         mockMvc.perform(post("/api/v1/ai/tasks/summary")
@@ -226,7 +226,7 @@ class AiTaskControllerTest {
 
     @Test
     void providerTimeoutReturnsGatewayTimeout() throws Exception {
-        when(summarizeTaskUseCase.summarizeTask(any(TaskSummaryRequest.class)))
+        when(summarizeTaskUseCase.summarizeTask(any(SummarizeTaskRequest.class)))
                 .thenThrow(new AiProviderTimeoutException("AI provider timed out"));
 
         mockMvc.perform(post("/api/v1/ai/tasks/summary")
@@ -239,7 +239,7 @@ class AiTaskControllerTest {
 
     @Test
     void providerFailureReturnsBadGateway() throws Exception {
-        when(summarizeTaskUseCase.summarizeTask(any(TaskSummaryRequest.class)))
+        when(summarizeTaskUseCase.summarizeTask(any(SummarizeTaskRequest.class)))
                 .thenThrow(new AiProviderException("AI provider failed"));
 
         mockMvc.perform(post("/api/v1/ai/tasks/summary")

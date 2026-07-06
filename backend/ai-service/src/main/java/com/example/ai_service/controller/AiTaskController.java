@@ -1,22 +1,22 @@
 package com.example.ai_service.controller;
 
 import com.example.ai_service.domain.Response;
-import com.example.ai_service.dto.ImproveTaskDescriptionRequest;
-import com.example.ai_service.dto.ImproveTaskDescriptionResponse;
-import com.example.ai_service.dto.SuggestPriorityRequest;
-import com.example.ai_service.dto.SuggestPriorityResponse;
-import com.example.ai_service.dto.SuggestSubtasksRequest;
-import com.example.ai_service.dto.SuggestSubtasksResponse;
-import com.example.ai_service.dto.SummarizeTaskRequest;
-import com.example.ai_service.dto.SummarizeTaskResponse;
-import com.example.ai_service.model.PrioritySuggestionRequest;
-import com.example.ai_service.model.PrioritySuggestionResponse;
-import com.example.ai_service.model.SubtaskSuggestionRequest;
-import com.example.ai_service.model.SubtaskSuggestionResponse;
-import com.example.ai_service.model.TaskDescriptionImprovementRequest;
-import com.example.ai_service.model.TaskDescriptionImprovementResponse;
-import com.example.ai_service.model.TaskSummaryRequest;
-import com.example.ai_service.model.TaskSummaryResponse;
+import com.example.ai_service.dto.ImproveTaskDescriptionRequestDto;
+import com.example.ai_service.dto.ImproveTaskDescriptionResponseDto;
+import com.example.ai_service.dto.SuggestPriorityRequestDto;
+import com.example.ai_service.dto.SuggestPriorityResponseDto;
+import com.example.ai_service.dto.SuggestSubtasksRequestDto;
+import com.example.ai_service.dto.SuggestSubtasksResponseDto;
+import com.example.ai_service.dto.SummarizeTaskRequestDto;
+import com.example.ai_service.dto.SummarizeTaskResponseDto;
+import com.example.ai_service.model.SuggestPriorityRequest;
+import com.example.ai_service.model.SuggestPriorityResult;
+import com.example.ai_service.model.SuggestSubtasksRequest;
+import com.example.ai_service.model.SuggestSubtasksResult;
+import com.example.ai_service.model.ImproveTaskDescriptionRequest;
+import com.example.ai_service.model.ImproveTaskDescriptionResult;
+import com.example.ai_service.model.SummarizeTaskRequest;
+import com.example.ai_service.model.SummarizeTaskResult;
 import com.example.ai_service.usecase.ImproveTaskDescriptionUseCase;
 import com.example.ai_service.usecase.SuggestPriorityUseCase;
 import com.example.ai_service.usecase.SuggestSubtasksUseCase;
@@ -48,50 +48,50 @@ public class AiTaskController {
 
     @PostMapping("/description/improve")
     public ResponseEntity<Response> improveTaskDescription(
-            @RequestBody @Valid ImproveTaskDescriptionRequest requestBody,
+            @RequestBody @Valid ImproveTaskDescriptionRequestDto requestBody,
             HttpServletRequest request
     ) {
-        TaskDescriptionImprovementResponse result = improveTaskDescriptionUseCase.improveTaskDescription(
-                new TaskDescriptionImprovementRequest(requestBody.title(), requestBody.description())
+        ImproveTaskDescriptionResult result = improveTaskDescriptionUseCase.improveTaskDescription(
+                new ImproveTaskDescriptionRequest(requestBody.title(), requestBody.description())
         );
-        ImproveTaskDescriptionResponse response =
-                new ImproveTaskDescriptionResponse(result.improvedDescription());
+        ImproveTaskDescriptionResponseDto response =
+                new ImproveTaskDescriptionResponseDto(result.improvedDescription());
         return ok(request, Map.of("result", response), "Task description improved successfully.");
     }
 
     @PostMapping("/subtasks/suggest")
     public ResponseEntity<Response> suggestSubtasks(
-            @RequestBody @Valid SuggestSubtasksRequest requestBody,
+            @RequestBody @Valid SuggestSubtasksRequestDto requestBody,
             HttpServletRequest request
     ) {
-        SubtaskSuggestionResponse result = suggestSubtasksUseCase.suggestSubtasks(
-                new SubtaskSuggestionRequest(requestBody.title(), requestBody.description())
+        SuggestSubtasksResult result = suggestSubtasksUseCase.suggestSubtasks(
+                new SuggestSubtasksRequest(requestBody.title(), requestBody.description())
         );
-        SuggestSubtasksResponse response = new SuggestSubtasksResponse(result.subtasks());
+        SuggestSubtasksResponseDto response = new SuggestSubtasksResponseDto(result.subtasks());
         return ok(request, Map.of("result", response), "Subtasks suggested successfully.");
     }
 
     @PostMapping("/summary")
     public ResponseEntity<Response> summarizeTask(
-            @RequestBody @Valid SummarizeTaskRequest requestBody,
+            @RequestBody @Valid SummarizeTaskRequestDto requestBody,
             HttpServletRequest request
     ) {
-        TaskSummaryResponse result = summarizeTaskUseCase.summarizeTask(
-                new TaskSummaryRequest(requestBody.title(), requestBody.description())
+        SummarizeTaskResult result = summarizeTaskUseCase.summarizeTask(
+                new SummarizeTaskRequest(requestBody.title(), requestBody.description())
         );
-        SummarizeTaskResponse response = new SummarizeTaskResponse(result.summary());
+        SummarizeTaskResponseDto response = new SummarizeTaskResponseDto(result.summary());
         return ok(request, Map.of("result", response), "Task summarized successfully.");
     }
 
     @PostMapping("/priority/suggest")
     public ResponseEntity<Response> suggestPriority(
-            @RequestBody @Valid SuggestPriorityRequest requestBody,
+            @RequestBody @Valid SuggestPriorityRequestDto requestBody,
             HttpServletRequest request
     ) {
-        PrioritySuggestionResponse result = suggestPriorityUseCase.suggestPriority(
-                new PrioritySuggestionRequest(requestBody.title(), requestBody.description())
+        SuggestPriorityResult result = suggestPriorityUseCase.suggestPriority(
+                new SuggestPriorityRequest(requestBody.title(), requestBody.description())
         );
-        SuggestPriorityResponse response = new SuggestPriorityResponse(result.priority(), result.reason());
+        SuggestPriorityResponseDto response = new SuggestPriorityResponseDto(result.priority(), result.reason());
         return ok(request, Map.of("result", response), "Task priority suggested successfully.");
     }
 
