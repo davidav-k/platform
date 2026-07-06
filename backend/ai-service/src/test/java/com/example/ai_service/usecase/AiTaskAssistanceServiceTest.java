@@ -132,4 +132,12 @@ class AiTaskAssistanceServiceTest {
 
         verifyNoInteractions(aiProvider);
     }
+
+    @Test
+    void rejectsNullRequestForSuggestPriorityBeforeCallingProvider() {
+        assertThatThrownBy(() -> aiTaskAssistanceService.suggestPriority(null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Suggest priority request is required");
+        verifyNoInteractions(aiProvider);
+    }
 }
