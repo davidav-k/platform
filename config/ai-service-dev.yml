@@ -27,3 +27,21 @@ management:
 
 jwt:
   secret: ${JWT_SECRET}
+
+ai:
+  provider:
+    metadata:
+      name: ${AI_PROVIDER_NAME:temporary-noop}
+      model: ${AI_MODEL_NAME:not-configured}
+
+outbox:
+  publisher:
+    enabled: ${AI_OUTBOX_PUBLISHER_ENABLED:true}
+    adapter: ${AI_OUTBOX_PUBLISHER_ADAPTER:kafka}
+    batch-size: ${AI_OUTBOX_PUBLISHER_BATCH_SIZE:20}
+    max-retries: ${AI_OUTBOX_PUBLISHER_MAX_RETRIES:3}
+    fixed-delay-millis: ${AI_OUTBOX_PUBLISHER_FIXED_DELAY_MILLIS:5000}
+    kafka:
+      enabled: ${AI_OUTBOX_PUBLISHER_KAFKA_ENABLED:true}
+      bootstrap-servers: ${AI_OUTBOX_PUBLISHER_KAFKA_BOOTSTRAP_SERVERS:${KAFKA_BOOTSTRAP_SERVERS:kafka:9092}}
+      topic: ${AI_OUTBOX_PUBLISHER_KAFKA_TOPIC:${KAFKA_AI_EVENTS_TOPIC:platform.ai-events}}

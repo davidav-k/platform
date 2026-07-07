@@ -18,6 +18,7 @@ class AuditKafkaStartupDiagnosticsTest {
         properties.setTopic("platform.task-events");
         properties.setUserTopic("platform.user-events");
         properties.setNotificationTopic("platform.notification-events");
+        properties.setAiTopic("platform.ai-events");
 
         new AuditKafkaStartupDiagnostics(properties).run(new DefaultApplicationArguments());
 
@@ -26,6 +27,7 @@ class AuditKafkaStartupDiagnosticsTest {
                 .contains("kafkaConsumerEnabled=true")
                 .contains("taskTopic=platform.task-events")
                 .contains("userTopic=platform.user-events")
-                .contains("notificationTopic=platform.notification-events");
+                .contains("notificationTopic=platform.notification-events")
+                .contains("aiTopic=platform.ai-events");
     }
 }

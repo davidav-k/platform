@@ -9,6 +9,7 @@ public class AuditKafkaProperties {
     private String topic = "platform.task-events";
     private String userTopic = "platform.user-events";
     private String notificationTopic = "platform.notification-events";
+    private String aiTopic = "platform.ai-events";
 
     public boolean isEnabled() {
         return enabled;
@@ -40,5 +41,13 @@ public class AuditKafkaProperties {
 
     public void setNotificationTopic(String notificationTopic) {
         this.notificationTopic = notificationTopic;
+    }
+
+    public String getAiTopic() {
+        return aiTopic;
+    }
+
+    public void setAiTopic(String aiTopic) {
+        this.aiTopic = aiTopic;
     }
 }

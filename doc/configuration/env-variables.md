@@ -145,10 +145,13 @@ fixed in configuration and Compose:
 | Name | Required | Default | Example | Consumed by | Description |
 | --- | --- | --- | --- | --- | --- |
 | `KAFKA_LOCAL_PORT` | No | `9092` | `9092` | Docker Compose | Local host port exposed by the Kafka broker. |
-| `KAFKA_BOOTSTRAP_SERVERS` | No | `kafka:9092` | `kafka:9092` | task-service, notification-service, audit-service | Kafka bootstrap server list for service-to-service broker access. |
+| `KAFKA_BOOTSTRAP_SERVERS` | No | `kafka:9092` | `kafka:9092` | task-service, notification-service, audit-service, ai-service | Kafka bootstrap server list for service-to-service broker access. |
 | `KAFKA_TASK_EVENTS_TOPIC` | No | `platform.task-events` | `platform.task-events` | task-service, notification-service, audit-service | Topic for task domain events. |
 | `KAFKA_USER_EVENTS_TOPIC` | No | `platform.user-events` | `platform.user-events` | user-service, audit-service | Topic for user audit events. |
 | `KAFKA_NOTIFICATION_EVENTS_TOPIC` | No | `platform.notification-events` | `platform.notification-events` | notification-service, audit-service | Topic for notification audit events. |
+| `KAFKA_AI_EVENTS_TOPIC` | No | `platform.ai-events` | `platform.ai-events` | ai-service, audit-service | Topic for AI operation audit events. |
+| `AI_PROVIDER_NAME` | No | `temporary-noop` | `ollama` | ai-service | Non-sensitive provider label included in AI audit events. |
+| `AI_MODEL_NAME` | No | `not-configured` | `llama3.2` | ai-service | Non-sensitive model label included in AI audit events. |
 | `OUTBOX_PUBLISHER_ENABLED` | No | `true` | `false` | task-service | Enables task-service outbox polling. Default Kafka notification delivery keeps this true. |
 | `OUTBOX_PUBLISHER_ADAPTER` | No | `kafka` | `logging` | task-service | Selects the outbox publisher adapter. Use `logging` only for rollback or local no-op delivery. |
 | `OUTBOX_PUBLISHER_KAFKA_BOOTSTRAP_SERVERS` | No | `kafka:9092` | `kafka:9092` | task-service | Explicit Kafka bootstrap server list for the task-service outbox publisher. Falls back to `KAFKA_BOOTSTRAP_SERVERS`. |
@@ -171,10 +174,19 @@ fixed in configuration and Compose:
 | `NOTIFICATION_OUTBOX_PUBLISHER_KAFKA_ENABLED` | No | `true` | `false` | notification-service | Enables notification Kafka publishing configuration. |
 | `NOTIFICATION_OUTBOX_PUBLISHER_KAFKA_BOOTSTRAP_SERVERS` | No | `kafka:9092` | `kafka:9092` | notification-service | Kafka bootstrap servers for notification event publication. |
 | `NOTIFICATION_OUTBOX_PUBLISHER_KAFKA_TOPIC` | No | `platform.notification-events` | `platform.notification-events` | notification-service | Notification event topic. Falls back to `KAFKA_NOTIFICATION_EVENTS_TOPIC`. |
-| `AUDIT_KAFKA_ENABLED` | No | `true` | `false` | audit-service | Enables Audit Service task-, user-, and notification-event consumption. |
+| `AI_OUTBOX_PUBLISHER_ENABLED` | No | `true` | `false` | ai-service | Enables AI Service outbox polling. |
+| `AI_OUTBOX_PUBLISHER_ADAPTER` | No | `kafka` | `logging` | ai-service | Selects the AI outbox publisher adapter. |
+| `AI_OUTBOX_PUBLISHER_BATCH_SIZE` | No | `20` | `20` | ai-service | Maximum AI outbox events claimed per poll. |
+| `AI_OUTBOX_PUBLISHER_MAX_RETRIES` | No | `3` | `3` | ai-service | Maximum publish attempts for an AI outbox event. |
+| `AI_OUTBOX_PUBLISHER_FIXED_DELAY_MILLIS` | No | `5000` | `5000` | ai-service | Delay between AI outbox polling cycles. |
+| `AI_OUTBOX_PUBLISHER_KAFKA_ENABLED` | No | `true` | `false` | ai-service | Currently unused; use `AI_OUTBOX_PUBLISHER_ADAPTER` to switch between `kafka` and `logging`. |
+| `AI_OUTBOX_PUBLISHER_KAFKA_BOOTSTRAP_SERVERS` | No | `kafka:9092` | `kafka:9092` | ai-service | Kafka bootstrap servers for AI event publication. |
+| `AI_OUTBOX_PUBLISHER_KAFKA_TOPIC` | No | `platform.ai-events` | `platform.ai-events` | ai-service | AI event topic. Falls back to `KAFKA_AI_EVENTS_TOPIC`. |
+| `AUDIT_KAFKA_ENABLED` | No | `true` | `false` | audit-service | Enables Audit Service task-, user-, notification-, and AI-event consumption. |
 | `AUDIT_KAFKA_TOPIC` | No | `platform.task-events` | `platform.task-events` | audit-service | Task event topic consumed by Audit Service. Falls back to `KAFKA_TASK_EVENTS_TOPIC`. |
 | `AUDIT_KAFKA_USER_TOPIC` | No | `platform.user-events` | `platform.user-events` | audit-service | User event topic consumed by Audit Service. Falls back to `KAFKA_USER_EVENTS_TOPIC`. |
 | `AUDIT_KAFKA_NOTIFICATION_TOPIC` | No | `platform.notification-events` | `platform.notification-events` | audit-service | Notification event topic consumed by Audit Service. Falls back to `KAFKA_NOTIFICATION_EVENTS_TOPIC`. |
+| `AUDIT_KAFKA_AI_TOPIC` | No | `platform.ai-events` | `platform.ai-events` | audit-service | AI event topic consumed by Audit Service. Falls back to `KAFKA_AI_EVENTS_TOPIC`. |
 
 Default Kafka task event delivery uses:
 
