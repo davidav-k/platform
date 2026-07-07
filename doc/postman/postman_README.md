@@ -75,9 +75,12 @@ security checks remain independent of Gateway routing.
 The AI Service folder calls only Gateway routes under `{{baseUrl}}/api/ai`.
 It reuses `adminAccessToken` from the existing login requests and validates AI
 responses structurally because generated text is non-deterministic. The folder
-also verifies AI audit records through the Gateway Audit API at
-`{{baseUrl}}/api/audit`, expecting `sourceService=ai-service` records for
-`AI_TASK_DESCRIPTION_IMPROVED`, `AI_SUBTASKS_SUGGESTED`,
+contains positive E2E requests for Improve Task Description, Suggest Subtasks,
+Summarize Task, and Suggest Priority. It also includes negative checks for an
+invalid/unauthenticated token (`401`) and invalid payload (`400`). Audit
+verification requests query `{{baseUrl}}/api/audit` for `sourceService=ai-service`
+and then fetch the captured `aiAuditId` detail record. Expected AI event types
+are `AI_TASK_DESCRIPTION_IMPROVED`, `AI_SUBTASKS_SUGGESTED`,
 `AI_TASK_SUMMARIZED`, and `AI_PRIORITY_SUGGESTED`.
 
 ## How to run

@@ -150,8 +150,8 @@ fixed in configuration and Compose:
 | `KAFKA_USER_EVENTS_TOPIC` | No | `platform.user-events` | `platform.user-events` | user-service, audit-service | Topic for user audit events. |
 | `KAFKA_NOTIFICATION_EVENTS_TOPIC` | No | `platform.notification-events` | `platform.notification-events` | notification-service, audit-service | Topic for notification audit events. |
 | `KAFKA_AI_EVENTS_TOPIC` | No | `platform.ai-events` | `platform.ai-events` | ai-service, audit-service | Topic for AI operation audit events. |
-| `AI_PROVIDER_NAME` | No | `temporary-noop` | `ollama` | ai-service | Non-sensitive provider label included in AI audit events. |
-| `AI_MODEL_NAME` | No | `not-configured` | `llama3.2` | ai-service | Non-sensitive model label included in AI audit events. |
+| `AI_PROVIDER_NAME` | No | `temporary-noop` | `temporary-noop` | ai-service | Non-sensitive provider label included in AI audit events. |
+| `AI_MODEL_NAME` | No | `not-configured` | `not-configured` | ai-service | Non-sensitive model label included in AI audit events. |
 | `OUTBOX_PUBLISHER_ENABLED` | No | `true` | `false` | task-service | Enables task-service outbox polling. Default Kafka notification delivery keeps this true. |
 | `OUTBOX_PUBLISHER_ADAPTER` | No | `kafka` | `logging` | task-service | Selects the outbox publisher adapter. Use `logging` only for rollback or local no-op delivery. |
 | `OUTBOX_PUBLISHER_KAFKA_BOOTSTRAP_SERVERS` | No | `kafka:9092` | `kafka:9092` | task-service | Explicit Kafka bootstrap server list for the task-service outbox publisher. Falls back to `KAFKA_BOOTSTRAP_SERVERS`. |
@@ -220,6 +220,14 @@ Kafka task event mode is the supported runtime path:
   supported events, sanitizes sensitive payload fields, and persists them using
   the same event-ID idempotency rule as task events.
 
+### AI Provider Runtime
+
+Current AI Service code reads only provider metadata labels:
+`AI_PROVIDER_NAME` and `AI_MODEL_NAME`. These values are included in AI audit
+payloads and do not configure a network client.
+
+This checkout does not define Ollama base URL, Ollama timeout, or Ollama model
+connection properties, and `compose.yml` does not start an Ollama container. Do not add Ollama connection variables to `.env` until a concrete Ollama-backed `AiProvider` and configuration properties exist in code.
 ### Mail
 
 | Name | Required | Default | Example | Consumed by | Description |
@@ -232,8 +240,8 @@ Kafka task event mode is the supported runtime path:
 
 ### Future Integrations
 
-No active environment variable contract exists for Prometheus, Grafana,
-production mail providers, or OpenAI integration.
+No active environment variable contract exists for Prometheus, Grafana, or
+production mail providers.
 
 ## Commented Fallback Toggles
 
@@ -255,7 +263,7 @@ required `.env` contract:
 | `config/task-service-dev.yml` | PostgreSQL (`TASK_POSTGRES_DB`), JWT, Eureka, `APPLICATION_PORT`, and outbox publisher variables |
 | `config/notification-service-dev.yml` | PostgreSQL (`NOTIFICATION_POSTGRES_DB`), Eureka, `APPLICATION_PORT`, task-event consumer, and notification outbox publisher variables |
 | `config/audit-service-dev.yml` | PostgreSQL (`AUDIT_POSTGRES_DB`), Flyway, Eureka, Kafka consumer, `APPLICATION_PORT`, and Actuator exposure |
-| `config/ai-service-dev.yml` | PostgreSQL (`AI_POSTGRES_DB`), Flyway, JPA, Eureka, `APPLICATION_PORT`, and Actuator exposure |
+| `config/ai-service-dev.yml` | PostgreSQL (`AI_POSTGRES_DB`), Flyway, JPA, Eureka, `APPLICATION_PORT`, JWT, AI provider metadata, AI outbox publisher, Kafka publisher, and Actuator exposure |
 | `backend/user-service/src/main/resources/application.yml` | `spring.application.name` and disabled-by-default user outbox publisher settings |
 | `backend/user-service/src/main/resources/bootstrap.yml` | `ACTIVE_PROFILE` and optional `CONFIG_SERVER_URI` override |
 | `backend/user-service/src/main/resources/application-dev.yml` | Retained development-profile marker only |
