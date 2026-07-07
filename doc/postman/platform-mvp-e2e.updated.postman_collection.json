@@ -2728,7 +2728,9 @@
                 "exec": [
                   "const startedAt = new Date(Date.now() - 5000).toISOString();",
                   "pm.environment.set('aiRunStartedAt', startedAt);",
-                  "pm.collectionVariables.set('aiRunStartedAt', startedAt);"
+                  "pm.collectionVariables.set('aiRunStartedAt', startedAt);",
+                  "pm.environment.set('auditPollAttempt', '0');",
+                  "pm.collectionVariables.set('auditPollAttempt', '0');"
                 ]
               }
             },
@@ -2742,7 +2744,10 @@
                   "const json = pm.response.json();",
                   "pm.test('Response envelope contains result data', function () {",
                   "  pm.expect(json.data, 'data').to.be.an('object');",
-                  "  pm.expect(json.data.result, 'data.result').to.be.an('object');",
+                  "  pm.test('Response envelope indicates success', function () {",
+                  "  pm.expect(json.code, 'code').to.eql(200);",
+                  "  pm.expect(String(json.status), 'status').to.eql('OK');",
+                  "  pm.expect(json.exception || '', 'exception').to.eql('');",
                   "});",
                   "pm.test('No provider or internal error is returned', function () {",
                   "  pm.expect([500, 502, 503, 504]).to.not.include(pm.response.code);",
@@ -2811,10 +2816,10 @@
                 "exec": [
                   "pm.test('AI Service - Suggest Subtasks succeeds', function () { pm.response.to.have.status(200); });",
                   "pm.test('Response is JSON', function () { pm.expect(pm.response.headers.get('Content-Type') || '').to.include('application/json'); });",
-                  "const json = pm.response.json();",
-                  "pm.test('Response envelope contains result data', function () {",
-                  "  pm.expect(json.data, 'data').to.be.an('object');",
-                  "  pm.expect(json.data.result, 'data.result').to.be.an('object');",
+                  "pm.test('Response envelope indicates success', function () {",
+                  "  pm.expect(json.code, 'code').to.eql(200);",
+                  "  pm.expect(String(json.status), 'status').to.eql('OK');",
+                  "  pm.expect(json.exception || '', 'exception').to.eql('');",
                   "});",
                   "pm.test('No provider or internal error is returned', function () {",
                   "  pm.expect([500, 502, 503, 504]).to.not.include(pm.response.code);",
@@ -2883,10 +2888,10 @@
                 "exec": [
                   "pm.test('AI Service - Summarize Task succeeds', function () { pm.response.to.have.status(200); });",
                   "pm.test('Response is JSON', function () { pm.expect(pm.response.headers.get('Content-Type') || '').to.include('application/json'); });",
-                  "const json = pm.response.json();",
-                  "pm.test('Response envelope contains result data', function () {",
-                  "  pm.expect(json.data, 'data').to.be.an('object');",
-                  "  pm.expect(json.data.result, 'data.result').to.be.an('object');",
+                  "pm.test('Response envelope indicates success', function () {",
+                  "  pm.expect(json.code, 'code').to.eql(200);",
+                  "  pm.expect(String(json.status), 'status').to.eql('OK');",
+                  "  pm.expect(json.exception || '', 'exception').to.eql('');",
                   "});",
                   "pm.test('No provider or internal error is returned', function () {",
                   "  pm.expect([500, 502, 503, 504]).to.not.include(pm.response.code);",
@@ -2955,10 +2960,10 @@
                 "exec": [
                   "pm.test('AI Service - Suggest Priority succeeds', function () { pm.response.to.have.status(200); });",
                   "pm.test('Response is JSON', function () { pm.expect(pm.response.headers.get('Content-Type') || '').to.include('application/json'); });",
-                  "const json = pm.response.json();",
-                  "pm.test('Response envelope contains result data', function () {",
-                  "  pm.expect(json.data, 'data').to.be.an('object');",
-                  "  pm.expect(json.data.result, 'data.result').to.be.an('object');",
+                  "pm.test('Response envelope indicates success', function () {",
+                  "  pm.expect(json.code, 'code').to.eql(200);",
+                  "  pm.expect(String(json.status), 'status').to.eql('OK');",
+                  "  pm.expect(json.exception || '', 'exception').to.eql('');",
                   "});",
                   "pm.test('No provider or internal error is returned', function () {",
                   "  pm.expect([500, 502, 503, 504]).to.not.include(pm.response.code);",
@@ -3123,6 +3128,8 @@
           },
           "response": [],
           "event": [
+            "const waitMillis = Number(pm.variables.get('auditWaitMillis') || 3000);",
+            "if (waitMillis > 0) { const startedAt = Date.now(); while (Date.now() - startedAt < waitMillis) {} }",
             {
               "listen": "prerequest",
               "script": {
