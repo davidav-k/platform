@@ -179,7 +179,7 @@ fixed in configuration and Compose:
 | `AI_OUTBOX_PUBLISHER_BATCH_SIZE` | No | `20` | `20` | ai-service | Maximum AI outbox events claimed per poll. |
 | `AI_OUTBOX_PUBLISHER_MAX_RETRIES` | No | `3` | `3` | ai-service | Maximum publish attempts for an AI outbox event. |
 | `AI_OUTBOX_PUBLISHER_FIXED_DELAY_MILLIS` | No | `5000` | `5000` | ai-service | Delay between AI outbox polling cycles. |
-| `AI_OUTBOX_PUBLISHER_KAFKA_ENABLED` | No | `true` | `false` | ai-service | Enables AI Kafka publishing configuration. |
+| `AI_OUTBOX_PUBLISHER_KAFKA_ENABLED` | No | `true` | `false` | ai-service | Currently unused; use `AI_OUTBOX_PUBLISHER_ADAPTER` to switch between `kafka` and `logging`. |
 | `AI_OUTBOX_PUBLISHER_KAFKA_BOOTSTRAP_SERVERS` | No | `kafka:9092` | `kafka:9092` | ai-service | Kafka bootstrap servers for AI event publication. |
 | `AI_OUTBOX_PUBLISHER_KAFKA_TOPIC` | No | `platform.ai-events` | `platform.ai-events` | ai-service | AI event topic. Falls back to `KAFKA_AI_EVENTS_TOPIC`. |
 | `AUDIT_KAFKA_ENABLED` | No | `true` | `false` | audit-service | Enables Audit Service task-, user-, notification-, and AI-event consumption. |

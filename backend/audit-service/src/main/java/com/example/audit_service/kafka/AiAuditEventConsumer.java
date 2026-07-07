@@ -50,10 +50,12 @@ public class AiAuditEventConsumer {
         try {
             KafkaOutboxEventMessage event = objectMapper.readValue(message, KafkaOutboxEventMessage.class);
             if (event == null) {
+                log.error("Kafka AI audit event envelope is not valid");
                 throw new IllegalArgumentException("Kafka AI audit event envelope is not valid");
             }
             return event;
         } catch (JsonProcessingException exception) {
+            log.error("Kafka AI audit event envelope is not valid", exception);
             throw new IllegalArgumentException("Kafka AI audit event envelope is not valid", exception);
         }
     }
