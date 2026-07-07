@@ -23,7 +23,8 @@ backend/
 |-- user-service
 |-- task-service
 |-- notification-service
-`-- audit-service
+|-- audit-service
+`-- ai-service
 
 infrastructure/
 |-- api-gateway
@@ -55,6 +56,7 @@ Core local ports:
 | Task Service | `8086` |
 | Notification Service | `8087` |
 | Audit Service | `8088` |
+| AI Service | `8089` |
 | Frontend | `5173` |
 | Config Server | `8888` |
 | Eureka Server | `8761` |
@@ -68,6 +70,14 @@ Verify startup:
 
 ```bash
 ./scripts/check-local-stack.sh
+```
+
+To start only AI Service and its required infrastructure:
+
+```bash
+docker compose --env-file .env -f compose.yml up -d --build \
+  postgres config-server eureka-server ai-service
+curl -fsS http://localhost:8089/actuator/health
 ```
 
 Windows:
@@ -85,6 +95,9 @@ Windows:
 - Service boundaries - `doc/architecture/service-boundaries.md`
 - Environment variables - `doc/configuration/env-variables.md`
 - Kafka notification verification - `doc/kafka-notification-e2e-verification.md`
+- AI Service - `backend/ai-service/readme.md`
+- AI Service API contract - `doc/api/ai-service-contract.md`
+- AI Service audit flow diagram - `doc/diagrams/ai_service_audit_flow.md`
 - Postman collection guide - `doc/postman/postman_README.md`
 - Technical debt - `doc/technical-debt.md`
 - Frontend MVP - `frontend/vue-frontend/README.md`

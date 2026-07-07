@@ -8,3 +8,4 @@ audit:
     topic: platform.task-events
     user-topic: platform.user-events
     notification-topic: platform.notification-events
+    ai-topic: platform.ai-events

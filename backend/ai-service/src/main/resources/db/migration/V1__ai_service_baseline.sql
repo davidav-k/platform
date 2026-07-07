@@ -1,0 +1,1 @@
+-- Initial AI Service baseline. Domain tables will be introduced with their features.

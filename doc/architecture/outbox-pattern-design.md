@@ -32,6 +32,15 @@ notification-service transaction
   -> Kafka topic platform.notification-events
      -> audit-service NotificationAuditEventConsumer
         -> NotificationAuditEventNormalizer -> CreateAuditRecordUseCase -> audit_records
+
+ai-service operation
+  -> AiProvider result
+  -> outbox_events
+  -> OutboxEventPollingScheduler
+  -> KafkaOutboxEventPublisher
+  -> Kafka topic platform.ai-events
+     -> audit-service AiAuditEventConsumer
+        -> AiAuditEventNormalizer -> CreateAuditRecordUseCase -> audit_records
 ```
 
 ## Ownership
@@ -40,11 +49,13 @@ notification-service transaction
 - `user-service` owns user persistence and user lifecycle/authentication events.
 - `notification-service` owns notification persistence, incoming task-event
   idempotency, and outgoing notification audit events.
-- `audit-service` owns audit record persistence and consumes task, user, and
-  notification events.
+- `audit-service` owns audit record persistence and consumes task, user,
+  notification, and AI operation events.
 - Kafka is the transport for task domain events between the services.
 - Kafka transports user events to Audit Service on a dedicated topic.
 - Kafka transports notification audit events to Audit Service on a dedicated
+  topic.
+- Kafka transports AI operation audit events to Audit Service on a dedicated
   topic.
 - Each service owns its database; no cross-service repositories or foreign keys
   are used.
@@ -145,6 +156,28 @@ channel, status, source metadata, and lifecycle timestamps. Subject, body,
 JWTs, cookies, and request headers are excluded by the producer. Audit Service
 also removes technical credential/header fields recursively before persistence.
 
+## AI Events
+
+AI Service writes one outbox event after each successful task-assistance
+operation. The REST contract contains task text but no task identifier, so AI
+Service uses a generated `operationId` as both the payload operation ID and the
+Outbox aggregate ID. The aggregate type is `AI_OPERATION`.
+
+| Flow | Event type |
+| --- | --- |
+| Improve task description | `AI_TASK_DESCRIPTION_IMPROVED` |
+| Suggest subtasks | `AI_SUBTASKS_SUGGESTED` |
+| Summarize task | `AI_TASK_SUMMARIZED` |
+| Suggest priority | `AI_PRIORITY_SUGGESTED` |
+
+The AI event payload is whitelist-based and contains only `operationId`,
+`operationType`, `actorUserId`, `actorEmail`, `occurredAt`, `providerName`, and
+`modelName`. Prompts, task text, generated AI text, JWTs, cookies,
+authorization headers, passwords, and secrets are excluded.
+
+Audit Service consumes `platform.ai-events`, normalizes supported AI event
+types, and stores records with `sourceService=ai-service` and
+`aggregateType=AI_OPERATION`.
 ## Publisher Configuration
 
 Task-service outbox publishing is controlled by:
@@ -171,6 +204,15 @@ NOTIFICATION_OUTBOX_PUBLISHER_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
 NOTIFICATION_OUTBOX_PUBLISHER_KAFKA_TOPIC=platform.notification-events
 ```
 
+AI-service publishing is controlled independently by:
+
+```text
+AI_OUTBOX_PUBLISHER_ENABLED=true
+AI_OUTBOX_PUBLISHER_ADAPTER=kafka
+AI_OUTBOX_PUBLISHER_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+AI_OUTBOX_PUBLISHER_KAFKA_TOPIC=platform.ai-events
+```
+
 ## Consumer Configuration
 
 Notification-service Kafka processing is controlled by:
@@ -189,10 +231,11 @@ AUDIT_KAFKA_ENABLED=true
 AUDIT_KAFKA_TOPIC=platform.task-events
 AUDIT_KAFKA_USER_TOPIC=platform.user-events
 AUDIT_KAFKA_NOTIFICATION_TOPIC=platform.notification-events
+AUDIT_KAFKA_AI_TOPIC=platform.ai-events
 ```
 
 It uses consumer group `audit-service` and independent listeners for task,
-user, and notification topics.
+user, notification, and AI topics.
 
 ## Failure Handling
 

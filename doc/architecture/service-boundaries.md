@@ -4,7 +4,7 @@
 
 The MVP currently runs `user-service`, `task-service`, `notification-service`,
 API Gateway, Vue frontend, Config Server, Eureka, PostgreSQL, Redis, Kafka,
-MailHog, and Zipkin in Docker Compose.
+MailHog, Zipkin, and ai-service in Docker Compose.
 
 The implemented cross-service notification path for task creation is
 event-driven:
@@ -17,6 +17,9 @@ user-service -> outbox_events -> Kafka platform.user-events
   -> audit-service -> audit_records
 
 notification-service -> outbox_events -> Kafka platform.notification-events
+  -> audit-service -> audit_records
+
+ai-service -> outbox_events -> Kafka platform.ai-events
   -> audit-service -> audit_records
 ```
 
@@ -66,6 +69,17 @@ It does not own task state or user profiles. It stores only the recipient user
 reference, notification content/status, source metadata, and consumed event IDs
 needed for notification processing.
 
+### ai-service
+
+`ai-service` is the source of truth for:
+
+- AI task-assistance API contracts
+- provider abstraction and provider-specific implementation selection
+- AI operation outbox events
+- AI service database schema and `outbox_events` table
+
+It does not own task records or user profiles. Current AI requests carry task text only and do not store prompts or generated AI text in audit events.
+
 ## Aggregate Ownership
 
 | Aggregate | Source of truth | Notes |
@@ -81,6 +95,8 @@ needed for notification processing.
 | `NotificationPreference` | `notification-service` | Persisted preference entity; no public API yet |
 | `ConsumedEvent` | `notification-service` | Idempotency record for accepted Kafka events |
 | `NotificationOutboxEvent` | `notification-service` | Durable notification creation event in `outbox_events` |
+| `AiOperation` | `ai-service` | Operation-level aggregate identified by generated `operationId` |
+| `AiOutboxEvent` | `ai-service` | Durable AI operation event row in `outbox_events` |
 
 Task comments, task history, notification templates, and delivery attempts are
 not implemented in the current codebase.
@@ -110,6 +126,7 @@ records; see
 | Frontend | API Gateway | Use public `/api/**` routes only |
 | `task-service` | Kafka | Publish task domain events from `outbox_events` |
 | `user-service` | Kafka | Publish user lifecycle and authentication events from `outbox_events` |
+| `ai-service` | Kafka | Publish AI operation audit events from `outbox_events` |
 | Kafka | `notification-service` | Deliver task events to the notification consumer |
 
 Downstream services independently validate JWTs and authorize access to their
@@ -141,8 +158,8 @@ administrative access explicitly.
 ### Implemented HTTP
 
 - Frontend traffic goes through API Gateway.
-- Gateway routes `/api/users/**`, `/api/tasks/**`, and
-  `/api/notifications/**`.
+- Gateway routes `/api/users/**`, `/api/tasks/**`,
+  `/api/notifications/**`, and `/api/ai/**`.
 - Gateway validates JWTs early; downstream services validate JWTs again.
 
 ### Implemented Kafka
@@ -165,6 +182,8 @@ administrative access explicitly.
   task events consumed by notification-service.
 - `TaskEventNotificationProcessor` handles `TASK_CREATED`, `TASK_ASSIGNED`,
   and `TASK_STATUS_CHANGED` events.
+- `ai-service` publishes AI operation events to `platform.ai-events`.
+- `audit-service` consumes AI events and persists sanitized records.
 
 ## API Gateway Routing Contract
 
@@ -175,5 +194,6 @@ administrative access explicitly.
 | `/api/tasks/**` | `/api/v1/tasks/**` | `task-service` | Implemented |
 | `/api/notifications` | `/api/v1/notifications` | `notification-service` | Implemented |
 | `/api/notifications/**` | `/api/v1/notifications/**` | `notification-service` | Implemented |
+| `/api/ai/**` | `/api/v1/ai/**` | `ai-service` | Implemented for `POST` operations |
 
 No Gateway route exists for `/internal/api/v1/notifications/system`.

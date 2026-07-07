@@ -20,8 +20,8 @@ authentication, authorization, task ownership, assignment, and validation.
 
 ## Prerequisites
 
-- Node.js 18 or later
-- npm 9 or later
+- Node.js 20.19.0 or later
+- npm 10 or later
 - The backend environment running from the repository root for local Vite mode
 - API Gateway available at `http://localhost:8080` by default
 
@@ -80,6 +80,8 @@ requested internal route after successful authentication.
 - Navigate through backend pagination
 - View task details
 - Create and edit tasks with client and backend validation feedback
+- Use AI assistance in task create/edit forms to improve descriptions,
+  suggest subtasks, summarize a task, and suggest priority
 - Change task status
 - Assign, reassign, and unassign by user UUID
 - Soft delete with explicit confirmation
@@ -143,7 +145,7 @@ Views and components do not call `fetch` directly.
 - Kafka and the transactional outbox run in the backend. The frontend does not
   expose event-delivery controls and only reads persisted notifications through
   the Gateway.
-- Automated frontend component and browser tests are not configured yet.
+- Frontend component tests run with `npm test` (Vitest); browser E2E tests are not configured yet.
 
 
 For backend endpoint verification, seeded users, and the broader service E2E

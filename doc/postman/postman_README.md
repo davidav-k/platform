@@ -13,6 +13,7 @@
 11. Current logout contract.
 12. Audit API security, filters, pagination, and record lookup.
 13. Task, user, and notification event delivery into Audit Service.
+14. AI Service MVP operations through API Gateway and AI audit verification.
 
 ## Postman Environment Variables
 
@@ -45,6 +46,10 @@
 | `auditNotificationId` | Notification UUID created by the Audit E2E flow. |
 | `auditRunStartedAt` | Timestamp used to isolate user and notification events from the current E2E run. |
 | `auditWaitMillis` | Delay between retryable Audit API checks. Defaults to 3000 ms. |
+| `aiTaskTitle` | AI E2E task title. Automatically populated. |
+| `aiTaskDescription` | AI E2E task description. Automatically populated. |
+| `aiRunStartedAt` | Timestamp used to isolate AI audit events from the current E2E run. |
+| `aiAuditId` | Public audit UUID captured from an AI Audit API response. |
 
 The notification check creates a task with `assigneeUserId`, waits
 `notificationWaitMillis`, then reads `GET /api/notifications` through the
@@ -67,6 +72,17 @@ The Vue Audit Log reads through API Gateway at `GET /api/audit` and
 Audit Service directly at `{{auditBaseUrl}}/api/v1/audit` so its service-level
 security checks remain independent of Gateway routing.
 
+The AI Service folder calls only Gateway routes under `{{baseUrl}}/api/ai`.
+It reuses `adminAccessToken` from the existing login requests and validates AI
+responses structurally because generated text is non-deterministic. The folder
+contains positive E2E requests for Improve Task Description, Suggest Subtasks,
+Summarize Task, and Suggest Priority. It also includes negative checks for an
+invalid/unauthenticated token (`401`) and invalid payload (`400`). Audit
+verification requests query `{{baseUrl}}/api/audit` for `sourceService=ai-service`
+and then fetch the captured `aiAuditId` detail record. Expected AI event types
+are `AI_TASK_DESCRIPTION_IMPROVED`, `AI_SUBTASKS_SUGGESTED`,
+`AI_TASK_SUMMARIZED`, and `AI_PRIORITY_SUGGESTED`.
+
 ## How to run
 
 1. Start the complete Docker Compose stack and verify it:
@@ -86,11 +102,17 @@ security checks remain independent of Gateway routing.
 6. Run `06 - Audit E2E Flow` with Collection Runner. It uses the existing
    active admin account, creates and mutates a task, creates a notification,
    and retries Audit API queries while Kafka/outbox processing completes.
+7. Run `07 - AI Service` after admin login/setup. It exercises all AI MVP
+   operations through `/api/ai/**`, checks unauthenticated and invalid-payload
+   failures, then retries `/api/audit` until AI events are visible.
 
 Expected Audit E2E events are `TASK_CREATED`, `TASK_UPDATED`, `TASK_ASSIGNED`,
 `TASK_STATUS_CHANGED`, `TASK_DELETED`, `USER_LOGIN_SUCCESS`,
 `USER_LOGIN_FAILED`, `NOTIFICATION_CREATED`, and
 `NOTIFICATION_SYSTEM_CREATED`.
+
+Expected AI audit events are `AI_TASK_DESCRIPTION_IMPROVED`,
+`AI_SUBTASKS_SUGGESTED`, `AI_TASK_SUMMARIZED`, and `AI_PRIORITY_SUGGESTED`.
 
 The equivalent dependency-free local check is:
 

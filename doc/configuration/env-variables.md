@@ -53,6 +53,7 @@ credentials, mail credentials, or externally managed service credentials.
 | `TASK_POSTGRES_DB` | No | `tasks_db` | `tasks_db` | postgres init, task-service | Local task-service database name. |
 | `NOTIFICATION_POSTGRES_DB` | No | `notifications_db` | `notifications_db` | postgres init, notification-service | Local notification-service database name. |
 | `AUDIT_POSTGRES_DB` | No | `audits_db` | `audits_db` | postgres init, audit-service | Local audit-service database name. |
+| `AI_POSTGRES_DB` | No | `ai_db` | `ai_db` | postgres init, ai-service | Local AI service database name. |
 | `POSTGRES_USER` | Yes | None | `user` | postgres, user-service, Compose healthcheck | PostgreSQL username. |
 | `POSTGRES_PASSWORD` | Yes | None | `dev_example_postgres_password_change_me` | postgres, user-service | Development-only PostgreSQL password placeholder. |
 
@@ -116,7 +117,7 @@ No separate encryption-secret environment variable is active.
 | Name | Required | Default | Example | Consumed by | Description |
 | --- | --- | --- | --- | --- | --- |
 | `ACTIVE_PROFILE` | No | `dev` | `dev` | application services | Active Spring profile override. |
-| `APPLICATION_PORT` | No | service-specific | `8085` (user), `8086` (task), `8087` (notification), `8088` (audit) | application services | HTTP port override. Compose sets service-specific ports where required. Changing this alone breaks routing and health checks. |
+| `APPLICATION_PORT` | No | service-specific | `8085` (user), `8086` (task), `8087` (notification), `8088` (audit), `8089` (AI) | application services | HTTP port override. Compose sets service-specific ports where required. Changing this alone breaks routing and health checks. |
 
 No logging environment variable is active. Infrastructure service ports are
 fixed in configuration and Compose:
@@ -128,6 +129,7 @@ fixed in configuration and Compose:
 | Task Service | `8086` |
 | Notification Service | `8087` |
 | Audit Service | `8088` |
+| AI Service | `8089` |
 | Config Server | `8888` |
 | Eureka Server | `8761` |
 | PostgreSQL | `5432` |
@@ -143,10 +145,13 @@ fixed in configuration and Compose:
 | Name | Required | Default | Example | Consumed by | Description |
 | --- | --- | --- | --- | --- | --- |
 | `KAFKA_LOCAL_PORT` | No | `9092` | `9092` | Docker Compose | Local host port exposed by the Kafka broker. |
-| `KAFKA_BOOTSTRAP_SERVERS` | No | `kafka:9092` | `kafka:9092` | task-service, notification-service, audit-service | Kafka bootstrap server list for service-to-service broker access. |
+| `KAFKA_BOOTSTRAP_SERVERS` | No | `kafka:9092` | `kafka:9092` | task-service, notification-service, audit-service, ai-service | Kafka bootstrap server list for service-to-service broker access. |
 | `KAFKA_TASK_EVENTS_TOPIC` | No | `platform.task-events` | `platform.task-events` | task-service, notification-service, audit-service | Topic for task domain events. |
 | `KAFKA_USER_EVENTS_TOPIC` | No | `platform.user-events` | `platform.user-events` | user-service, audit-service | Topic for user audit events. |
 | `KAFKA_NOTIFICATION_EVENTS_TOPIC` | No | `platform.notification-events` | `platform.notification-events` | notification-service, audit-service | Topic for notification audit events. |
+| `KAFKA_AI_EVENTS_TOPIC` | No | `platform.ai-events` | `platform.ai-events` | ai-service, audit-service | Topic for AI operation audit events. |
+| `AI_PROVIDER_NAME` | No | `temporary-noop` | `temporary-noop` | ai-service | Non-sensitive provider label included in AI audit events. |
+| `AI_MODEL_NAME` | No | `not-configured` | `not-configured` | ai-service | Non-sensitive model label included in AI audit events. |
 | `OUTBOX_PUBLISHER_ENABLED` | No | `true` | `false` | task-service | Enables task-service outbox polling. Default Kafka notification delivery keeps this true. |
 | `OUTBOX_PUBLISHER_ADAPTER` | No | `kafka` | `logging` | task-service | Selects the outbox publisher adapter. Use `logging` only for rollback or local no-op delivery. |
 | `OUTBOX_PUBLISHER_KAFKA_BOOTSTRAP_SERVERS` | No | `kafka:9092` | `kafka:9092` | task-service | Explicit Kafka bootstrap server list for the task-service outbox publisher. Falls back to `KAFKA_BOOTSTRAP_SERVERS`. |
@@ -169,10 +174,19 @@ fixed in configuration and Compose:
 | `NOTIFICATION_OUTBOX_PUBLISHER_KAFKA_ENABLED` | No | `true` | `false` | notification-service | Enables notification Kafka publishing configuration. |
 | `NOTIFICATION_OUTBOX_PUBLISHER_KAFKA_BOOTSTRAP_SERVERS` | No | `kafka:9092` | `kafka:9092` | notification-service | Kafka bootstrap servers for notification event publication. |
 | `NOTIFICATION_OUTBOX_PUBLISHER_KAFKA_TOPIC` | No | `platform.notification-events` | `platform.notification-events` | notification-service | Notification event topic. Falls back to `KAFKA_NOTIFICATION_EVENTS_TOPIC`. |
-| `AUDIT_KAFKA_ENABLED` | No | `true` | `false` | audit-service | Enables Audit Service task-, user-, and notification-event consumption. |
+| `AI_OUTBOX_PUBLISHER_ENABLED` | No | `true` | `false` | ai-service | Enables AI Service outbox polling. |
+| `AI_OUTBOX_PUBLISHER_ADAPTER` | No | `kafka` | `logging` | ai-service | Selects the AI outbox publisher adapter. |
+| `AI_OUTBOX_PUBLISHER_BATCH_SIZE` | No | `20` | `20` | ai-service | Maximum AI outbox events claimed per poll. |
+| `AI_OUTBOX_PUBLISHER_MAX_RETRIES` | No | `3` | `3` | ai-service | Maximum publish attempts for an AI outbox event. |
+| `AI_OUTBOX_PUBLISHER_FIXED_DELAY_MILLIS` | No | `5000` | `5000` | ai-service | Delay between AI outbox polling cycles. |
+| `AI_OUTBOX_PUBLISHER_KAFKA_ENABLED` | No | `true` | `false` | ai-service | Currently unused; use `AI_OUTBOX_PUBLISHER_ADAPTER` to switch between `kafka` and `logging`. |
+| `AI_OUTBOX_PUBLISHER_KAFKA_BOOTSTRAP_SERVERS` | No | `kafka:9092` | `kafka:9092` | ai-service | Kafka bootstrap servers for AI event publication. |
+| `AI_OUTBOX_PUBLISHER_KAFKA_TOPIC` | No | `platform.ai-events` | `platform.ai-events` | ai-service | AI event topic. Falls back to `KAFKA_AI_EVENTS_TOPIC`. |
+| `AUDIT_KAFKA_ENABLED` | No | `true` | `false` | audit-service | Enables Audit Service task-, user-, notification-, and AI-event consumption. |
 | `AUDIT_KAFKA_TOPIC` | No | `platform.task-events` | `platform.task-events` | audit-service | Task event topic consumed by Audit Service. Falls back to `KAFKA_TASK_EVENTS_TOPIC`. |
 | `AUDIT_KAFKA_USER_TOPIC` | No | `platform.user-events` | `platform.user-events` | audit-service | User event topic consumed by Audit Service. Falls back to `KAFKA_USER_EVENTS_TOPIC`. |
 | `AUDIT_KAFKA_NOTIFICATION_TOPIC` | No | `platform.notification-events` | `platform.notification-events` | audit-service | Notification event topic consumed by Audit Service. Falls back to `KAFKA_NOTIFICATION_EVENTS_TOPIC`. |
+| `AUDIT_KAFKA_AI_TOPIC` | No | `platform.ai-events` | `platform.ai-events` | audit-service | AI event topic consumed by Audit Service. Falls back to `KAFKA_AI_EVENTS_TOPIC`. |
 
 Default Kafka task event delivery uses:
 
@@ -206,6 +220,14 @@ Kafka task event mode is the supported runtime path:
   supported events, sanitizes sensitive payload fields, and persists them using
   the same event-ID idempotency rule as task events.
 
+### AI Provider Runtime
+
+Current AI Service code reads only provider metadata labels:
+`AI_PROVIDER_NAME` and `AI_MODEL_NAME`. These values are included in AI audit
+payloads and do not configure a network client.
+
+This checkout does not define Ollama base URL, Ollama timeout, or Ollama model
+connection properties, and `compose.yml` does not start an Ollama container. Do not add Ollama connection variables to `.env` until a concrete Ollama-backed `AiProvider` and configuration properties exist in code.
 ### Mail
 
 | Name | Required | Default | Example | Consumed by | Description |
@@ -218,8 +240,8 @@ Kafka task event mode is the supported runtime path:
 
 ### Future Integrations
 
-No active environment variable contract exists for Prometheus, Grafana,
-production mail providers, or OpenAI integration.
+No active environment variable contract exists for Prometheus, Grafana, or
+production mail providers.
 
 ## Commented Fallback Toggles
 
@@ -241,6 +263,7 @@ required `.env` contract:
 | `config/task-service-dev.yml` | PostgreSQL (`TASK_POSTGRES_DB`), JWT, Eureka, `APPLICATION_PORT`, and outbox publisher variables |
 | `config/notification-service-dev.yml` | PostgreSQL (`NOTIFICATION_POSTGRES_DB`), Eureka, `APPLICATION_PORT`, task-event consumer, and notification outbox publisher variables |
 | `config/audit-service-dev.yml` | PostgreSQL (`AUDIT_POSTGRES_DB`), Flyway, Eureka, Kafka consumer, `APPLICATION_PORT`, and Actuator exposure |
+| `config/ai-service-dev.yml` | PostgreSQL (`AI_POSTGRES_DB`), Flyway, JPA, Eureka, `APPLICATION_PORT`, JWT, AI provider metadata, AI outbox publisher, Kafka publisher, and Actuator exposure |
 | `backend/user-service/src/main/resources/application.yml` | `spring.application.name` and disabled-by-default user outbox publisher settings |
 | `backend/user-service/src/main/resources/bootstrap.yml` | `ACTIVE_PROFILE` and optional `CONFIG_SERVER_URI` override |
 | `backend/user-service/src/main/resources/application-dev.yml` | Retained development-profile marker only |
@@ -250,6 +273,8 @@ required `.env` contract:
 | `backend/notification-service/src/main/resources/bootstrap.yml` | `ACTIVE_PROFILE` and optional `CONFIG_SERVER_URI` override |
 | `backend/audit-service/src/main/resources/application.yml` | `spring.application.name` and disabled-by-default Kafka consumer settings |
 | `backend/audit-service/src/main/resources/bootstrap.yml` | `ACTIVE_PROFILE` and optional `CONFIG_SERVER_URI` override |
+| `backend/ai-service/src/main/resources/application.yml` | `spring.application.name` only |
+| `backend/ai-service/src/main/resources/bootstrap.yml` | `ACTIVE_PROFILE` and optional `CONFIG_SERVER_URI` override |
 | `infrastructure/api-gateway/.../JwtUtil.java` | Direct `JWT_SECRET` lookup |
 | Dockerfiles | No environment variables |
 

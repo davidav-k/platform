@@ -596,6 +596,41 @@ h1 {
   justify-self: start;
 }
 
+.ai-task-tools {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+}
+
+.ai-task-tools-heading h2,
+.ai-result h3 {
+  margin: 0;
+  color: #1f2937;
+  font-size: 1rem;
+}
+
+.ai-task-actions,
+.ai-result-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.ai-result {
+  display: grid;
+  gap: 0.6rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.ai-result p,
+.ai-result ul {
+  margin: 0;
+  white-space: pre-wrap;
+}
 @media (max-width: 600px) {
   .task-details-grid {
     grid-template-columns: 1fr;
