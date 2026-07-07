@@ -95,6 +95,9 @@ Windows:
 - Service boundaries - `doc/architecture/service-boundaries.md`
 - Environment variables - `doc/configuration/env-variables.md`
 - Kafka notification verification - `doc/kafka-notification-e2e-verification.md`
+- AI Service - `backend/ai-service/readme.md`
+- AI Service API contract - `doc/api/ai-service-contract.md`
+- AI Service audit flow diagram - `doc/diagrams/ai_service_audit_flow.md`
 - Postman collection guide - `doc/postman/postman_README.md`
 - Technical debt - `doc/technical-debt.md`
 - Frontend MVP - `frontend/vue-frontend/README.md`

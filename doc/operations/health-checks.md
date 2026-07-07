@@ -14,7 +14,7 @@ endpoints. Sensitive Actuator endpoints such as `env`, `beans`, `mappings`,
 | Task Service | `http://localhost:8086/actuator/health` | `http://localhost:8086/actuator/info` | Confirms application health and PostgreSQL connectivity |
 | Notification Service | `http://localhost:8087/actuator/health` | `http://localhost:8087/actuator/info` | Confirms application health and PostgreSQL connectivity |
 | Audit Service | `http://localhost:8088/actuator/health` | `http://localhost:8088/actuator/info` | Confirms bootstrap health and PostgreSQL connectivity |
-| AI Service | `http://localhost:8089/actuator/health` | `http://localhost:8089/actuator/info` | Confirms bootstrap health and PostgreSQL connectivity |
+| AI Service | `http://localhost:8089/actuator/health` | `http://localhost:8089/actuator/info` | Confirms bootstrap health and PostgreSQL connectivity; does not validate an external LLM |
 | API Gateway | `http://localhost:8080/actuator/health` | `http://localhost:8080/actuator/info` | Confirms gateway application readiness |
 
 A healthy service returns HTTP `200` with an aggregate response:
@@ -60,6 +60,7 @@ already exist:
 | Redis | Docker `redis-cli ping` health check |
 | Kafka | Docker Kafka topic-list health check |
 | Eureka | Eureka Server health endpoint plus dependent service registration |
+| External LLM / Ollama | Not managed by Compose and not part of current AI Service health checks in this checkout |
 
 User Service currently uses an in-process Guava cache and has no Spring Data
 Redis integration. Redis is therefore validated independently by Docker
@@ -85,7 +86,9 @@ Docker Compose uses health-aware startup dependencies:
    Server. Its health endpoint reports `UP` when its datasource is healthy;
    startup logs report the Kafka consumer configuration.
 8. AI Service starts after PostgreSQL, Config Server, and Eureka Server. Its
-   health endpoint reports `UP` when its datasource is healthy.
+   health endpoint reports `UP` when its datasource is healthy. Kafka is used
+   by the AI outbox publisher after startup, but no external LLM is checked by
+   the health endpoint in this checkout.
 9. API Gateway starts after Config Server, Eureka Server, User Service, Task
    Service, and Notification Service. It must report `UP`.
 
@@ -275,3 +278,24 @@ docker compose --env-file .env -f compose.yml logs notification-service
 curl -fsS http://localhost:8087/actuator/health
 curl -fsS http://localhost:8888/notification-service/dev
 ```
+
+### AI Service unavailable
+
+AI Service stays unhealthy when PostgreSQL is unavailable or Config Server has
+not started. API Gateway routes `/api/ai/**` to `ai-service` only after service
+discovery has the instance. Check:
+
+```bash
+docker compose --env-file .env -f compose.yml logs ai-service
+curl -fsS http://localhost:8089/actuator/health
+curl -fsS http://localhost:8888/ai-service/dev
+```
+
+### External LLM / Ollama
+
+`compose.yml` does not start Ollama, and the current AI Service code does not
+read Ollama connection properties. If a future provider adds Ollama support,
+run Ollama outside Compose and verify it separately, for example with
+`ollama list` and `ollama pull <model>`. Do not treat AI Service actuator
+health as proof that an external LLM is reachable unless the provider adds a
+health indicator.

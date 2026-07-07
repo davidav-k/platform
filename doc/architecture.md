@@ -87,12 +87,15 @@ notification-service -> notifications + outbox_events
 The implemented AI audit-event production path is:
 
 ```text
-ai-service -> provider operation -> outbox_events
+frontend -> api-gateway /api/ai/** -> ai-service /api/v1/ai/**
+  -> AiProvider operation -> ai-service outbox_events
   -> Kafka platform.ai-events
   -> audit-service AiAuditEventConsumer
   -> AiAuditEventNormalizer -> NormalizedAuditEvent
   -> CreateAuditRecordUseCase -> audit_records
 ```
+
+See the Mermaid sequence diagram in [AI Service audit flow](diagrams/ai_service_audit_flow.md).
 
 
 The Vue 3 frontend runs through nginx in Docker Compose or through Vite during
@@ -122,7 +125,6 @@ The notification API contract is documented in
 
 The following items are roadmap direction, not implemented functionality:
 
-- OpenAI-backed task automation
 - Prometheus and Grafana monitoring stack
 
 ## Data Ownership
