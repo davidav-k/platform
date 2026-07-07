@@ -58,7 +58,6 @@ Frontend
 ## Planned
 
 - audit service
-- OpenAI-backed task automation
 - Prometheus/Grafana monitoring
 
 ## Data ownership
