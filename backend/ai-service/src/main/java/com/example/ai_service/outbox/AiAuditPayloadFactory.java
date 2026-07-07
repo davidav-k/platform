@@ -22,7 +22,6 @@ public class AiAuditPayloadFactory {
                 operationId,
                 operationType,
                 actor.userId(),
-                actor.username(),
                 occurredAt,
                 providerName,
                 modelName
@@ -38,7 +37,6 @@ public class AiAuditPayloadFactory {
             UUID operationId,
             String operationType,
             UUID actorUserId,
-            String actorEmail,
             OffsetDateTime occurredAt,
             String providerName,
             String modelName

@@ -46,11 +46,11 @@ class AiAuditEventNormalizerTest {
         assertThat(normalized.aggregateId()).isEqualTo(OPERATION_ID);
         assertThat(normalized.sourceService()).isEqualTo("ai-service");
         assertThat(normalized.actorUserId()).isEqualTo(ACTOR_USER_ID);
-        assertThat(normalized.actorEmail()).isEqualTo("user@example.com");
+        assertThat(normalized.actorEmail()).isNull();
         assertThat(normalized.action()).isEqualTo(expectedAction);
         assertThat(normalized.payload())
                 .contains("operationId", "actorUserId", "providerName", "modelName")
-                .doesNotContain("title", "description", "prompt", "generated");
+                .doesNotContain("actorEmail", "title", "description", "prompt", "generated");
         assertThat(normalized.occurredAt()).isEqualTo(OCCURRED_AT);
     }
 
@@ -58,7 +58,7 @@ class AiAuditEventNormalizerTest {
     void removesFieldsOutsideTheAiAuditAllowlist() {
         String payload = """
                 {"operationId":"%s","operationType":"AI_TASK_SUMMARIZED",
-                 "actorUserId":"%s","actorEmail":"user@example.com",
+                 "actorUserId":"%s",
                  "occurredAt":"2026-07-06T10:15:30Z",
                  "providerName":"temporary-noop","modelName":"not-configured",
                  "prompt":"secret prompt","summary":"generated response","jwt":"secret token"}
@@ -103,7 +103,7 @@ class AiAuditEventNormalizerTest {
     private String payload() {
         return """
                 {"operationId":"%s","operationType":"AI_TASK_SUMMARIZED",
-                 "actorUserId":"%s","actorEmail":"user@example.com",
+                 "actorUserId":"%s",
                  "occurredAt":"2026-07-06T10:15:30Z",
                  "providerName":"temporary-noop","modelName":"not-configured"}
                 """.formatted(OPERATION_ID, ACTOR_USER_ID).strip();

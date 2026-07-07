@@ -27,7 +27,6 @@ public class AiAuditEventNormalizer {
             "operationId",
             "operationType",
             "actorUserId",
-            "actorEmail",
             "occurredAt",
             "providerName",
             "modelName"
@@ -51,7 +50,7 @@ public class AiAuditEventNormalizer {
                 event.aggregateId(),
                 SOURCE_SERVICE,
                 uuidOrNull(payload, "actorUserId"),
-                textOrNull(payload, "actorEmail"),
+                null,
                 action,
                 sanitizePayload(payload),
                 event.occurredAt()

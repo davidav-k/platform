@@ -97,11 +97,13 @@ class AiAuditEventConsumerPersistenceIntegrationTest {
         assertThat(record.getAggregateId()).isEqualTo(OPERATION_ID);
         assertThat(record.getSourceService()).isEqualTo("ai-service");
         assertThat(record.getActorUserId()).isEqualTo(ACTOR_USER_ID);
-        assertThat(record.getActorEmail()).isEqualTo("user@example.com");
+        assertThat(record.getActorEmail()).isNull();
         assertThat(record.getAction()).isEqualTo("SUMMARIZE_TASK");
         assertThat(record.getPayload())
                 .contains("temporary-noop")
                 .contains("not-configured")
+                .contains("actorUserId")
+                .doesNotContain("actorEmail")
                 .doesNotContain("title")
                 .doesNotContain("description")
                 .doesNotContain("prompt")
@@ -123,7 +125,6 @@ class AiAuditEventConsumerPersistenceIntegrationTest {
                           "operationId":"%s",
                           "operationType":"AI_TASK_SUMMARIZED",
                           "actorUserId":"%s",
-                          "actorEmail":"user@example.com",
                           "occurredAt":"2026-07-06T10:15:30Z",
                           "providerName":"temporary-noop",
                           "modelName":"not-configured"

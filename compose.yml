@@ -215,6 +215,8 @@ services:
     environment:
       - APPLICATION_PORT=8089
     depends_on:
+      kafka:
+        condition: service_healthy
       postgres:
         condition: service_healthy
       config-server:

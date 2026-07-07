@@ -20,9 +20,11 @@ Event types:
 - `AI_PRIORITY_SUGGESTED`
 
 The payload is intentionally limited to `operationId`, `operationType`,
-`actorUserId`, `actorEmail`, `occurredAt`, `providerName`, and
-`modelName`. Task text, generated responses, prompts, tokens, and secrets are
-not published. The current REST contract has no task identifier, so
+`actorUserId`, `occurredAt`, `providerName`, and `modelName`. The
+`actorUserId` value comes from the authenticated JWT subject. AI Service does
+not publish `actorEmail` because email is not reliably available in its current
+SecurityContext. Task text, generated responses, prompts, tokens, and secrets
+are not published. The current REST contract has no task identifier, so
 `operationId` is also used as the Outbox aggregate ID.
 
 Provider and model audit labels are configured with `AI_PROVIDER_NAME` and

@@ -2816,6 +2816,7 @@
                 "exec": [
                   "pm.test('AI Service - Suggest Subtasks succeeds', function () { pm.response.to.have.status(200); });",
                   "pm.test('Response is JSON', function () { pm.expect(pm.response.headers.get('Content-Type') || '').to.include('application/json'); });",
+                  "const json = pm.response.json();",
                   "pm.test('Response envelope indicates success', function () {",
                   "  pm.expect(json.code, 'code').to.eql(200);",
                   "  pm.expect(String(json.status), 'status').to.eql('OK');",
@@ -2887,6 +2888,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('AI Service - Summarize Task succeeds', function () { pm.response.to.have.status(200); });",
+                  "const json = pm.response.json();",
                   "pm.test('Response is JSON', function () { pm.expect(pm.response.headers.get('Content-Type') || '').to.include('application/json'); });",
                   "pm.test('Response envelope indicates success', function () {",
                   "  pm.expect(json.code, 'code').to.eql(200);",
@@ -2958,6 +2960,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
+                  "const json = pm.response.json();",
                   "pm.test('AI Service - Suggest Priority succeeds', function () { pm.response.to.have.status(200); });",
                   "pm.test('Response is JSON', function () { pm.expect(pm.response.headers.get('Content-Type') || '').to.include('application/json'); });",
                   "pm.test('Response envelope indicates success', function () {",
@@ -3128,8 +3131,6 @@
           },
           "response": [],
           "event": [
-            "const waitMillis = Number(pm.variables.get('auditWaitMillis') || 3000);",
-            "if (waitMillis > 0) { const startedAt = Date.now(); while (Date.now() - startedAt < waitMillis) {} }",
             {
               "listen": "prerequest",
               "script": {

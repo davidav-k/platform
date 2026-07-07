@@ -26,7 +26,7 @@ class AiAuditPayloadFactoryTest {
         String payload = payloadFactory.operationCompletedPayload(
                 operationId,
                 AiOutboxEventTypes.TASK_SUMMARIZED,
-                new AuthenticatedUser(actorUserId, "user@example.com"),
+                new AuthenticatedUser(actorUserId, actorUserId.toString()),
                 OffsetDateTime.parse("2026-07-06T10:15:30Z"),
                 "temporary-noop",
                 "not-configured"
@@ -43,13 +43,13 @@ class AiAuditPayloadFactoryTest {
                 "operationId",
                 "operationType",
                 "actorUserId",
-                "actorEmail",
                 "occurredAt",
                 "providerName",
                 "modelName"
         );
         assertThat(json.get("operationId").asText()).isEqualTo(operationId.toString());
         assertThat(json.get("actorUserId").asText()).isEqualTo(actorUserId.toString());
+        assertThat(json.has("actorEmail")).isFalse();
         assertThat(payload)
                 .doesNotContain("title")
                 .doesNotContain("description")
