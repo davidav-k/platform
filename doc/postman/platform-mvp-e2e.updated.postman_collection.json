@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "3e42b8cb-848a-4dc8-a73d-a588078ffcf1",
     "name": "Platform MVP End-to-End - API Gateway",
-    "description": "Gateway-based MVP verification for authentication, user activation, task ownership/RBAC, soft delete, Kafka-backed notifications, refresh, and the currently pending logout contract. The Audit Service folder verifies the secured read API directly on port 8088. The Audit E2E Flow produces task, user-login, and notification events, then retries Audit API queries until the outbox/Kafka pipeline is visible. The Vue Audit Log uses the Gateway read routes /api/audit and /api/audit/{auditId}. Aligned with platform_240626_exclude.txt.",
+    "description": "Gateway-based MVP verification for authentication, user activation, task ownership/RBAC, soft delete, Kafka-backed notifications, refresh, and the currently pending logout contract. The Audit Service folder verifies the secured read API directly on port 8088. The Audit E2E Flow produces task, user-login, and notification events, then retries Audit API queries until the outbox/Kafka pipeline is visible. The Vue Audit Log uses the Gateway read routes /api/audit and /api/audit/{auditId}. The AI Service folder produces AI events, verifies Gateway /api/ai routes, and checks AI audit records through /api/audit. Aligned with platform_240626_exclude.txt.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "event": [
@@ -22,6 +22,8 @@
           "  setVariable('updatedTaskTitle', 'Postman MVP task updated ' + runId);",
           "  setVariable('assignedTaskTitle', 'Postman assigned task ' + runId);",
           "  setVariable('unrelatedTaskTitle', 'Postman admin task ' + runId);",
+          "  setVariable('aiTaskTitle', 'Postman AI task ' + runId);",
+          "  setVariable('aiTaskDescription', 'Use AI assistance to clarify implementation steps and acceptance criteria for run ' + runId);",
           "}",
           "if (pm.info.requestName === 'Gateway Health' || !pm.environment.get('runId')) initializeRun();"
         ]
@@ -187,6 +189,26 @@
     {
       "key": "auditPollAttempt",
       "value": "0",
+      "type": "string"
+    },
+    {
+      "key": "aiTaskTitle",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "aiTaskDescription",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "aiRunStartedAt",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "aiAuditId",
+      "value": "",
       "type": "string"
     }
   ],
@@ -2644,6 +2666,556 @@
                   "pm.test('Generated audit lookup succeeds', function () { pm.response.to.have.status(200); });",
                   "pm.test('Response is JSON', function () { pm.expect(pm.response.headers.get('Content-Type') || '').to.include('application/json'); });",
                   "pm.test('Generated audit ID matches', function () { pm.expect(pm.response.json().data?.audit?.auditId).to.eql(pm.variables.get('auditId')); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "07 - AI Service",
+      "description": "Gateway-based AI MVP E2E checks. Run after admin login/setup so adminAccessToken is populated. Positive operations use /api/ai/** and audit verification uses the Gateway /api/audit route.",
+      "item": [
+        {
+          "name": "AI Service - Improve Task Description",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/ai/tasks/description/improve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "ai",
+                "tasks",
+                "description",
+                "improve"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"{{aiTaskTitle}}\",\n  \"description\": \"{{aiTaskDescription}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const startedAt = new Date(Date.now() - 5000).toISOString();",
+                  "pm.environment.set('aiRunStartedAt', startedAt);",
+                  "pm.collectionVariables.set('aiRunStartedAt', startedAt);",
+                  "pm.environment.set('auditPollAttempt', '0');",
+                  "pm.collectionVariables.set('auditPollAttempt', '0');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('AI Service - Improve Task Description succeeds', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response is JSON', function () { pm.expect(pm.response.headers.get('Content-Type') || '').to.include('application/json'); });",
+                  "const json = pm.response.json();",
+                  "pm.test('Response envelope contains result data', function () {",
+                  "  pm.expect(json.data, 'data').to.be.an('object');",
+                  "  pm.test('Response envelope indicates success', function () {",
+                  "  pm.expect(json.code, 'code').to.eql(200);",
+                  "  pm.expect(String(json.status), 'status').to.eql('OK');",
+                  "  pm.expect(json.exception || '', 'exception').to.eql('');",
+                  "});",
+                  "pm.test('No provider or internal error is returned', function () {",
+                  "  pm.expect([500, 502, 503, 504]).to.not.include(pm.response.code);",
+                  "  const responseText = pm.response.text().toLowerCase();",
+                  "  pm.expect(responseText).to.not.include('provider unavailable');",
+                  "  pm.expect(responseText).to.not.include('provider timeout');",
+                  "  pm.expect(responseText).to.not.include('provider failure');",
+                  "  pm.expect(responseText).to.not.include('internal server error');",
+                  "});",
+                  "pm.test('Improved description is present', function () {",
+                  "  pm.expect(json.data.result.improvedDescription, 'improvedDescription').to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "AI Service - Suggest Subtasks",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/ai/tasks/subtasks/suggest",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "ai",
+                "tasks",
+                "subtasks",
+                "suggest"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"{{aiTaskTitle}}\",\n  \"description\": \"{{aiTaskDescription}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('AI Service - Suggest Subtasks succeeds', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response is JSON', function () { pm.expect(pm.response.headers.get('Content-Type') || '').to.include('application/json'); });",
+                  "pm.test('Response envelope indicates success', function () {",
+                  "  pm.expect(json.code, 'code').to.eql(200);",
+                  "  pm.expect(String(json.status), 'status').to.eql('OK');",
+                  "  pm.expect(json.exception || '', 'exception').to.eql('');",
+                  "});",
+                  "pm.test('No provider or internal error is returned', function () {",
+                  "  pm.expect([500, 502, 503, 504]).to.not.include(pm.response.code);",
+                  "  const responseText = pm.response.text().toLowerCase();",
+                  "  pm.expect(responseText).to.not.include('provider unavailable');",
+                  "  pm.expect(responseText).to.not.include('provider timeout');",
+                  "  pm.expect(responseText).to.not.include('provider failure');",
+                  "  pm.expect(responseText).to.not.include('internal server error');",
+                  "});",
+                  "pm.test('Subtasks are present', function () {",
+                  "  pm.expect(json.data.result.subtasks, 'subtasks').to.be.an('array').that.is.not.empty;",
+                  "  json.data.result.subtasks.forEach((subtask, index) => pm.expect(subtask, 'subtask ' + index).to.be.a('string').and.not.empty);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "AI Service - Summarize Task",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/ai/tasks/summary",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "ai",
+                "tasks",
+                "summary"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"{{aiTaskTitle}}\",\n  \"description\": \"{{aiTaskDescription}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('AI Service - Summarize Task succeeds', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response is JSON', function () { pm.expect(pm.response.headers.get('Content-Type') || '').to.include('application/json'); });",
+                  "pm.test('Response envelope indicates success', function () {",
+                  "  pm.expect(json.code, 'code').to.eql(200);",
+                  "  pm.expect(String(json.status), 'status').to.eql('OK');",
+                  "  pm.expect(json.exception || '', 'exception').to.eql('');",
+                  "});",
+                  "pm.test('No provider or internal error is returned', function () {",
+                  "  pm.expect([500, 502, 503, 504]).to.not.include(pm.response.code);",
+                  "  const responseText = pm.response.text().toLowerCase();",
+                  "  pm.expect(responseText).to.not.include('provider unavailable');",
+                  "  pm.expect(responseText).to.not.include('provider timeout');",
+                  "  pm.expect(responseText).to.not.include('provider failure');",
+                  "  pm.expect(responseText).to.not.include('internal server error');",
+                  "});",
+                  "pm.test('Summary is present', function () {",
+                  "  pm.expect(json.data.result.summary, 'summary').to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "AI Service - Suggest Priority",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/ai/tasks/priority/suggest",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "ai",
+                "tasks",
+                "priority",
+                "suggest"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"{{aiTaskTitle}}\",\n  \"description\": \"{{aiTaskDescription}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('AI Service - Suggest Priority succeeds', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response is JSON', function () { pm.expect(pm.response.headers.get('Content-Type') || '').to.include('application/json'); });",
+                  "pm.test('Response envelope indicates success', function () {",
+                  "  pm.expect(json.code, 'code').to.eql(200);",
+                  "  pm.expect(String(json.status), 'status').to.eql('OK');",
+                  "  pm.expect(json.exception || '', 'exception').to.eql('');",
+                  "});",
+                  "pm.test('No provider or internal error is returned', function () {",
+                  "  pm.expect([500, 502, 503, 504]).to.not.include(pm.response.code);",
+                  "  const responseText = pm.response.text().toLowerCase();",
+                  "  pm.expect(responseText).to.not.include('provider unavailable');",
+                  "  pm.expect(responseText).to.not.include('provider timeout');",
+                  "  pm.expect(responseText).to.not.include('provider failure');",
+                  "  pm.expect(responseText).to.not.include('internal server error');",
+                  "});",
+                  "pm.test('Priority suggestion is present', function () {",
+                  "  pm.expect(json.data.result.priority, 'priority').to.be.oneOf(['LOW', 'MEDIUM', 'HIGH']);",
+                  "  pm.expect(json.data.result.reason, 'reason').to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "AI Service - Unauthenticated Request Is Rejected",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer invalid-ai-e2e-token",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/ai/tasks/summary",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "ai",
+                "tasks",
+                "summary"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"{{aiTaskTitle}}\",\n  \"description\": \"{{aiTaskDescription}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Uses an invalid bearer token so the test remains deterministic even when Postman has localhost auth cookies from earlier login requests."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Invalid or missing authentication is rejected', function () { pm.response.to.have.status(401); });",
+                  "pm.test('Response is JSON', function () { pm.expect(pm.response.headers.get('Content-Type') || '').to.include('application/json'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "AI Service - Invalid Payload Is Rejected",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/ai/tasks/description/improve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "ai",
+                "tasks",
+                "description",
+                "improve"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"\",\n  \"description\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Invalid AI payload returns 400', function () { pm.response.to.have.status(400); });",
+                  "pm.test('Response is JSON', function () { pm.expect(pm.response.headers.get('Content-Type') || '').to.include('application/json'); });",
+                  "const json = pm.response.json();",
+                  "pm.test('Validation errors identify invalid fields', function () {",
+                  "  pm.expect(json.data, 'data').to.be.an('object');",
+                  "  pm.expect(json.data.title, 'title validation').to.exist;",
+                  "  pm.expect(json.data.description, 'description validation').to.exist;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "AI Service - Verify AI Audit Events",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/audit?sourceService=ai-service&from={{aiRunStartedAt}}&page=0&size=100&sort=createdAt,desc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "audit"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            "const waitMillis = Number(pm.variables.get('auditWaitMillis') || 3000);",
+            "if (waitMillis > 0) { const startedAt = Date.now(); while (Date.now() - startedAt < waitMillis) {} }",
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const waitMillis = Number(pm.variables.get('auditWaitMillis') || 3000);",
+                  "if (waitMillis > 0) { const startedAt = Date.now(); while (Date.now() - startedAt < waitMillis) {} }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('AI audit query succeeds', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response is JSON', function () { pm.expect(pm.response.headers.get('Content-Type') || '').to.include('application/json'); });",
+                  "const items = pm.response.json().data?.items || [];",
+                  "const expected = [\"AI_TASK_DESCRIPTION_IMPROVED\",\"AI_SUBTASKS_SUGGESTED\",\"AI_TASK_SUMMARIZED\",\"AI_PRIORITY_SUGGESTED\"];",
+                  "const eventTypes = items.map(item => item.eventType);",
+                  "const missing = expected.filter(eventType => !eventTypes.includes(eventType));",
+                  "const attempt = Number(pm.variables.get('auditPollAttempt') || 0);",
+                  "if (missing.length > 0 && attempt < 5) { pm.environment.set('auditPollAttempt', String(attempt + 1)); pm.collectionVariables.set('auditPollAttempt', String(attempt + 1)); console.warn('AI audit records not ready; retrying request. Missing: ' + missing.join(', ')); pm.execution.setNextRequest(pm.info.requestName); } else {",
+                  "  pm.environment.set('auditPollAttempt', '0'); pm.collectionVariables.set('auditPollAttempt', '0');",
+                  "  pm.test('Expected AI audit events are present', function () { pm.expect(missing, 'missing event types').to.be.empty; });",
+                  "  pm.test('AI audit records use expected structure', function () {",
+                  "    const relevant = items.filter(item => expected.includes(item.eventType));",
+                  "    pm.expect(relevant, 'relevant AI audit records').to.be.an('array').that.is.not.empty;",
+                  "    relevant.forEach((item) => {",
+                  "      pm.expect(item.auditId, 'auditId').to.be.a('string').and.not.empty;",
+                  "      pm.expect(item.sourceService, 'sourceService').to.eql('ai-service');",
+                  "      pm.expect(item.aggregateType, 'aggregateType').to.eql('AI_OPERATION');",
+                  "      pm.expect(item.aggregateId, 'aggregateId').to.be.a('string').and.not.empty;",
+                  "      pm.expect(item.action, 'action').to.be.a('string').and.not.empty;",
+                  "    });",
+                  "  });",
+                  "  const selected = items.find(item => item.eventType === 'AI_TASK_DESCRIPTION_IMPROVED') || items.find(item => expected.includes(item.eventType));",
+                  "  if (selected) { pm.environment.set('aiAuditId', selected.auditId); pm.collectionVariables.set('aiAuditId', selected.auditId); }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "AI Service - Get Generated AI Audit Record",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/audit/{{aiAuditId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "audit",
+                "{{aiAuditId}}"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Generated AI audit lookup succeeds', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response is JSON', function () { pm.expect(pm.response.headers.get('Content-Type') || '').to.include('application/json'); });",
+                  "pm.test('Generated AI audit ID matches', function () { pm.expect(pm.response.json().data?.audit?.auditId).to.eql(pm.variables.get('aiAuditId')); });",
+                  "pm.test('Generated AI audit record is from AI Service', function () {",
+                  "  const audit = pm.response.json().data?.audit;",
+                  "  pm.expect(audit.sourceService).to.eql('ai-service');",
+                  "  pm.expect(audit.aggregateType).to.eql('AI_OPERATION');",
+                  "});"
                 ]
               }
             }

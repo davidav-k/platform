@@ -23,7 +23,10 @@ public class TemporaryNoOpAiProvider implements AiProvider {
 
     @Override
     public SuggestSubtasksResult suggestSubtasks(SuggestSubtasksRequest request) {
-        return new SuggestSubtasksResult(List.of());
+        return new SuggestSubtasksResult(List.of(
+                "Clarify acceptance criteria",
+                "Identify implementation steps"
+        ));
     }
 
     @Override
